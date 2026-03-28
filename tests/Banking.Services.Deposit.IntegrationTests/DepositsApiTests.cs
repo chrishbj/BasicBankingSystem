@@ -94,6 +94,19 @@ public sealed class DepositsApiTests : IClassFixture<DepositServiceWebApplicatio
     }
 
     [Fact]
+    public async Task GetPendingReview_Should_SupportSortingQueryString()
+    {
+        await SeedPendingReviewDepositAsync("dep-review-api-010");
+        await SeedPendingReviewDepositAsync("dep-review-api-011");
+
+        var response = await _client.GetFromJsonAsync<Banking.BuildingBlocks.Contracts.PagedResponse<PendingReviewDepositSummaryResponse>>(
+            "/api/v1/deposits/review/pending?sortBy=RequestedAt&descending=true&pageNumber=1&pageSize=20");
+
+        response.Should().NotBeNull();
+        response!.Items.Should().HaveCountGreaterThanOrEqualTo(2);
+    }
+
+    [Fact]
     public async Task GetAll_Should_FilterByStatus_When_QueryStringProvided()
     {
         var request = new CreateDepositRequest("cus_active_001", "acc_active_001", 320m, "CNY", DepositChannel.Counter, null, null);

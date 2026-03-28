@@ -119,11 +119,32 @@ public sealed class DepositServiceTests
         await SeedDepositAsync("dep-pending-001", DepositStatus.PendingReview);
         await SeedDepositAsync("dep-succeeded-001", DepositStatus.Succeeded);
 
-        var result = await _service.GetPendingReviewAsync(1, 20, CancellationToken.None);
+        var result = await _service.GetPendingReviewAsync(
+            PendingReviewSortBy.ReviewRequiredAt,
+            false,
+            1,
+            20,
+            CancellationToken.None);
 
         result.TotalCount.Should().Be(1);
         result.Items.Should().ContainSingle();
         result.Items.Should().ContainSingle(item => item.TransactionId == "dep-pending-001");
+    }
+
+    [Fact]
+    public async Task GetPendingReview_Should_SortByLastCompensationAttemptDescending_When_Requested()
+    {
+        await SeedPendingReviewDepositAsync("dep-pending-sort-001", DateTimeOffset.UtcNow.AddMinutes(-20), DateTimeOffset.UtcNow.AddMinutes(-10));
+        await SeedPendingReviewDepositAsync("dep-pending-sort-002", DateTimeOffset.UtcNow.AddMinutes(-25), DateTimeOffset.UtcNow.AddMinutes(-5));
+
+        var result = await _service.GetPendingReviewAsync(
+            PendingReviewSortBy.LastCompensationAttemptAt,
+            true,
+            1,
+            20,
+            CancellationToken.None);
+
+        result.Items.Select(item => item.TransactionId).Should().ContainInOrder("dep-pending-sort-002", "dep-pending-sort-001");
     }
 
     [Fact]
@@ -204,6 +225,44 @@ public sealed class DepositServiceTests
                     DepositChannel.Counter,
                     correlationId ?? $"corr-{transactionId}"),
                 now),
+            CancellationToken.None);
+    }
+
+    private async Task SeedPendingReviewDepositAsync(
+        string transactionId,
+        DateTimeOffset reviewRequiredAt,
+        DateTimeOffset lastCompensationAttemptAt)
+    {
+        await _repository.AddAsync(
+            new DepositTransaction
+            {
+                TransactionId = transactionId,
+                TransactionNumber = $"D{reviewRequiredAt:yyyyMMddHHmmssfff}{Random.Shared.Next(10, 99)}",
+                CustomerId = "cus_active_001",
+                AccountId = "acc_active_001",
+                Amount = 100m,
+                Currency = "CNY",
+                Channel = DepositChannel.Counter,
+                Status = DepositStatus.PendingReview,
+                AccountPostingStatus = DepositSagaStepStatus.Succeeded,
+                AuditStatus = DepositSagaStepStatus.NotStarted,
+                CompensationStatus = DepositSagaStepStatus.Failed,
+                ReviewRequiredAt = reviewRequiredAt,
+                LastCompensationAttemptAt = lastCompensationAttemptAt,
+                IdempotencyKey = $"idem-{transactionId}",
+                CorrelationId = $"corr-{transactionId}",
+                RequestedAt = reviewRequiredAt.AddMinutes(-10)
+            },
+            Banking.Services.Deposit.Messaging.DepositOutboxMessage.CreateRequestedMessage(
+                new Banking.Services.Deposit.Messaging.DepositRequestedMessage(
+                    transactionId,
+                    "cus_active_001",
+                    "acc_active_001",
+                    100m,
+                    "CNY",
+                    DepositChannel.Counter,
+                    $"corr-{transactionId}"),
+                reviewRequiredAt.AddMinutes(-10)),
             CancellationToken.None);
     }
 

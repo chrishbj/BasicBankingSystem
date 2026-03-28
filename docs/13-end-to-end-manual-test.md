@@ -168,6 +168,21 @@ Expected action for the happy path:
 
 - `DepositSucceeded`
 
+## Review and Recovery Checks
+
+The deposit service also exposes operational review endpoints in Swagger:
+
+- `GET /api/v1/deposits/review/pending`
+- `POST /api/v1/deposits/{transactionId}/review/retry-compensation`
+- `POST /api/v1/deposits/{transactionId}/review/resolve`
+
+Useful query options for operations search:
+
+- `GET /api/v1/deposits?status=PendingReview`
+- `GET /api/v1/deposits?correlationId=<value>`
+- `GET /api/v1/deposits?failureCode=DEPOSIT_COMPENSATION_REVIEW_REQUIRED`
+- `GET /api/v1/deposits/review/pending?sortBy=RequestedAt&descending=true`
+
 ## Expected Happy-Path Outcome
 
 At the end of the walkthrough:

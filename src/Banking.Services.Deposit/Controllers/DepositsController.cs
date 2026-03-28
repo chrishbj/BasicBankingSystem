@@ -87,11 +87,13 @@ public sealed class DepositsController(IDepositService depositService) : Control
 
     [HttpGet("review/pending")]
     public async Task<IActionResult> GetPendingReview(
+        [FromQuery] PendingReviewSortBy sortBy = PendingReviewSortBy.ReviewRequiredAt,
+        [FromQuery] bool descending = false,
         [FromQuery] int pageNumber = 1,
         [FromQuery] int pageSize = 20,
         CancellationToken cancellationToken = default)
     {
-        return Ok(await depositService.GetPendingReviewAsync(pageNumber, pageSize, cancellationToken));
+        return Ok(await depositService.GetPendingReviewAsync(sortBy, descending, pageNumber, pageSize, cancellationToken));
     }
 
     [HttpPost("{transactionId}/review/retry-compensation")]

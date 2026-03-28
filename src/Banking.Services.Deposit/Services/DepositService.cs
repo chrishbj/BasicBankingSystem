@@ -162,11 +162,14 @@ public sealed class DepositService(
     }
 
     public async Task<PagedResponse<PendingReviewDepositSummaryResponse>> GetPendingReviewAsync(
+        PendingReviewSortBy sortBy,
+        bool descending,
         int pageNumber,
         int pageSize,
         CancellationToken cancellationToken)
     {
         var deposits = await depositRepository.GetPendingReviewAsync(int.MaxValue, cancellationToken);
+        deposits = ApplyPendingReviewSort(deposits, sortBy, descending);
         var totalCount = deposits.Count;
         var items = deposits
             .Skip((pageNumber - 1) * pageSize)
@@ -193,6 +196,23 @@ public sealed class DepositService(
 
         var totalPages = totalCount == 0 ? 0 : (int)Math.Ceiling(totalCount / (double)pageSize);
         return new PagedResponse<PendingReviewDepositSummaryResponse>(items, pageNumber, pageSize, totalCount, totalPages);
+    }
+
+    private static IReadOnlyCollection<DepositTransaction> ApplyPendingReviewSort(
+        IReadOnlyCollection<DepositTransaction> deposits,
+        PendingReviewSortBy sortBy,
+        bool descending)
+    {
+        Func<DepositTransaction, DateTimeOffset> keySelector = sortBy switch
+        {
+            PendingReviewSortBy.LastCompensationAttemptAt => item => item.LastCompensationAttemptAt ?? DateTimeOffset.MinValue,
+            PendingReviewSortBy.RequestedAt => item => item.RequestedAt,
+            _ => item => item.ReviewRequiredAt ?? item.RequestedAt
+        };
+
+        return descending
+            ? deposits.OrderByDescending(keySelector).ToArray()
+            : deposits.OrderBy(keySelector).ToArray();
     }
 
     public async Task<DepositResponse> RetryPendingReviewAsync(

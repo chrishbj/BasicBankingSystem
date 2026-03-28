@@ -75,6 +75,9 @@ BasicBankingSystem/
 - `POST /api/v1/deposits`
 - `GET /api/v1/deposits/{transactionId}`
 - `GET /api/v1/deposits`
+- `GET /api/v1/deposits/review/pending`
+- `POST /api/v1/deposits/{transactionId}/review/retry-compensation`
+- `POST /api/v1/deposits/{transactionId}/review/resolve`
 
 ### Audit Service
 
@@ -125,6 +128,15 @@ The project is intentionally evolving toward:
 - eventual consistency with SAGA
 - auditability and observability
 
+The current backend already includes:
+
+- PostgreSQL-backed `Customer`, `Account`, `Deposit`, and `Audit` services
+- RabbitMQ-backed asynchronous deposit processing
+- Outbox dispatching in `Deposit`
+- Saga compensation and `PendingReview` recovery flows
+- Swagger UI for all local services
+- Postman and Newman regression assets
+
 The current implementation is still a local development skeleton using in-memory persistence in order to keep iteration speed high. The next planned steps are:
 
 - replace in-memory stores with local infrastructure
@@ -167,6 +179,6 @@ The repository is being built with a TDD-oriented workflow:
 
 ## Next Recommended Step
 
-- Wire services to PostgreSQL and RabbitMQ
-- Add local Docker Compose-backed infrastructure usage
-- Evolve `Deposit` toward Outbox and SAGA
+- Start the frontend work against the existing Swagger-backed APIs
+- Add operator-facing screens for deposit review and recovery
+- Continue tightening SAGA observability and operational tooling
