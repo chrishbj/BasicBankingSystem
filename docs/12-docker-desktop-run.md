@@ -42,6 +42,13 @@ docker compose --env-file infra/.env.example -f infra/docker-compose.docker-desk
 - `Audit`: `http://localhost:5104`
 - `RabbitMQ Management`: `http://localhost:15672`
 
+## Swagger UI
+
+- `Customer Swagger`: `http://localhost:5101/swagger`
+- `Account Swagger`: `http://localhost:5102/swagger`
+- `Deposit Swagger`: `http://localhost:5103/swagger`
+- `Audit Swagger`: `http://localhost:5104/swagger`
+
 ## Quick Checks
 
 ```powershell

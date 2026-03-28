@@ -9,6 +9,8 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddBankingApiDefaults();
 builder.Services.AddOpenApi();
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
 
 var isTesting = builder.Environment.IsEnvironment("Testing");
 var provider = isTesting
@@ -36,9 +38,12 @@ builder.Services.AddScoped<IAccountService, AccountService>();
 
 var app = builder.Build();
 
-if (app.Environment.IsDevelopment())
+if (app.Environment.IsDevelopment() || app.Environment.IsEnvironment("Docker"))
 {
     app.MapOpenApi();
+    app.UseSwagger();
+    app.UseSwaggerUI();
+    app.MapGet("/", () => Results.Redirect("/swagger"));
 }
 
 app.UseBankingApiDefaults();
