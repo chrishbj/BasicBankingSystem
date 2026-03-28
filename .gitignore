@@ -13,6 +13,7 @@ TestResults/
 # Local environment
 .env
 .env.*
+!*.env.example
 
 # Chinese local-only docs
 docs/ch-cn/
