@@ -1,12 +1,35 @@
 using Banking.BuildingBlocks.Extensions;
+using Banking.Services.Customer.Data;
 using Banking.Services.Customer.Repositories;
 using Banking.Services.Customer.Services;
+using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddBankingApiDefaults();
 builder.Services.AddOpenApi();
-builder.Services.AddSingleton<ICustomerRepository, InMemoryCustomerRepository>();
+
+var isTesting = builder.Environment.IsEnvironment("Testing");
+var provider = isTesting
+    ? "Sqlite"
+    : builder.Configuration["Infrastructure:Postgres:Provider"] ?? "Npgsql";
+
+var connectionString = isTesting
+    ? builder.Configuration["Infrastructure:Postgres:SqliteTestingConnectionString"] ?? "Data Source=customer-testing.db"
+    : builder.Configuration["Infrastructure:Postgres:ConnectionString"];
+
+builder.Services.AddDbContext<CustomerDbContext>(options =>
+{
+    if (string.Equals(provider, "Sqlite", StringComparison.OrdinalIgnoreCase))
+    {
+        options.UseSqlite(connectionString);
+        return;
+    }
+
+    options.UseNpgsql(connectionString);
+});
+
+builder.Services.AddScoped<ICustomerRepository, EfCustomerRepository>();
 builder.Services.AddScoped<ICustomerService, CustomerService>();
 
 var app = builder.Build();
@@ -17,6 +40,12 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseBankingApiDefaults();
+
+using (var scope = app.Services.CreateScope())
+{
+    var dbContext = scope.ServiceProvider.GetRequiredService<CustomerDbContext>();
+    dbContext.Database.EnsureCreated();
+}
 
 app.Run();
 

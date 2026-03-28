@@ -1,0 +1,45 @@
+using Banking.Services.Customer.Data;
+using Microsoft.EntityFrameworkCore;
+
+namespace Banking.Services.Customer.Repositories;
+
+public sealed class EfCustomerRepository(CustomerDbContext dbContext) : ICustomerRepository
+{
+    public Task<bool> ExistsByIdentityAsync(string identityType, string identityNumber, CancellationToken cancellationToken)
+    {
+        return dbContext.Customers.AnyAsync(
+            customer => customer.IdentityType == identityType && customer.IdentityNumber == identityNumber,
+            cancellationToken);
+    }
+
+    public Task<bool> ExistsByMobileAsync(string mobile, string? excludingCustomerId, CancellationToken cancellationToken)
+    {
+        return dbContext.Customers.AnyAsync(
+            customer => customer.Mobile == mobile && customer.CustomerId != excludingCustomerId,
+            cancellationToken);
+    }
+
+    public async Task AddAsync(Domain.Customer customer, CancellationToken cancellationToken)
+    {
+        dbContext.Customers.Add(customer);
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    public Task<Domain.Customer?> GetByIdAsync(string customerId, CancellationToken cancellationToken)
+    {
+        return dbContext.Customers.FirstOrDefaultAsync(customer => customer.CustomerId == customerId, cancellationToken);
+    }
+
+    public async Task<IReadOnlyCollection<Domain.Customer>> GetAllAsync(CancellationToken cancellationToken)
+    {
+        return await dbContext.Customers
+            .OrderByDescending(customer => customer.CreatedAt)
+            .ToArrayAsync(cancellationToken);
+    }
+
+    public async Task UpdateAsync(Domain.Customer customer, CancellationToken cancellationToken)
+    {
+        dbContext.Customers.Update(customer);
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+}

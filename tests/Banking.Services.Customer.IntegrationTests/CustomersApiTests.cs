@@ -2,15 +2,14 @@ using System.Net;
 using System.Net.Http.Json;
 using Banking.Services.Customer.Contracts;
 using FluentAssertions;
-using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace Banking.Services.Customer.IntegrationTests;
 
-public sealed class CustomersApiTests : IClassFixture<WebApplicationFactory<Program>>
+public sealed class CustomersApiTests : IClassFixture<CustomerServiceWebApplicationFactory>
 {
     private readonly HttpClient _client;
 
-    public CustomersApiTests(WebApplicationFactory<Program> factory)
+    public CustomersApiTests(CustomerServiceWebApplicationFactory factory)
     {
         _client = factory.CreateClient();
     }
@@ -33,5 +32,34 @@ public sealed class CustomersApiTests : IClassFixture<WebApplicationFactory<Prog
         var customer = await response.Content.ReadFromJsonAsync<CustomerResponse>();
         customer.Should().NotBeNull();
         customer!.FullName.Should().Be("Alice Teller");
+    }
+
+    [Fact]
+    public async Task PostCustomers_Should_ReturnConflict_When_MobileExists()
+    {
+        var mobile = $"138{Random.Shared.Next(10000000, 99999999)}";
+
+        var first = new CreateCustomerRequest(
+            "Alice Teller",
+            "NationalId",
+            Guid.NewGuid().ToString("N"),
+            mobile,
+            "alice@example.com",
+            new AddressRequest("CN", "Beijing", "Beijing", "No.1 Road", "100000"),
+            "Low");
+
+        var second = new CreateCustomerRequest(
+            "Bob Teller",
+            "NationalId",
+            Guid.NewGuid().ToString("N"),
+            mobile,
+            "bob@example.com",
+            new AddressRequest("CN", "Shanghai", "Shanghai", "No.2 Road", "200000"),
+            "Low");
+
+        await _client.PostAsJsonAsync("/api/v1/customers", first);
+        var response = await _client.PostAsJsonAsync("/api/v1/customers", second);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Conflict);
     }
 }
