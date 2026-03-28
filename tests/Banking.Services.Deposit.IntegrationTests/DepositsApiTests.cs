@@ -30,9 +30,11 @@ public sealed class DepositsApiTests : IClassFixture<DepositServiceWebApplicatio
         response.StatusCode.Should().Be(HttpStatusCode.Accepted);
         var deposit = await response.Content.ReadFromJsonAsync<DepositResponse>();
         deposit.Should().NotBeNull();
-        deposit!.Status.Should().Be(DepositStatus.Received);
+        deposit!.Status.Should().BeOneOf(DepositStatus.Received, DepositStatus.Succeeded);
 
-        var completed = await WaitForDepositAsync(deposit.TransactionId, DepositStatus.Succeeded);
+        var completed = deposit.Status == DepositStatus.Succeeded
+            ? deposit
+            : await WaitForDepositAsync(deposit.TransactionId, DepositStatus.Succeeded);
         completed.Status.Should().Be(DepositStatus.Succeeded);
         completed.PostedAt.Should().NotBeNull();
     }

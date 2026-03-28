@@ -10,8 +10,7 @@ namespace Banking.Services.Deposit.Services;
 
 public sealed class DepositService(
     IDepositRepository depositRepository,
-    IDepositAccountDirectory accountDirectory,
-    IDepositEventPublisher eventPublisher) : IDepositService
+    IDepositAccountDirectory accountDirectory) : IDepositService
 {
     public async Task<DepositResponse> CreateAsync(
         CreateDepositRequest request,
@@ -67,21 +66,21 @@ public sealed class DepositService(
             RequestedAt = now
         };
 
-        await depositRepository.AddAsync(transaction, cancellationToken);
-        var response = Map(transaction);
+        var requestedMessage = new DepositRequestedMessage(
+            transaction.TransactionId,
+            transaction.CustomerId,
+            transaction.AccountId,
+            transaction.Amount,
+            transaction.Currency,
+            transaction.Channel,
+            transaction.CorrelationId);
 
-        await eventPublisher.PublishAsync(
-            new DepositRequestedMessage(
-                transaction.TransactionId,
-                transaction.CustomerId,
-                transaction.AccountId,
-                transaction.Amount,
-                transaction.Currency,
-                transaction.Channel,
-                transaction.CorrelationId),
+        await depositRepository.AddAsync(
+            transaction,
+            DepositOutboxMessage.CreateRequestedMessage(requestedMessage, now),
             cancellationToken);
 
-        return response;
+        return Map(transaction);
     }
 
     public async Task<DepositResponse> GetByIdAsync(string transactionId, CancellationToken cancellationToken)

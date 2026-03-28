@@ -2,7 +2,6 @@ using Banking.Services.Deposit.Accounts;
 using Banking.Services.Deposit.Contracts;
 using Banking.Services.Deposit.Domain;
 using Banking.Services.Deposit.Exceptions;
-using Banking.Services.Deposit.Messaging;
 using Banking.Services.Deposit.Repositories;
 using Banking.Services.Deposit.Services;
 using FluentAssertions;
@@ -12,14 +11,12 @@ namespace Banking.Services.Deposit.UnitTests;
 public sealed class DepositServiceTests
 {
     private readonly InMemoryDepositRepository _repository;
-    private readonly TestDepositEventPublisher _publisher;
     private readonly IDepositService _service;
 
     public DepositServiceTests()
     {
         _repository = new InMemoryDepositRepository();
-        _publisher = new TestDepositEventPublisher();
-        _service = new DepositService(_repository, new InMemoryDepositAccountDirectory(), _publisher);
+        _service = new DepositService(_repository, new InMemoryDepositAccountDirectory());
     }
 
     [Fact]
@@ -41,11 +38,12 @@ public sealed class DepositServiceTests
 
         result.Status.Should().Be(DepositStatus.Received);
         result.PostedAt.Should().BeNull();
-        _publisher.Messages.Should().ContainSingle();
 
         var stored = await _repository.GetByIdAsync(result.TransactionId, CancellationToken.None);
         stored.Should().NotBeNull();
         stored!.Status.Should().Be(DepositStatus.Received);
+        var pendingMessages = await _repository.GetPendingOutboxMessagesAsync(10, CancellationToken.None);
+        pendingMessages.Should().ContainSingle();
     }
 
     [Fact]
@@ -58,16 +56,5 @@ public sealed class DepositServiceTests
 
         second.TransactionId.Should().Be(first.TransactionId);
         second.TransactionNumber.Should().Be(first.TransactionNumber);
-    }
-
-    private sealed class TestDepositEventPublisher : IDepositEventPublisher
-    {
-        public List<DepositRequestedMessage> Messages { get; } = new();
-
-        public Task PublishAsync(DepositRequestedMessage message, CancellationToken cancellationToken)
-        {
-            Messages.Add(message);
-            return Task.CompletedTask;
-        }
     }
 }
