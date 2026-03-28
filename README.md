@@ -146,6 +146,7 @@ The current implementation is still a local development skeleton using in-memory
 - [Architecture Review](docs/08-architecture-review.md)
 - [Architecture Review PPT Outline](docs/09-architecture-review-ppt-outline.md)
 - [Local Run and Test Guide](docs/10-local-run-and-test.md)
+- [Local Infrastructure with Docker Compose](docs/11-local-infrastructure.md)
 
 ### Chinese Docs
 
@@ -162,6 +163,6 @@ The repository is being built with a TDD-oriented workflow:
 
 ## Next Recommended Step
 
-- Add local infrastructure with Docker Compose
-- Introduce PostgreSQL and RabbitMQ locally
+- Wire services to PostgreSQL and RabbitMQ
+- Add local Docker Compose-backed infrastructure usage
 - Evolve `Deposit` toward Outbox and SAGA
