@@ -147,6 +147,7 @@ The current implementation is still a local development skeleton using in-memory
 - [Architecture Review PPT Outline](docs/09-architecture-review-ppt-outline.md)
 - [Local Run and Test Guide](docs/10-local-run-and-test.md)
 - [Local Infrastructure with Docker Compose](docs/11-local-infrastructure.md)
+- [Docker Desktop Run Guide](docs/12-docker-desktop-run.md)
 
 ### Chinese Docs
 

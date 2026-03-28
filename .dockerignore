@@ -1,0 +1,11 @@
+**/bin/
+**/obj/
+**/.vs/
+**/.vscode/
+**/TestResults/
+**/*.user
+**/*.suo
+.git
+docs/ch-cn/
+artifacts/
+infra/.env

@@ -1,0 +1,116 @@
+services:
+  postgres:
+    image: postgres:17
+    container_name: basicbanking-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-banking}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-banking_dev_password}
+      POSTGRES_DB: ${POSTGRES_DB:-basic_banking}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-banking} -d ${POSTGRES_DB:-basic_banking}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  rabbitmq:
+    image: rabbitmq:4-management
+    container_name: basicbanking-rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:-banking}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:-banking_dev_password}
+    ports:
+      - "${RABBITMQ_AMQP_PORT:-5672}:5672"
+      - "${RABBITMQ_MANAGEMENT_PORT:-15672}:15672"
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  customer-service:
+    build:
+      context: ..
+      dockerfile: src/Banking.Services.Customer/Dockerfile
+    container_name: basicbanking-customer
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_ENVIRONMENT: Docker
+      ASPNETCORE_URLS: http://+:8080
+      Infrastructure__Postgres__ConnectionString: Host=postgres;Port=5432;Database=${POSTGRES_DB:-basic_banking};Username=${POSTGRES_USER:-banking};Password=${POSTGRES_PASSWORD:-banking_dev_password}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "5101:8080"
+
+  account-service:
+    build:
+      context: ..
+      dockerfile: src/Banking.Services.Account/Dockerfile
+    container_name: basicbanking-account
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_ENVIRONMENT: Docker
+      ASPNETCORE_URLS: http://+:8080
+      Infrastructure__Postgres__ConnectionString: Host=postgres;Port=5432;Database=${POSTGRES_DB:-basic_banking};Username=${POSTGRES_USER:-banking};Password=${POSTGRES_PASSWORD:-banking_dev_password}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      customer-service:
+        condition: service_started
+    ports:
+      - "5102:8080"
+
+  audit-service:
+    build:
+      context: ..
+      dockerfile: src/Banking.Services.Audit/Dockerfile
+    container_name: basicbanking-audit
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_ENVIRONMENT: Docker
+      ASPNETCORE_URLS: http://+:8080
+      Infrastructure__Postgres__ConnectionString: Host=postgres;Port=5432;Database=${POSTGRES_DB:-basic_banking};Username=${POSTGRES_USER:-banking};Password=${POSTGRES_PASSWORD:-banking_dev_password}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "5104:8080"
+
+  deposit-service:
+    build:
+      context: ..
+      dockerfile: src/Banking.Services.Deposit/Dockerfile
+    container_name: basicbanking-deposit
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_ENVIRONMENT: Docker
+      ASPNETCORE_URLS: http://+:8080
+      Infrastructure__Postgres__ConnectionString: Host=postgres;Port=5432;Database=${POSTGRES_DB:-basic_banking};Username=${POSTGRES_USER:-banking};Password=${POSTGRES_PASSWORD:-banking_dev_password}
+      Infrastructure__RabbitMq__Transport: RabbitMq
+      Infrastructure__RabbitMq__ConnectionString: amqp://${RABBITMQ_DEFAULT_USER:-banking}:${RABBITMQ_DEFAULT_PASS:-banking_dev_password}@rabbitmq:5672
+      Infrastructure__AuditService__BaseUrl: http://audit-service:8080/
+      Infrastructure__AccountService__BaseUrl: http://account-service:8080/
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      account-service:
+        condition: service_started
+      audit-service:
+        condition: service_started
+    ports:
+      - "5103:8080"
+
+volumes:
+  postgres-data:
+  rabbitmq-data:
