@@ -52,13 +52,13 @@ public sealed class HttpDepositAccountDirectory(HttpClient httpClient) : IDeposi
         response.EnsureSuccessStatusCode();
     }
 
-    private static DepositAccountStatus MapStatus(string status)
+    private static DepositAccountStatus MapStatus(int status)
     {
         return status switch
         {
-            "Active" => DepositAccountStatus.Active,
-            "Frozen" => DepositAccountStatus.Frozen,
-            "Closed" => DepositAccountStatus.Closed,
+            1 => DepositAccountStatus.Active,
+            2 => DepositAccountStatus.Frozen,
+            3 => DepositAccountStatus.Closed,
             _ => DepositAccountStatus.Frozen
         };
     }

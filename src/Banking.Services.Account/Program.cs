@@ -32,7 +32,22 @@ builder.Services.AddDbContext<AccountDbContext>(options =>
     options.UseNpgsql(connectionString);
 });
 
-builder.Services.AddSingleton<ICustomerDirectory, InMemoryCustomerDirectory>();
+builder.Services.Configure<CustomerServiceOptions>(builder.Configuration.GetSection(CustomerServiceOptions.SectionName));
+
+if (isTesting)
+{
+    builder.Services.AddSingleton<ICustomerDirectory, InMemoryCustomerDirectory>();
+}
+else
+{
+    builder.Services.AddHttpClient<ICustomerDirectory, HttpCustomerDirectory>((serviceProvider, httpClient) =>
+    {
+        var settings = serviceProvider.GetRequiredService<Microsoft.Extensions.Options.IOptions<CustomerServiceOptions>>().Value;
+        httpClient.BaseAddress = new Uri(settings.BaseUrl);
+        httpClient.Timeout = TimeSpan.FromSeconds(settings.TimeoutSeconds);
+    });
+}
+
 builder.Services.AddScoped<IAccountRepository, EfAccountRepository>();
 builder.Services.AddScoped<IAccountService, AccountService>();
 
@@ -48,11 +63,7 @@ if (app.Environment.IsDevelopment() || app.Environment.IsEnvironment("Docker"))
 
 app.UseBankingApiDefaults();
 
-using (var scope = app.Services.CreateScope())
-{
-    var dbContext = scope.ServiceProvider.GetRequiredService<AccountDbContext>();
-    dbContext.Database.EnsureCreated();
-}
+await app.Services.EnsureContextObjectsCreatedAsync<AccountDbContext>();
 
 app.Run();
 

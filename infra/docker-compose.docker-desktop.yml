@@ -61,6 +61,7 @@ services:
       ASPNETCORE_ENVIRONMENT: Docker
       ASPNETCORE_URLS: http://+:8080
       Infrastructure__Postgres__ConnectionString: Host=postgres;Port=5432;Database=${POSTGRES_DB:-basic_banking};Username=${POSTGRES_USER:-banking};Password=${POSTGRES_PASSWORD:-banking_dev_password}
+      Infrastructure__CustomerService__BaseUrl: http://customer-service:8080/
     depends_on:
       postgres:
         condition: service_healthy

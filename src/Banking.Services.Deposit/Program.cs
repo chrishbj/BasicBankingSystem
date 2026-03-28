@@ -93,11 +93,7 @@ if (app.Environment.IsDevelopment() || app.Environment.IsEnvironment("Docker"))
 
 app.UseBankingApiDefaults();
 
-using (var scope = app.Services.CreateScope())
-{
-    var dbContext = scope.ServiceProvider.GetRequiredService<DepositDbContext>();
-    dbContext.Database.EnsureCreated();
-}
+await app.Services.EnsureContextObjectsCreatedAsync<DepositDbContext>();
 
 app.Run();
 

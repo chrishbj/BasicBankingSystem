@@ -6,7 +6,7 @@ public sealed record AccountResponse(
     string CustomerId,
     string AccountType,
     string Currency,
-    string Status,
+    int Status,
     decimal AvailableBalance,
     decimal LedgerBalance,
     DateTimeOffset OpenedAt,
