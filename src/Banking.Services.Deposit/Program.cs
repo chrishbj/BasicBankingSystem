@@ -1,5 +1,6 @@
 using Banking.BuildingBlocks.Extensions;
 using Banking.Services.Deposit.Accounts;
+using Banking.Services.Deposit.Auditing;
 using Banking.Services.Deposit.Data;
 using Banking.Services.Deposit.Messaging;
 using Banking.Services.Deposit.Repositories;
@@ -36,6 +37,21 @@ builder.Services.AddScoped<IDepositRepository, EfDepositRepository>();
 builder.Services.AddScoped<IDepositService, DepositService>();
 builder.Services.AddScoped<IDepositTransactionProcessor, DepositTransactionProcessor>();
 builder.Services.Configure<RabbitMqOptions>(builder.Configuration.GetSection(RabbitMqOptions.SectionName));
+builder.Services.Configure<AuditServiceOptions>(builder.Configuration.GetSection(AuditServiceOptions.SectionName));
+
+if (isTesting)
+{
+    builder.Services.AddSingleton<IAuditLogWriter, NullAuditLogWriter>();
+}
+else
+{
+    builder.Services.AddHttpClient<IAuditLogWriter, HttpAuditLogWriter>((serviceProvider, httpClient) =>
+    {
+        var settings = serviceProvider.GetRequiredService<Microsoft.Extensions.Options.IOptions<AuditServiceOptions>>().Value;
+        httpClient.BaseAddress = new Uri(settings.BaseUrl);
+        httpClient.Timeout = TimeSpan.FromSeconds(settings.TimeoutSeconds);
+    });
+}
 
 var transport = builder.Environment.IsEnvironment("Testing")
     ? DepositMessageTransport.InMemory

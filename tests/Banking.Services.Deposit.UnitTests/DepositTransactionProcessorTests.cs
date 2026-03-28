@@ -1,9 +1,11 @@
 using Banking.Services.Deposit.Accounts;
+using Banking.Services.Deposit.Auditing;
 using Banking.Services.Deposit.Domain;
 using Banking.Services.Deposit.Messaging;
 using Banking.Services.Deposit.Repositories;
 using Banking.Services.Deposit.Services;
 using FluentAssertions;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Banking.Services.Deposit.UnitTests;
 
@@ -19,7 +21,12 @@ public sealed class DepositTransactionProcessorTests
             DepositOutboxMessage.CreateRequestedMessage(BuildRequestedMessage(transaction), transaction.RequestedAt),
             CancellationToken.None);
 
-        var processor = new DepositTransactionProcessor(repository, new InMemoryDepositAccountDirectory());
+        var auditLogWriter = new TestAuditLogWriter();
+        var processor = new DepositTransactionProcessor(
+            repository,
+            new InMemoryDepositAccountDirectory(),
+            auditLogWriter,
+            NullLogger<DepositTransactionProcessor>.Instance);
 
         await processor.ProcessAsync(transaction.TransactionId, CancellationToken.None);
 
@@ -27,6 +34,7 @@ public sealed class DepositTransactionProcessorTests
         stored.Should().NotBeNull();
         stored!.Status.Should().Be(DepositStatus.Succeeded);
         stored.PostedAt.Should().NotBeNull();
+        auditLogWriter.Actions.Should().ContainSingle().Which.Should().Be("DepositSucceeded");
     }
 
     [Fact]
@@ -39,7 +47,12 @@ public sealed class DepositTransactionProcessorTests
             DepositOutboxMessage.CreateRequestedMessage(BuildRequestedMessage(transaction), transaction.RequestedAt),
             CancellationToken.None);
 
-        var processor = new DepositTransactionProcessor(repository, new ThrowingDepositAccountDirectory());
+        var auditLogWriter = new TestAuditLogWriter();
+        var processor = new DepositTransactionProcessor(
+            repository,
+            new ThrowingDepositAccountDirectory(),
+            auditLogWriter,
+            NullLogger<DepositTransactionProcessor>.Instance);
 
         await processor.ProcessAsync(transaction.TransactionId, CancellationToken.None);
 
@@ -48,6 +61,30 @@ public sealed class DepositTransactionProcessorTests
         stored!.Status.Should().Be(DepositStatus.Failed);
         stored.FailureCode.Should().Be("DEPOSIT_PROCESSING_FAILED");
         stored.FailureReason.Should().NotBeNullOrWhiteSpace();
+        auditLogWriter.Actions.Should().ContainSingle().Which.Should().Be("DepositFailed");
+    }
+
+    [Fact]
+    public async Task ProcessAsync_Should_NotRollbackTransaction_When_AuditRecordingFails()
+    {
+        var repository = new InMemoryDepositRepository();
+        var transaction = BuildTransaction("dep-audit-failure-001");
+        await repository.AddAsync(
+            transaction,
+            DepositOutboxMessage.CreateRequestedMessage(BuildRequestedMessage(transaction), transaction.RequestedAt),
+            CancellationToken.None);
+
+        var processor = new DepositTransactionProcessor(
+            repository,
+            new InMemoryDepositAccountDirectory(),
+            new ThrowingAuditLogWriter(),
+            NullLogger<DepositTransactionProcessor>.Instance);
+
+        await processor.ProcessAsync(transaction.TransactionId, CancellationToken.None);
+
+        var stored = await repository.GetByIdAsync(transaction.TransactionId, CancellationToken.None);
+        stored.Should().NotBeNull();
+        stored!.Status.Should().Be(DepositStatus.Succeeded);
     }
 
     private static DepositTransaction BuildTransaction(string transactionId)
@@ -90,6 +127,35 @@ public sealed class DepositTransactionProcessorTests
         public Task PostDepositAsync(string accountId, decimal amount, CancellationToken cancellationToken)
         {
             throw new InvalidOperationException("Simulated posting failure.");
+        }
+    }
+
+    private sealed class TestAuditLogWriter : IAuditLogWriter
+    {
+        public List<string> Actions { get; } = new();
+
+        public Task WriteAsync(
+            string action,
+            DepositTransaction transaction,
+            Dictionary<string, object?> beforeSnapshot,
+            Dictionary<string, object?> afterSnapshot,
+            CancellationToken cancellationToken)
+        {
+            Actions.Add(action);
+            return Task.CompletedTask;
+        }
+    }
+
+    private sealed class ThrowingAuditLogWriter : IAuditLogWriter
+    {
+        public Task WriteAsync(
+            string action,
+            DepositTransaction transaction,
+            Dictionary<string, object?> beforeSnapshot,
+            Dictionary<string, object?> afterSnapshot,
+            CancellationToken cancellationToken)
+        {
+            throw new InvalidOperationException("Simulated audit failure.");
         }
     }
 }
