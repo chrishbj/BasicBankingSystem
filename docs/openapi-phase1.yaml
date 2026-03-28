@@ -1,0 +1,1051 @@
+openapi: 3.1.0
+info:
+  title: BasicBankingSystem Phase 1 API
+  version: 1.0.0
+  description: |
+    Phase 1 API contract for the Basic Banking System.
+    Scope includes customer management, account opening, deposit processing,
+    audit retrieval, and platform health endpoints.
+servers:
+  - url: http://localhost:8080
+    description: Local gateway
+tags:
+  - name: Customers
+  - name: Accounts
+  - name: Deposits
+  - name: Audits
+  - name: Platform
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    CorrelationIdHeader:
+      name: X-Correlation-Id
+      in: header
+      required: false
+      schema:
+        type: string
+    IdempotencyKeyHeader:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 100
+    PageNumber:
+      name: pageNumber
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+    PageSize:
+      name: pageSize
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 200
+        default: 20
+  headers:
+    CorrelationIdResponse:
+      description: Correlation identifier for the request.
+      schema:
+        type: string
+  schemas:
+    ProblemDetails:
+      type: object
+      required: [title, status]
+      properties:
+        type:
+          type: [string, "null"]
+        title:
+          type: string
+        status:
+          type: integer
+        code:
+          type: [string, "null"]
+        detail:
+          type: [string, "null"]
+        traceId:
+          type: [string, "null"]
+        correlationId:
+          type: [string, "null"]
+        errors:
+          type: [object, "null"]
+          additionalProperties:
+            type: array
+            items:
+              type: string
+    Address:
+      type: object
+      required: [country, province, city, line1, postalCode]
+      properties:
+        country:
+          type: string
+          maxLength: 2
+        province:
+          type: string
+          maxLength: 100
+        city:
+          type: string
+          maxLength: 100
+        line1:
+          type: string
+          maxLength: 200
+        postalCode:
+          type: string
+          maxLength: 20
+    CustomerStatus:
+      type: string
+      enum: [Pending, Active, Frozen, Closed]
+    AccountStatus:
+      type: string
+      enum: [Active, Frozen, Closed]
+    DepositStatus:
+      type: string
+      enum: [Received, Processing, Succeeded, Rejected, Failed, PendingReview]
+    Channel:
+      type: string
+      enum: [Counter, Online, ATM, Batch]
+    CreateCustomerRequest:
+      type: object
+      required: [fullName, identityType, identityNumber, mobile, address, riskLevel]
+      properties:
+        fullName:
+          type: string
+          maxLength: 200
+        identityType:
+          type: string
+          maxLength: 50
+        identityNumber:
+          type: string
+          maxLength: 50
+        mobile:
+          type: string
+          maxLength: 30
+        email:
+          type: [string, "null"]
+          format: email
+        address:
+          $ref: '#/components/schemas/Address'
+        riskLevel:
+          type: string
+          maxLength: 30
+    Customer:
+      type: object
+      required: [customerId, customerNumber, fullName, identityType, identityNumberMasked, mobile, address, riskLevel, status, createdAt, updatedAt]
+      properties:
+        customerId:
+          type: string
+        customerNumber:
+          type: string
+        fullName:
+          type: string
+        identityType:
+          type: string
+        identityNumberMasked:
+          type: string
+        mobile:
+          type: string
+        email:
+          type: [string, "null"]
+          format: email
+        address:
+          $ref: '#/components/schemas/Address'
+        riskLevel:
+          type: string
+        status:
+          $ref: '#/components/schemas/CustomerStatus'
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    CustomerSummary:
+      type: object
+      required: [customerId, customerNumber, fullName, mobile, status, createdAt]
+      properties:
+        customerId:
+          type: string
+        customerNumber:
+          type: string
+        fullName:
+          type: string
+        mobile:
+          type: string
+        status:
+          $ref: '#/components/schemas/CustomerStatus'
+        createdAt:
+          type: string
+          format: date-time
+    CustomerPagedResponse:
+      type: object
+      required: [items, pageNumber, pageSize, totalCount, totalPages]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/CustomerSummary'
+        pageNumber:
+          type: integer
+        pageSize:
+          type: integer
+        totalCount:
+          type: integer
+        totalPages:
+          type: integer
+    UpdateCustomerContactRequest:
+      type: object
+      required: [mobile, address]
+      properties:
+        mobile:
+          type: string
+          maxLength: 30
+        email:
+          type: [string, "null"]
+          format: email
+        address:
+          $ref: '#/components/schemas/Address'
+    ChangeCustomerStatusRequest:
+      type: object
+      required: [targetStatus, reason]
+      properties:
+        targetStatus:
+          $ref: '#/components/schemas/CustomerStatus'
+        reason:
+          type: string
+          maxLength: 500
+    ChangeCustomerStatusResponse:
+      type: object
+      required: [customerId, previousStatus, currentStatus, effectiveAt]
+      properties:
+        customerId:
+          type: string
+        previousStatus:
+          $ref: '#/components/schemas/CustomerStatus'
+        currentStatus:
+          $ref: '#/components/schemas/CustomerStatus'
+        effectiveAt:
+          type: string
+          format: date-time
+    OpenAccountRequest:
+      type: object
+      required: [customerId, accountType, currency]
+      properties:
+        customerId:
+          type: string
+        accountType:
+          type: string
+          maxLength: 30
+        currency:
+          type: string
+          minLength: 3
+          maxLength: 3
+    Account:
+      type: object
+      required: [accountId, accountNumber, customerId, accountType, currency, status, availableBalance, ledgerBalance, openedAt]
+      properties:
+        accountId:
+          type: string
+        accountNumber:
+          type: string
+        customerId:
+          type: string
+        accountType:
+          type: string
+        currency:
+          type: string
+        status:
+          $ref: '#/components/schemas/AccountStatus'
+        availableBalance:
+          type: number
+        ledgerBalance:
+          type: number
+        openedAt:
+          type: string
+          format: date-time
+        closedAt:
+          type: [string, "null"]
+          format: date-time
+    AccountSummary:
+      type: object
+      required: [accountId, accountNumber, accountType, currency, status, availableBalance, ledgerBalance]
+      properties:
+        accountId:
+          type: string
+        accountNumber:
+          type: string
+        accountType:
+          type: string
+        currency:
+          type: string
+        status:
+          $ref: '#/components/schemas/AccountStatus'
+        availableBalance:
+          type: number
+        ledgerBalance:
+          type: number
+    AccountPagedResponse:
+      type: object
+      required: [items, pageNumber, pageSize, totalCount, totalPages]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/AccountSummary'
+        pageNumber:
+          type: integer
+        pageSize:
+          type: integer
+        totalCount:
+          type: integer
+        totalPages:
+          type: integer
+    CloseAccountRequest:
+      type: object
+      required: [reason]
+      properties:
+        reason:
+          type: string
+          maxLength: 500
+    CloseAccountResponse:
+      type: object
+      required: [accountId, previousStatus, currentStatus, closedAt]
+      properties:
+        accountId:
+          type: string
+        previousStatus:
+          $ref: '#/components/schemas/AccountStatus'
+        currentStatus:
+          $ref: '#/components/schemas/AccountStatus'
+        closedAt:
+          type: string
+          format: date-time
+    CreateDepositRequest:
+      type: object
+      required: [customerId, accountId, amount, currency, channel]
+      properties:
+        customerId:
+          type: string
+        accountId:
+          type: string
+        amount:
+          type: number
+          exclusiveMinimum: 0
+        currency:
+          type: string
+          minLength: 3
+          maxLength: 3
+        channel:
+          $ref: '#/components/schemas/Channel'
+        referenceNumber:
+          type: [string, "null"]
+          maxLength: 100
+        note:
+          type: [string, "null"]
+          maxLength: 500
+    Deposit:
+      type: object
+      required: [transactionId, transactionNumber, customerId, accountId, amount, currency, channel, status, correlationId, requestedAt]
+      properties:
+        transactionId:
+          type: string
+        transactionNumber:
+          type: string
+        customerId:
+          type: string
+        accountId:
+          type: string
+        amount:
+          type: number
+        currency:
+          type: string
+        channel:
+          $ref: '#/components/schemas/Channel'
+        status:
+          $ref: '#/components/schemas/DepositStatus'
+        failureCode:
+          type: [string, "null"]
+        failureReason:
+          type: [string, "null"]
+        correlationId:
+          type: string
+        requestedAt:
+          type: string
+          format: date-time
+        postedAt:
+          type: [string, "null"]
+          format: date-time
+        reversedAt:
+          type: [string, "null"]
+          format: date-time
+    DepositSummary:
+      type: object
+      required: [transactionId, transactionNumber, accountId, customerId, amount, currency, channel, status, requestedAt]
+      properties:
+        transactionId:
+          type: string
+        transactionNumber:
+          type: string
+        accountId:
+          type: string
+        customerId:
+          type: string
+        amount:
+          type: number
+        currency:
+          type: string
+        channel:
+          $ref: '#/components/schemas/Channel'
+        status:
+          $ref: '#/components/schemas/DepositStatus'
+        requestedAt:
+          type: string
+          format: date-time
+        postedAt:
+          type: [string, "null"]
+          format: date-time
+    DepositPagedResponse:
+      type: object
+      required: [items, pageNumber, pageSize, totalCount, totalPages]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/DepositSummary'
+        pageNumber:
+          type: integer
+        pageSize:
+          type: integer
+        totalCount:
+          type: integer
+        totalPages:
+          type: integer
+    AuditSummary:
+      type: object
+      required: [auditId, actorType, actorId, action, aggregateType, aggregateId, correlationId, occurredAt]
+      properties:
+        auditId:
+          type: string
+        actorType:
+          type: string
+        actorId:
+          type: string
+        action:
+          type: string
+        aggregateType:
+          type: string
+        aggregateId:
+          type: string
+        correlationId:
+          type: string
+        occurredAt:
+          type: string
+          format: date-time
+    AuditDetail:
+      allOf:
+        - $ref: '#/components/schemas/AuditSummary'
+        - type: object
+          required: [beforeSnapshot, afterSnapshot, causationId]
+          properties:
+            beforeSnapshot:
+              type: [object, "null"]
+              additionalProperties: true
+            afterSnapshot:
+              type: [object, "null"]
+              additionalProperties: true
+            causationId:
+              type: [string, "null"]
+    AuditPagedResponse:
+      type: object
+      required: [items, pageNumber, pageSize, totalCount, totalPages]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/AuditSummary'
+        pageNumber:
+          type: integer
+        pageSize:
+          type: integer
+        totalCount:
+          type: integer
+        totalPages:
+          type: integer
+    HealthResponse:
+      type: object
+      required: [status, service, timestamp]
+      properties:
+        status:
+          type: string
+        service:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+    ReadyResponse:
+      type: object
+      required: [status, dependencies]
+      properties:
+        status:
+          type: string
+        dependencies:
+          type: object
+          additionalProperties:
+            type: string
+paths:
+  /api/v1/customers:
+    post:
+      tags: [Customers]
+      summary: Create a customer
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CorrelationIdHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCustomerRequest'
+      responses:
+        '201':
+          description: Customer created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Customer'
+        '400':
+          description: Validation error
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '409':
+          description: Duplicate identity or mobile
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+    get:
+      tags: [Customers]
+      summary: Search customers
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CorrelationIdHeader'
+        - name: customerNumber
+          in: query
+          schema:
+            type: string
+        - name: fullName
+          in: query
+          schema:
+            type: string
+        - name: mobile
+          in: query
+          schema:
+            type: string
+        - name: identityNumber
+          in: query
+          schema:
+            type: string
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/CustomerStatus'
+        - name: sortBy
+          in: query
+          schema:
+            type: string
+            default: createdAt
+        - name: sortDirection
+          in: query
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: desc
+        - $ref: '#/components/parameters/PageNumber'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: Customer search result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomerPagedResponse'
+  /api/v1/customers/{customerId}:
+    get:
+      tags: [Customers]
+      summary: Get customer by id
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CorrelationIdHeader'
+        - name: customerId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Customer detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Customer'
+        '404':
+          description: Customer not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /api/v1/customers/{customerId}/contact:
+    put:
+      tags: [Customers]
+      summary: Update customer contact
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CorrelationIdHeader'
+        - name: customerId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateCustomerContactRequest'
+      responses:
+        '200':
+          description: Updated customer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Customer'
+        '400':
+          description: Validation error
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '404':
+          description: Customer not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '409':
+          description: Mobile conflict
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /api/v1/customers/{customerId}/status:
+    post:
+      tags: [Customers]
+      summary: Change customer status
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CorrelationIdHeader'
+        - name: customerId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangeCustomerStatusRequest'
+      responses:
+        '200':
+          description: Customer status changed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChangeCustomerStatusResponse'
+        '400':
+          description: Invalid status transition
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '404':
+          description: Customer not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /api/v1/accounts:
+    post:
+      tags: [Accounts]
+      summary: Open account
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CorrelationIdHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OpenAccountRequest'
+      responses:
+        '201':
+          description: Account created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Account'
+        '400':
+          description: Validation error
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '404':
+          description: Customer not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '409':
+          description: Customer not eligible for account opening
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+    get:
+      tags: [Accounts]
+      summary: Search accounts by customer
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CorrelationIdHeader'
+        - name: customerId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/AccountStatus'
+        - $ref: '#/components/parameters/PageNumber'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: Account search result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountPagedResponse'
+  /api/v1/accounts/{accountId}:
+    get:
+      tags: [Accounts]
+      summary: Get account by id
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CorrelationIdHeader'
+        - name: accountId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Account detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Account'
+        '404':
+          description: Account not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /api/v1/accounts/{accountId}/close:
+    post:
+      tags: [Accounts]
+      summary: Close account
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CorrelationIdHeader'
+        - name: accountId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CloseAccountRequest'
+      responses:
+        '200':
+          description: Account closed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloseAccountResponse'
+        '400':
+          description: Account cannot be closed
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '404':
+          description: Account not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '409':
+          description: Account status conflict
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /api/v1/deposits:
+    post:
+      tags: [Deposits]
+      summary: Create deposit request
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CorrelationIdHeader'
+        - $ref: '#/components/parameters/IdempotencyKeyHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateDepositRequest'
+      responses:
+        '202':
+          description: Deposit accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Deposit'
+        '400':
+          description: Validation error
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '404':
+          description: Customer or account not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '409':
+          description: Deposit conflict
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+    get:
+      tags: [Deposits]
+      summary: Search deposits
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CorrelationIdHeader'
+        - name: accountId
+          in: query
+          schema:
+            type: string
+        - name: customerId
+          in: query
+          schema:
+            type: string
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/DepositStatus'
+        - name: channel
+          in: query
+          schema:
+            $ref: '#/components/schemas/Channel'
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - $ref: '#/components/parameters/PageNumber'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: Deposit search result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DepositPagedResponse'
+  /api/v1/deposits/{transactionId}:
+    get:
+      tags: [Deposits]
+      summary: Get deposit by id
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CorrelationIdHeader'
+        - name: transactionId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Deposit detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Deposit'
+        '404':
+          description: Deposit not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /api/v1/deposits/by-number/{transactionNumber}:
+    get:
+      tags: [Deposits]
+      summary: Get deposit by transaction number
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CorrelationIdHeader'
+        - name: transactionNumber
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Deposit detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Deposit'
+        '404':
+          description: Deposit not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /api/v1/audits:
+    get:
+      tags: [Audits]
+      summary: Search audit logs
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CorrelationIdHeader'
+        - name: aggregateType
+          in: query
+          schema:
+            type: string
+        - name: aggregateId
+          in: query
+          schema:
+            type: string
+        - name: actorId
+          in: query
+          schema:
+            type: string
+        - name: action
+          in: query
+          schema:
+            type: string
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - $ref: '#/components/parameters/PageNumber'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: Audit search result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuditPagedResponse'
+  /api/v1/audits/{auditId}:
+    get:
+      tags: [Audits]
+      summary: Get audit detail by id
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CorrelationIdHeader'
+        - name: auditId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Audit detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuditDetail'
+        '404':
+          description: Audit not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /api/v1/health:
+    get:
+      tags: [Platform]
+      summary: Liveness endpoint
+      responses:
+        '200':
+          description: Service is alive
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+  /api/v1/ready:
+    get:
+      tags: [Platform]
+      summary: Readiness endpoint
+      responses:
+        '200':
+          description: Service is ready
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReadyResponse'

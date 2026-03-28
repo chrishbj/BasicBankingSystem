@@ -1,0 +1,21 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Banking.BuildingBlocks/Banking.BuildingBlocks.csproj" />
+    <Project Path="src/Banking.Gateway/Banking.Gateway.csproj" />
+    <Project Path="src/Banking.Services.Account/Banking.Services.Account.csproj" />
+    <Project Path="src/Banking.Services.Audit/Banking.Services.Audit.csproj" />
+    <Project Path="src/Banking.Services.Customer/Banking.Services.Customer.csproj" />
+    <Project Path="src/Banking.Services.Deposit/Banking.Services.Deposit.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Banking.Contracts.Tests/Banking.Contracts.Tests.csproj" />
+    <Project Path="tests/Banking.Services.Account.IntegrationTests/Banking.Services.Account.IntegrationTests.csproj" />
+    <Project Path="tests/Banking.Services.Account.UnitTests/Banking.Services.Account.UnitTests.csproj" />
+    <Project Path="tests/Banking.Services.Audit.IntegrationTests/Banking.Services.Audit.IntegrationTests.csproj" />
+    <Project Path="tests/Banking.Services.Audit.UnitTests/Banking.Services.Audit.UnitTests.csproj" />
+    <Project Path="tests/Banking.Services.Customer.IntegrationTests/Banking.Services.Customer.IntegrationTests.csproj" />
+    <Project Path="tests/Banking.Services.Customer.UnitTests/Banking.Services.Customer.UnitTests.csproj" />
+    <Project Path="tests/Banking.Services.Deposit.IntegrationTests/Banking.Services.Deposit.IntegrationTests.csproj" />
+    <Project Path="tests/Banking.Services.Deposit.UnitTests/Banking.Services.Deposit.UnitTests.csproj" />
+  </Folder>
+</Solution>
