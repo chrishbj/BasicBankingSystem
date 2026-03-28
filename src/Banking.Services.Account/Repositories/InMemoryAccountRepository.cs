@@ -26,4 +26,10 @@ public sealed class InMemoryAccountRepository : IAccountRepository
                 .OrderByDescending(account => account.OpenedAt)
                 .ToArray());
     }
+
+    public Task UpdateAsync(Domain.Account account, CancellationToken cancellationToken)
+    {
+        _accounts[account.AccountId] = account;
+        return Task.CompletedTask;
+    }
 }

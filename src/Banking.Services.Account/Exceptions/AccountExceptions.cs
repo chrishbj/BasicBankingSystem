@@ -5,3 +5,6 @@ public sealed class AccountNotFoundException(string accountId)
 
 public sealed class CustomerNotEligibleForAccountOpeningException(string customerId, string reason)
     : Exception($"Customer '{customerId}' is not eligible for account opening. {reason}");
+
+public sealed class AccountNotEligibleForDepositException(string accountId, string reason)
+    : Exception($"Account '{accountId}' is not eligible for deposit. {reason}");

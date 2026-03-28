@@ -124,7 +124,7 @@ public sealed class DepositTransactionProcessorTests
             return Task.FromResult<DepositAccountRecord?>(null);
         }
 
-        public Task PostDepositAsync(string accountId, decimal amount, CancellationToken cancellationToken)
+        public Task PostDepositAsync(string accountId, decimal amount, string currency, CancellationToken cancellationToken)
         {
             throw new InvalidOperationException("Simulated posting failure.");
         }

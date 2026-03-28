@@ -32,19 +32,27 @@ builder.Services.AddDbContext<DepositDbContext>(options =>
     options.UseNpgsql(connectionString);
 });
 
-builder.Services.AddSingleton<IDepositAccountDirectory, InMemoryDepositAccountDirectory>();
 builder.Services.AddScoped<IDepositRepository, EfDepositRepository>();
 builder.Services.AddScoped<IDepositService, DepositService>();
 builder.Services.AddScoped<IDepositTransactionProcessor, DepositTransactionProcessor>();
 builder.Services.Configure<RabbitMqOptions>(builder.Configuration.GetSection(RabbitMqOptions.SectionName));
 builder.Services.Configure<AuditServiceOptions>(builder.Configuration.GetSection(AuditServiceOptions.SectionName));
+builder.Services.Configure<AccountServiceOptions>(builder.Configuration.GetSection(AccountServiceOptions.SectionName));
 
 if (isTesting)
 {
+    builder.Services.AddSingleton<IDepositAccountDirectory, InMemoryDepositAccountDirectory>();
     builder.Services.AddSingleton<IAuditLogWriter, NullAuditLogWriter>();
 }
 else
 {
+    builder.Services.AddHttpClient<IDepositAccountDirectory, HttpDepositAccountDirectory>((serviceProvider, httpClient) =>
+    {
+        var settings = serviceProvider.GetRequiredService<Microsoft.Extensions.Options.IOptions<AccountServiceOptions>>().Value;
+        httpClient.BaseAddress = new Uri(settings.BaseUrl);
+        httpClient.Timeout = TimeSpan.FromSeconds(settings.TimeoutSeconds);
+    });
+
     builder.Services.AddHttpClient<IAuditLogWriter, HttpAuditLogWriter>((serviceProvider, httpClient) =>
     {
         var settings = serviceProvider.GetRequiredService<Microsoft.Extensions.Options.IOptions<AuditServiceOptions>>().Value;

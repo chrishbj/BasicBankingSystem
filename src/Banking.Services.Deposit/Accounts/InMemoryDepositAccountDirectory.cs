@@ -37,7 +37,7 @@ public sealed class InMemoryDepositAccountDirectory : IDepositAccountDirectory
         return Task.FromResult(account);
     }
 
-    public Task PostDepositAsync(string accountId, decimal amount, CancellationToken cancellationToken)
+    public Task PostDepositAsync(string accountId, decimal amount, string currency, CancellationToken cancellationToken)
     {
         if (_accounts.TryGetValue(accountId, out var account))
         {

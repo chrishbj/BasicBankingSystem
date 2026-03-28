@@ -41,6 +41,31 @@ public sealed class AccountsController(IAccountService accountService) : Control
         }
     }
 
+    [HttpPost("{accountId}/deposit-postings")]
+    public async Task<IActionResult> ApplyDeposit(
+        string accountId,
+        [FromBody] ApplyDepositRequest request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            return Ok(await accountService.ApplyDepositAsync(accountId, request, cancellationToken));
+        }
+        catch (AccountNotFoundException)
+        {
+            return NotFound();
+        }
+        catch (AccountNotEligibleForDepositException exception)
+        {
+            return Conflict(new ProblemDetails
+            {
+                Title = "Account is not eligible for deposit",
+                Detail = exception.Message,
+                Status = StatusCodes.Status409Conflict
+            });
+        }
+    }
+
     [HttpGet]
     public async Task<IActionResult> GetByCustomerId(
         [FromQuery] string customerId,

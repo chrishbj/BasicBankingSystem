@@ -25,7 +25,11 @@ public sealed class DepositTransactionProcessor(
             transaction.Status = DepositStatus.Processing;
             await depositRepository.UpdateAsync(transaction, cancellationToken);
 
-            await accountDirectory.PostDepositAsync(transaction.AccountId, transaction.Amount, cancellationToken);
+            await accountDirectory.PostDepositAsync(
+                transaction.AccountId,
+                transaction.Amount,
+                transaction.Currency,
+                cancellationToken);
 
             transaction.Status = DepositStatus.Succeeded;
             transaction.PostedAt = DateTimeOffset.UtcNow;

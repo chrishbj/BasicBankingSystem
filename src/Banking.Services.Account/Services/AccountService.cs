@@ -52,6 +52,33 @@ public sealed class AccountService(
         return Map(account);
     }
 
+    public async Task<AccountResponse> ApplyDepositAsync(string accountId, ApplyDepositRequest request, CancellationToken cancellationToken)
+    {
+        if (request.Amount <= 0)
+        {
+            throw new AccountNotEligibleForDepositException(accountId, "Deposit amount must be greater than zero.");
+        }
+
+        var account = await accountRepository.GetByIdAsync(accountId, cancellationToken)
+            ?? throw new AccountNotFoundException(accountId);
+
+        if (account.Status != AccountStatus.Active)
+        {
+            throw new AccountNotEligibleForDepositException(accountId, $"Account status is '{account.Status}'.");
+        }
+
+        if (!string.Equals(account.Currency, request.Currency, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new AccountNotEligibleForDepositException(accountId, "Currency does not match account currency.");
+        }
+
+        account.AvailableBalance += request.Amount;
+        account.LedgerBalance += request.Amount;
+
+        await accountRepository.UpdateAsync(account, cancellationToken);
+        return Map(account);
+    }
+
     public async Task<PagedResponse<AccountSummaryResponse>> GetByCustomerIdAsync(
         string customerId,
         int pageNumber,

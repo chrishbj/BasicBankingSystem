@@ -36,4 +36,21 @@ public sealed class AccountsApiTests : IClassFixture<AccountServiceWebApplicatio
 
         response.StatusCode.Should().Be(HttpStatusCode.Conflict);
     }
+
+    [Fact]
+    public async Task PostDepositPosting_Should_UpdateBalances_When_AccountIsActive()
+    {
+        var openResponse = await _client.PostAsJsonAsync("/api/v1/accounts", new OpenAccountRequest("cus_active_001", "Checking", "CNY"));
+        var account = await openResponse.Content.ReadFromJsonAsync<AccountResponse>();
+
+        var response = await _client.PostAsJsonAsync(
+            $"/api/v1/accounts/{account!.AccountId}/deposit-postings",
+            new ApplyDepositRequest(125m, "CNY"));
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var updated = await response.Content.ReadFromJsonAsync<AccountResponse>();
+        updated.Should().NotBeNull();
+        updated!.AvailableBalance.Should().Be(125m);
+        updated.LedgerBalance.Should().Be(125m);
+    }
 }

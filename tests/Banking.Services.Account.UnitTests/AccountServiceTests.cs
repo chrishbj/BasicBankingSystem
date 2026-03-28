@@ -31,4 +31,17 @@ public sealed class AccountServiceTests
 
         await act.Should().ThrowAsync<CustomerNotEligibleForAccountOpeningException>();
     }
+
+    [Fact]
+    public async Task ApplyDeposit_Should_UpdateBalances_ForActiveAccount()
+    {
+        var repository = new InMemoryAccountRepository();
+        var service = new AccountService(repository, new InMemoryCustomerDirectory());
+
+        var opened = await service.OpenAsync(new OpenAccountRequest("cus_active_001", "Checking", "CNY"), CancellationToken.None);
+        var updated = await service.ApplyDepositAsync(opened.AccountId, new ApplyDepositRequest(250m, "CNY"), CancellationToken.None);
+
+        updated.AvailableBalance.Should().Be(250m);
+        updated.LedgerBalance.Should().Be(250m);
+    }
 }

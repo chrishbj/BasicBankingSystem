@@ -26,4 +26,10 @@ public sealed class EfAccountRepository(AccountDbContext dbContext) : IAccountRe
             .OrderByDescending(x => x.OpenedAt)
             .ToArray();
     }
+
+    public async Task UpdateAsync(Domain.Account account, CancellationToken cancellationToken)
+    {
+        dbContext.Accounts.Update(account);
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
 }
