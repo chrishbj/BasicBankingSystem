@@ -10,6 +10,9 @@ public sealed class DepositTransaction
     public string Currency { get; init; } = default!;
     public DepositChannel Channel { get; init; }
     public DepositStatus Status { get; set; }
+    public DepositSagaStepStatus AccountPostingStatus { get; set; }
+    public DepositSagaStepStatus AuditStatus { get; set; }
+    public DepositSagaStepStatus CompensationStatus { get; set; }
     public string IdempotencyKey { get; init; } = default!;
     public string CorrelationId { get; init; } = default!;
     public string? FailureCode { get; set; }
@@ -17,4 +20,5 @@ public sealed class DepositTransaction
     public DateTimeOffset RequestedAt { get; init; }
     public DateTimeOffset? PostedAt { get; set; }
     public DateTimeOffset? ReversedAt { get; set; }
+    public DateTimeOffset? LastProcessedAt { get; set; }
 }

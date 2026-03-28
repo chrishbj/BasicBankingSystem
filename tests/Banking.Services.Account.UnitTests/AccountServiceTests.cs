@@ -39,7 +39,10 @@ public sealed class AccountServiceTests
         var service = new AccountService(repository, new InMemoryCustomerDirectory());
 
         var opened = await service.OpenAsync(new OpenAccountRequest("cus_active_001", "Checking", "CNY"), CancellationToken.None);
-        var updated = await service.ApplyDepositAsync(opened.AccountId, new ApplyDepositRequest(250m, "CNY"), CancellationToken.None);
+        var updated = await service.ApplyDepositAsync(
+            opened.AccountId,
+            new ApplyDepositRequest(250m, "CNY", "posting-unit-001", "corr-unit-001"),
+            CancellationToken.None);
 
         updated.AvailableBalance.Should().Be(250m);
         updated.LedgerBalance.Should().Be(250m);

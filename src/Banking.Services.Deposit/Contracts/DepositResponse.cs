@@ -11,12 +11,16 @@ public sealed record DepositResponse(
     string Currency,
     DepositChannel Channel,
     DepositStatus Status,
+    DepositSagaStepStatus AccountPostingStatus,
+    DepositSagaStepStatus AuditStatus,
+    DepositSagaStepStatus CompensationStatus,
     string CorrelationId,
     string? FailureCode,
     string? FailureReason,
     DateTimeOffset RequestedAt,
     DateTimeOffset? PostedAt,
-    DateTimeOffset? ReversedAt);
+    DateTimeOffset? ReversedAt,
+    DateTimeOffset? LastProcessedAt);
 
 public sealed record DepositSummaryResponse(
     string TransactionId,

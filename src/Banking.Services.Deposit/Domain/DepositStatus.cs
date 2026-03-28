@@ -7,5 +7,6 @@ public enum DepositStatus
     Succeeded = 3,
     Rejected = 4,
     Failed = 5,
-    PendingReview = 6
+    PendingReview = 6,
+    Reversed = 7
 }

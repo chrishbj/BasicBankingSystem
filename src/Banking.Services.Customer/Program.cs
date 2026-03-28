@@ -47,7 +47,17 @@ if (app.Environment.IsDevelopment() || app.Environment.IsEnvironment("Docker"))
 
 app.UseBankingApiDefaults();
 
-await app.Services.EnsureContextObjectsCreatedAsync<CustomerDbContext>();
+if (isTesting)
+{
+    using var scope = app.Services.CreateScope();
+    var dbContext = scope.ServiceProvider.GetRequiredService<CustomerDbContext>();
+    await dbContext.Database.EnsureDeletedAsync();
+    await dbContext.Database.EnsureCreatedAsync();
+}
+else
+{
+    await app.Services.EnsureContextObjectsCreatedAsync<CustomerDbContext>();
+}
 
 app.Run();
 

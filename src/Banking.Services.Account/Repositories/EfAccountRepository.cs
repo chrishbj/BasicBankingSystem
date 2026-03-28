@@ -27,6 +27,20 @@ public sealed class EfAccountRepository(AccountDbContext dbContext) : IAccountRe
             .ToArray();
     }
 
+    public Task<Domain.AccountPosting?> GetPostingByReferenceAsync(string postingReference, CancellationToken cancellationToken)
+    {
+        return dbContext.AccountPostings.FirstOrDefaultAsync(
+            x => x.PostingReference == postingReference,
+            cancellationToken);
+    }
+
+    public async Task SavePostingAsync(Domain.Account account, Domain.AccountPosting posting, CancellationToken cancellationToken)
+    {
+        dbContext.Accounts.Update(account);
+        dbContext.AccountPostings.Add(posting);
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
     public async Task UpdateAsync(Domain.Account account, CancellationToken cancellationToken)
     {
         dbContext.Accounts.Update(account);

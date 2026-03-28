@@ -4,7 +4,7 @@ using Banking.Services.Deposit.Messaging;
 
 namespace Banking.Services.Deposit.Repositories;
 
-public sealed class InMemoryDepositRepository : IDepositRepository
+public class InMemoryDepositRepository : IDepositRepository
 {
     private readonly ConcurrentDictionary<string, DepositTransaction> _transactions = new();
     private readonly ConcurrentDictionary<string, DepositOutboxMessage> _outboxMessages = new();
@@ -59,7 +59,7 @@ public sealed class InMemoryDepositRepository : IDepositRepository
         return Task.CompletedTask;
     }
 
-    public Task UpdateAsync(DepositTransaction transaction, CancellationToken cancellationToken)
+    public virtual Task UpdateAsync(DepositTransaction transaction, CancellationToken cancellationToken)
     {
         _transactions[transaction.TransactionId] = transaction;
         return Task.CompletedTask;

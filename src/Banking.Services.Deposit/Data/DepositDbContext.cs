@@ -23,6 +23,9 @@ public sealed class DepositDbContext(DbContextOptions<DepositDbContext> options)
         deposit.Property(x => x.Currency).HasMaxLength(3);
         deposit.Property(x => x.Channel).HasConversion<string>().HasMaxLength(30);
         deposit.Property(x => x.Status).HasConversion<string>().HasMaxLength(30);
+        deposit.Property(x => x.AccountPostingStatus).HasConversion<string>().HasMaxLength(30);
+        deposit.Property(x => x.AuditStatus).HasConversion<string>().HasMaxLength(30);
+        deposit.Property(x => x.CompensationStatus).HasConversion<string>().HasMaxLength(30);
         deposit.Property(x => x.IdempotencyKey).HasMaxLength(128);
         deposit.Property(x => x.CorrelationId).HasMaxLength(128);
         deposit.Property(x => x.FailureCode).HasMaxLength(64);

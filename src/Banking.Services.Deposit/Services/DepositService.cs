@@ -61,6 +61,9 @@ public sealed class DepositService(
             Currency = request.Currency.Trim().ToUpperInvariant(),
             Channel = request.Channel,
             Status = DepositStatus.Received,
+            AccountPostingStatus = DepositSagaStepStatus.NotStarted,
+            AuditStatus = DepositSagaStepStatus.NotStarted,
+            CompensationStatus = DepositSagaStepStatus.NotStarted,
             IdempotencyKey = idempotencyKey,
             CorrelationId = correlationId,
             RequestedAt = now
@@ -129,11 +132,15 @@ public sealed class DepositService(
             transaction.Currency,
             transaction.Channel,
             transaction.Status,
+            transaction.AccountPostingStatus,
+            transaction.AuditStatus,
+            transaction.CompensationStatus,
             transaction.CorrelationId,
             transaction.FailureCode,
             transaction.FailureReason,
             transaction.RequestedAt,
             transaction.PostedAt,
-            transaction.ReversedAt);
+            transaction.ReversedAt,
+            transaction.LastProcessedAt);
     }
 }

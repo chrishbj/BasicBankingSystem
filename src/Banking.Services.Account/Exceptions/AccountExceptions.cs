@@ -8,3 +8,6 @@ public sealed class CustomerNotEligibleForAccountOpeningException(string custome
 
 public sealed class AccountNotEligibleForDepositException(string accountId, string reason)
     : Exception($"Account '{accountId}' is not eligible for deposit. {reason}");
+
+public sealed class AccountDepositCompensationException(string accountId, string reason)
+    : Exception($"Account '{accountId}' deposit compensation failed. {reason}");

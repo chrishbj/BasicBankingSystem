@@ -4,6 +4,7 @@ namespace Banking.Services.Deposit.Accounts;
 
 public sealed class InMemoryDepositAccountDirectory : IDepositAccountDirectory
 {
+    private readonly ConcurrentDictionary<string, string> _postings = new();
     private readonly ConcurrentDictionary<string, DepositAccountRecord> _accounts =
         new(new[]
         {
@@ -37,12 +38,49 @@ public sealed class InMemoryDepositAccountDirectory : IDepositAccountDirectory
         return Task.FromResult(account);
     }
 
-    public Task PostDepositAsync(string accountId, decimal amount, string currency, CancellationToken cancellationToken)
+    public Task PostDepositAsync(
+        string accountId,
+        decimal amount,
+        string currency,
+        string postingReference,
+        string? correlationId,
+        CancellationToken cancellationToken)
     {
+        if (_postings.ContainsKey(postingReference))
+        {
+            return Task.CompletedTask;
+        }
+
         if (_accounts.TryGetValue(accountId, out var account))
         {
             account.AvailableBalance += amount;
             account.LedgerBalance += amount;
+            _postings.TryAdd(postingReference, accountId);
+        }
+
+        return Task.CompletedTask;
+    }
+
+    public Task ReverseDepositAsync(
+        string accountId,
+        decimal amount,
+        string currency,
+        string originalPostingReference,
+        string reversalReference,
+        string? correlationId,
+        string reason,
+        CancellationToken cancellationToken)
+    {
+        if (_postings.ContainsKey(reversalReference))
+        {
+            return Task.CompletedTask;
+        }
+
+        if (_accounts.TryGetValue(accountId, out var account))
+        {
+            account.AvailableBalance -= amount;
+            account.LedgerBalance -= amount;
+            _postings.TryAdd(reversalReference, accountId);
         }
 
         return Task.CompletedTask;

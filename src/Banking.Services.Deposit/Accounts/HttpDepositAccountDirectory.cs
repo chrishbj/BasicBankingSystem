@@ -31,11 +31,46 @@ public sealed class HttpDepositAccountDirectory(HttpClient httpClient) : IDeposi
         };
     }
 
-    public async Task PostDepositAsync(string accountId, decimal amount, string currency, CancellationToken cancellationToken)
+    public async Task PostDepositAsync(
+        string accountId,
+        decimal amount,
+        string currency,
+        string postingReference,
+        string? correlationId,
+        CancellationToken cancellationToken)
     {
         using var response = await httpClient.PostAsJsonAsync(
             $"/api/v1/accounts/{accountId}/deposit-postings",
-            new ApplyDepositRequest(amount, currency),
+            new ApplyDepositRequest(amount, currency, postingReference, correlationId),
+            cancellationToken);
+
+        if (response.StatusCode == HttpStatusCode.NotFound)
+        {
+            throw new InvalidOperationException($"Account '{accountId}' was not found.");
+        }
+
+        if (response.StatusCode == HttpStatusCode.Conflict)
+        {
+            var problem = await response.Content.ReadAsStringAsync(cancellationToken);
+            throw new InvalidOperationException(problem);
+        }
+
+        response.EnsureSuccessStatusCode();
+    }
+
+    public async Task ReverseDepositAsync(
+        string accountId,
+        decimal amount,
+        string currency,
+        string originalPostingReference,
+        string reversalReference,
+        string? correlationId,
+        string reason,
+        CancellationToken cancellationToken)
+    {
+        using var response = await httpClient.PostAsJsonAsync(
+            $"/api/v1/accounts/{accountId}/deposit-reversals",
+            new ReverseDepositRequest(reversalReference, originalPostingReference, amount, currency, correlationId, reason),
             cancellationToken);
 
         if (response.StatusCode == HttpStatusCode.NotFound)

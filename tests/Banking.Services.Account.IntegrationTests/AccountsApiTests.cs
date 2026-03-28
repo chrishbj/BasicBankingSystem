@@ -45,12 +45,33 @@ public sealed class AccountsApiTests : IClassFixture<AccountServiceWebApplicatio
 
         var response = await _client.PostAsJsonAsync(
             $"/api/v1/accounts/{account!.AccountId}/deposit-postings",
-            new ApplyDepositRequest(125m, "CNY"));
+            new ApplyDepositRequest(125m, "CNY", "posting-001", "corr-001"));
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var updated = await response.Content.ReadFromJsonAsync<AccountResponse>();
         updated.Should().NotBeNull();
         updated!.AvailableBalance.Should().Be(125m);
         updated.LedgerBalance.Should().Be(125m);
+    }
+
+    [Fact]
+    public async Task PostDepositReversal_Should_RollbackBalances_When_OriginalPostingExists()
+    {
+        var openResponse = await _client.PostAsJsonAsync("/api/v1/accounts", new OpenAccountRequest("cus_active_001", "Checking", "CNY"));
+        var account = await openResponse.Content.ReadFromJsonAsync<AccountResponse>();
+
+        await _client.PostAsJsonAsync(
+            $"/api/v1/accounts/{account!.AccountId}/deposit-postings",
+            new ApplyDepositRequest(125m, "CNY", "posting-002", "corr-002"));
+
+        var response = await _client.PostAsJsonAsync(
+            $"/api/v1/accounts/{account.AccountId}/deposit-reversals",
+            new ReverseDepositRequest("reversal-002", "posting-002", 125m, "CNY", "corr-002", "test compensation"));
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var updated = await response.Content.ReadFromJsonAsync<AccountResponse>();
+        updated.Should().NotBeNull();
+        updated!.AvailableBalance.Should().Be(0m);
+        updated.LedgerBalance.Should().Be(0m);
     }
 }

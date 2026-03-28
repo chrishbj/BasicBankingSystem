@@ -87,6 +87,35 @@ public sealed class DepositTransactionProcessorTests
         stored!.Status.Should().Be(DepositStatus.Succeeded);
     }
 
+    [Fact]
+    public async Task ProcessAsync_Should_Compensate_When_LocalFinalizationFails_After_AccountPosting()
+    {
+        var repository = new FailAfterPostingDepositRepository();
+        var transaction = BuildTransaction("dep-compensated-001");
+        await repository.AddAsync(
+            transaction,
+            DepositOutboxMessage.CreateRequestedMessage(BuildRequestedMessage(transaction), transaction.RequestedAt),
+            CancellationToken.None);
+
+        var accountDirectory = new TrackingDepositAccountDirectory();
+        var auditLogWriter = new TestAuditLogWriter();
+        var processor = new DepositTransactionProcessor(
+            repository,
+            accountDirectory,
+            auditLogWriter,
+            NullLogger<DepositTransactionProcessor>.Instance);
+
+        await processor.ProcessAsync(transaction.TransactionId, CancellationToken.None);
+
+        var stored = await repository.GetByIdAsync(transaction.TransactionId, CancellationToken.None);
+        stored.Should().NotBeNull();
+        stored!.Status.Should().Be(DepositStatus.Reversed);
+        stored.CompensationStatus.Should().Be(DepositSagaStepStatus.Compensated);
+        accountDirectory.PostedReferences.Should().Contain(transaction.TransactionId);
+        accountDirectory.ReversedReferences.Should().Contain($"rev_{transaction.TransactionId}");
+        auditLogWriter.Actions.Should().Contain("DepositCompensated");
+    }
+
     private static DepositTransaction BuildTransaction(string transactionId)
     {
         return new DepositTransaction
@@ -124,9 +153,81 @@ public sealed class DepositTransactionProcessorTests
             return Task.FromResult<DepositAccountRecord?>(null);
         }
 
-        public Task PostDepositAsync(string accountId, decimal amount, string currency, CancellationToken cancellationToken)
+        public Task PostDepositAsync(
+            string accountId,
+            decimal amount,
+            string currency,
+            string postingReference,
+            string? correlationId,
+            CancellationToken cancellationToken)
         {
             throw new InvalidOperationException("Simulated posting failure.");
+        }
+
+        public Task ReverseDepositAsync(
+            string accountId,
+            decimal amount,
+            string currency,
+            string originalPostingReference,
+            string reversalReference,
+            string? correlationId,
+            string reason,
+            CancellationToken cancellationToken)
+        {
+            return Task.CompletedTask;
+        }
+    }
+
+    private sealed class TrackingDepositAccountDirectory : IDepositAccountDirectory
+    {
+        public List<string> PostedReferences { get; } = [];
+        public List<string> ReversedReferences { get; } = [];
+
+        public Task<DepositAccountRecord?> GetByIdAsync(string accountId, CancellationToken cancellationToken)
+        {
+            return Task.FromResult<DepositAccountRecord?>(null);
+        }
+
+        public Task PostDepositAsync(
+            string accountId,
+            decimal amount,
+            string currency,
+            string postingReference,
+            string? correlationId,
+            CancellationToken cancellationToken)
+        {
+            PostedReferences.Add(postingReference);
+            return Task.CompletedTask;
+        }
+
+        public Task ReverseDepositAsync(
+            string accountId,
+            decimal amount,
+            string currency,
+            string originalPostingReference,
+            string reversalReference,
+            string? correlationId,
+            string reason,
+            CancellationToken cancellationToken)
+        {
+            ReversedReferences.Add(reversalReference);
+            return Task.CompletedTask;
+        }
+    }
+
+    private sealed class FailAfterPostingDepositRepository : InMemoryDepositRepository
+    {
+        private bool _shouldFailOnSucceededUpdate = true;
+
+        public override Task UpdateAsync(DepositTransaction transaction, CancellationToken cancellationToken)
+        {
+            if (_shouldFailOnSucceededUpdate && transaction.Status == DepositStatus.Succeeded)
+            {
+                _shouldFailOnSucceededUpdate = false;
+                throw new InvalidOperationException("Simulated local finalization failure after account posting.");
+            }
+
+            return base.UpdateAsync(transaction, cancellationToken);
         }
     }
 

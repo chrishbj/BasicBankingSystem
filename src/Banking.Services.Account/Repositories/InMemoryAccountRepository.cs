@@ -5,6 +5,7 @@ namespace Banking.Services.Account.Repositories;
 public sealed class InMemoryAccountRepository : IAccountRepository
 {
     private readonly ConcurrentDictionary<string, Domain.Account> _accounts = new();
+    private readonly ConcurrentDictionary<string, Domain.AccountPosting> _postings = new();
 
     public Task AddAsync(Domain.Account account, CancellationToken cancellationToken)
     {
@@ -25,6 +26,19 @@ public sealed class InMemoryAccountRepository : IAccountRepository
                 .Where(account => string.Equals(account.CustomerId, customerId, StringComparison.Ordinal))
                 .OrderByDescending(account => account.OpenedAt)
                 .ToArray());
+    }
+
+    public Task<Domain.AccountPosting?> GetPostingByReferenceAsync(string postingReference, CancellationToken cancellationToken)
+    {
+        _postings.TryGetValue(postingReference, out var posting);
+        return Task.FromResult(posting);
+    }
+
+    public Task SavePostingAsync(Domain.Account account, Domain.AccountPosting posting, CancellationToken cancellationToken)
+    {
+        _accounts[account.AccountId] = account;
+        _postings[posting.PostingReference] = posting;
+        return Task.CompletedTask;
     }
 
     public Task UpdateAsync(Domain.Account account, CancellationToken cancellationToken)

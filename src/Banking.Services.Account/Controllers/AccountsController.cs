@@ -70,6 +70,32 @@ public sealed class AccountsController(IAccountService accountService) : Control
         }
     }
 
+    [HttpPost("{accountId}/deposit-reversals")]
+    [Authorize(Policy = BankingPolicies.InternalServiceOnly)]
+    public async Task<IActionResult> ReverseDeposit(
+        string accountId,
+        [FromBody] ReverseDepositRequest request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            return Ok(await accountService.ReverseDepositAsync(accountId, request, cancellationToken));
+        }
+        catch (AccountNotFoundException)
+        {
+            return NotFound();
+        }
+        catch (AccountDepositCompensationException exception)
+        {
+            return Conflict(new ProblemDetails
+            {
+                Title = "Account deposit compensation failed",
+                Detail = exception.Message,
+                Status = StatusCodes.Status409Conflict
+            });
+        }
+    }
+
     [HttpGet]
     public async Task<IActionResult> GetByCustomerId(
         [FromQuery] string customerId,

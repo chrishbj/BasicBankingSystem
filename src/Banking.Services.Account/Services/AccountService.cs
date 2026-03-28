@@ -72,10 +72,103 @@ public sealed class AccountService(
             throw new AccountNotEligibleForDepositException(accountId, "Currency does not match account currency.");
         }
 
+        var existingPosting = await accountRepository.GetPostingByReferenceAsync(request.PostingReference, cancellationToken);
+        if (existingPosting is not null)
+        {
+            if (existingPosting.AccountId != accountId ||
+                existingPosting.PostingType != AccountPostingType.DepositCredit ||
+                existingPosting.Amount != request.Amount ||
+                !string.Equals(existingPosting.Currency, request.Currency, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new AccountNotEligibleForDepositException(accountId, "Posting reference was already used with different values.");
+            }
+
+            return Map(account);
+        }
+
         account.AvailableBalance += request.Amount;
         account.LedgerBalance += request.Amount;
 
-        await accountRepository.UpdateAsync(account, cancellationToken);
+        await accountRepository.SavePostingAsync(
+            account,
+            new AccountPosting
+            {
+                PostingReference = request.PostingReference,
+                AccountId = accountId,
+                PostingType = AccountPostingType.DepositCredit,
+                Amount = request.Amount,
+                Currency = request.Currency.Trim().ToUpperInvariant(),
+                CorrelationId = request.CorrelationId,
+                CreatedAt = DateTimeOffset.UtcNow
+            },
+            cancellationToken);
+
+        return Map(account);
+    }
+
+    public async Task<AccountResponse> ReverseDepositAsync(string accountId, ReverseDepositRequest request, CancellationToken cancellationToken)
+    {
+        if (request.Amount <= 0)
+        {
+            throw new AccountDepositCompensationException(accountId, "Reversal amount must be greater than zero.");
+        }
+
+        var account = await accountRepository.GetByIdAsync(accountId, cancellationToken)
+            ?? throw new AccountNotFoundException(accountId);
+
+        var existingReversal = await accountRepository.GetPostingByReferenceAsync(request.ReversalReference, cancellationToken);
+        if (existingReversal is not null)
+        {
+            if (existingReversal.AccountId != accountId ||
+                existingReversal.PostingType != AccountPostingType.DepositReversal ||
+                existingReversal.Amount != request.Amount ||
+                !string.Equals(existingReversal.Currency, request.Currency, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new AccountDepositCompensationException(accountId, "Reversal reference was already used with different values.");
+            }
+
+            return Map(account);
+        }
+
+        var originalPosting = await accountRepository.GetPostingByReferenceAsync(request.OriginalPostingReference, cancellationToken);
+        if (originalPosting is null)
+        {
+            throw new AccountDepositCompensationException(accountId, "Original deposit posting was not found.");
+        }
+
+        if (originalPosting.AccountId != accountId || originalPosting.PostingType != AccountPostingType.DepositCredit)
+        {
+            throw new AccountDepositCompensationException(accountId, "Original posting does not belong to this account.");
+        }
+
+        if (!string.Equals(account.Currency, request.Currency, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new AccountDepositCompensationException(accountId, "Currency does not match account currency.");
+        }
+
+        if (account.AvailableBalance < request.Amount || account.LedgerBalance < request.Amount)
+        {
+            throw new AccountDepositCompensationException(accountId, "Insufficient balance to apply compensation.");
+        }
+
+        account.AvailableBalance -= request.Amount;
+        account.LedgerBalance -= request.Amount;
+
+        await accountRepository.SavePostingAsync(
+            account,
+            new AccountPosting
+            {
+                PostingReference = request.ReversalReference,
+                AccountId = accountId,
+                PostingType = AccountPostingType.DepositReversal,
+                Amount = request.Amount,
+                Currency = request.Currency.Trim().ToUpperInvariant(),
+                CorrelationId = request.CorrelationId,
+                ReversalOfPostingReference = request.OriginalPostingReference,
+                CreatedAt = DateTimeOffset.UtcNow
+            },
+            cancellationToken);
+
         return Map(account);
     }
 
