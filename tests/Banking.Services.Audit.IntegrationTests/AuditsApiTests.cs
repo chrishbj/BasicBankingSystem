@@ -2,15 +2,14 @@ using System.Net;
 using System.Net.Http.Json;
 using Banking.Services.Audit.Contracts;
 using FluentAssertions;
-using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace Banking.Services.Audit.IntegrationTests;
 
-public sealed class AuditsApiTests : IClassFixture<WebApplicationFactory<Program>>
+public sealed class AuditsApiTests : IClassFixture<AuditServiceWebApplicationFactory>
 {
     private readonly HttpClient _client;
 
-    public AuditsApiTests(WebApplicationFactory<Program> factory)
+    public AuditsApiTests(AuditServiceWebApplicationFactory factory)
     {
         _client = factory.CreateClient();
     }
