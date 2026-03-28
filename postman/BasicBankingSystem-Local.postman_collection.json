@@ -257,7 +257,8 @@
                   "    pm.response.to.have.status(202);",
                   "});",
                   "const json = pm.response.json();",
-                  "pm.collectionVariables.set('transactionId', json.transactionId);"
+                  "pm.collectionVariables.set('transactionId', json.transactionId);",
+                  "pm.collectionVariables.set('pollAttempt', '0');"
                 ]
               }
             }
@@ -296,6 +297,51 @@
                   "pm.test('Get deposit returns 200', function () {",
                   "    pm.response.to.have.status(200);",
                   "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{depositBaseUrl}}/api/v1/deposits/{{transactionId}}"
+          }
+        },
+        {
+          "name": "Wait For Deposit Completion",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Wait for deposit returns 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "const json = pm.response.json();",
+                  "const status = json.status;",
+                  "const attempt = Number(pm.collectionVariables.get('pollAttempt') || '0') + 1;",
+                  "const maxAttempts = Number(pm.collectionVariables.get('pollMaxAttempts') || '20');",
+                  "pm.collectionVariables.set('pollAttempt', String(attempt));",
+                  "pm.test('Deposit does not fail during polling', function () {",
+                  "    pm.expect(status).to.not.equal(5);",
+                  "});",
+                  "if (status === 3) {",
+                  "    pm.test('Deposit reaches succeeded status', function () {",
+                  "        pm.expect(status).to.equal(3);",
+                  "    });",
+                  "    postman.setNextRequest('Get Account By Id');",
+                  "} else if (status === 5) {",
+                  "    postman.setNextRequest(null);",
+                  "} else if (attempt >= maxAttempts) {",
+                  "    pm.test('Deposit completes before max polling attempts', function () {",
+                  "        pm.expect.fail(`Deposit did not complete within ${maxAttempts} polling attempts. Last status: ${status}`);",
+                  "    });",
+                  "    postman.setNextRequest(null);",
+                  "} else {",
+                  "    postman.setNextRequest('Wait For Deposit Completion');",
+                  "}",
+                  "console.log(`Polling deposit attempt ${attempt}/${maxAttempts}, status=${status}`);"
                 ]
               }
             }
@@ -399,6 +445,14 @@
     {
       "key": "mobile",
       "value": ""
+    },
+    {
+      "key": "pollAttempt",
+      "value": "0"
+    },
+    {
+      "key": "pollMaxAttempts",
+      "value": "20"
     }
   ]
 }

@@ -150,6 +150,7 @@ The current implementation is still a local development skeleton using in-memory
 - [Docker Desktop Run Guide](docs/12-docker-desktop-run.md)
 - [End-to-End Manual Test Guide](docs/13-end-to-end-manual-test.md)
 - [Postman Testing Guide](docs/14-postman-testing.md)
+- [Postman Runner and Newman Guide](docs/15-postman-runner-and-newman.md)
 
 ### Chinese Docs
 

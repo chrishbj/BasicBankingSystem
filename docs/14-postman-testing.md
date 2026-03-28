@@ -30,6 +30,10 @@ The collection contains a full Phase 1 local test flow:
 10. Get account by account id
 11. List audits by correlation id
 
+For automated execution, also use:
+
+- `Deposits / Wait For Deposit Completion`
+
 ## Variables Used
 
 Environment variables:
@@ -50,6 +54,8 @@ Collection variables populated during execution:
 - `idempotencyKey`
 - `identityNumber`
 - `mobile`
+- `pollAttempt`
+- `pollMaxAttempts`
 
 ## Recommended Order
 
@@ -72,6 +78,7 @@ Run requests in this order:
 - `Submit Deposit` sends both `Idempotency-Key` and `X-Correlation-Id`.
 - `Create Customer` uses a pre-request script to generate unique values for local retesting.
 - `Get Deposit By Id` can be re-run until the transaction reaches `Succeeded`.
+- `Wait For Deposit Completion` is intended for Postman Runner and Newman.
 - `List Audits By Correlation` filters by the correlation id generated for the deposit request.
 
 ## If You Prefer Swagger
