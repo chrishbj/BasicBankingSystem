@@ -2,15 +2,14 @@ using System.Net;
 using System.Net.Http.Json;
 using Banking.Services.Account.Contracts;
 using FluentAssertions;
-using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace Banking.Services.Account.IntegrationTests;
 
-public sealed class AccountsApiTests : IClassFixture<WebApplicationFactory<Program>>
+public sealed class AccountsApiTests : IClassFixture<AccountServiceWebApplicationFactory>
 {
     private readonly HttpClient _client;
 
-    public AccountsApiTests(WebApplicationFactory<Program> factory)
+    public AccountsApiTests(AccountServiceWebApplicationFactory factory)
     {
         _client = factory.CreateClient();
     }
