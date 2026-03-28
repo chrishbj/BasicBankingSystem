@@ -1,0 +1,404 @@
+{
+  "info": {
+    "_postman_id": "91b70218-6690-4c90-84d3-f763cf07f45b",
+    "name": "BasicBankingSystem Local",
+    "description": "Phase 1 local Docker test flow for Customer, Account, Deposit, and Audit services.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "Customer Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{customerBaseUrl}}/api/v1/health"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Customer health is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Account Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{accountBaseUrl}}/api/v1/health"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Account health is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Deposit Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{depositBaseUrl}}/api/v1/health"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Deposit health is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Audit Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{auditBaseUrl}}/api/v1/health"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Audit health is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Customers",
+      "item": [
+        {
+          "name": "Create Customer",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const unique = Date.now().toString();",
+                  "pm.collectionVariables.set('identityNumber', `MTC-${unique}`);",
+                  "pm.collectionVariables.set('mobile', `138${unique.slice(-8)}`);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Create customer returns 201', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set('customerId', json.customerId);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Postman Test Customer\",\n  \"identityType\": \"NationalId\",\n  \"identityNumber\": \"{{identityNumber}}\",\n  \"mobile\": \"{{mobile}}\",\n  \"email\": \"postman.test.customer@example.com\",\n  \"address\": {\n    \"country\": \"CN\",\n    \"province\": \"Beijing\",\n    \"city\": \"Beijing\",\n    \"line1\": \"No. 1 Banking Road\",\n    \"postalCode\": \"100000\"\n  },\n  \"riskLevel\": \"Low\"\n}"
+            },
+            "url": "{{customerBaseUrl}}/api/v1/customers"
+          }
+        },
+        {
+          "name": "Activate Customer",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Activate customer returns 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"targetStatus\": 2,\n  \"reason\": \"Postman local test activation\"\n}"
+            },
+            "url": "{{customerBaseUrl}}/api/v1/customers/{{customerId}}/status"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Accounts",
+      "item": [
+        {
+          "name": "Open Account",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Open account returns 201', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set('accountId', json.accountId);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerId\": \"{{customerId}}\",\n  \"accountType\": \"Checking\",\n  \"currency\": \"{{currency}}\"\n}"
+            },
+            "url": "{{accountBaseUrl}}/api/v1/accounts"
+          }
+        },
+        {
+          "name": "Get Account By Id",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Get account returns 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{accountBaseUrl}}/api/v1/accounts/{{accountId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Deposits",
+      "item": [
+        {
+          "name": "Submit Deposit",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const unique = Date.now().toString();",
+                  "pm.collectionVariables.set('correlationId', `postman-correlation-${unique}`);",
+                  "pm.collectionVariables.set('idempotencyKey', `postman-idempotency-${unique}`);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Submit deposit returns 202', function () {",
+                  "    pm.response.to.have.status(202);",
+                  "});",
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set('transactionId', json.transactionId);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{idempotencyKey}}"
+              },
+              {
+                "key": "X-Correlation-Id",
+                "value": "{{correlationId}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerId\": \"{{customerId}}\",\n  \"accountId\": \"{{accountId}}\",\n  \"amount\": {{depositAmount}},\n  \"currency\": \"{{currency}}\",\n  \"channel\": 1,\n  \"referenceNumber\": \"POSTMAN-REF-001\",\n  \"note\": \"Postman local test\"\n}"
+            },
+            "url": "{{depositBaseUrl}}/api/v1/deposits"
+          }
+        },
+        {
+          "name": "Get Deposit By Id",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Get deposit returns 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{depositBaseUrl}}/api/v1/deposits/{{transactionId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Audits",
+      "item": [
+        {
+          "name": "List Audits By Correlation",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('List audits returns 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{auditBaseUrl}}/api/v1/audits?pageNumber=1&pageSize=100",
+              "host": [
+                "{{auditBaseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "audits"
+              ],
+              "query": [
+                {
+                  "key": "pageNumber",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "100"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "event": [
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "const contentType = pm.response.headers.get('Content-Type');",
+          "if (contentType && contentType.includes('application/json')) {",
+          "    pm.test('Response body is JSON', function () {",
+          "        pm.expect(function () { pm.response.json(); }).to.not.throw();",
+          "    });",
+          "}"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "customerId",
+      "value": ""
+    },
+    {
+      "key": "accountId",
+      "value": ""
+    },
+    {
+      "key": "transactionId",
+      "value": ""
+    },
+    {
+      "key": "correlationId",
+      "value": ""
+    },
+    {
+      "key": "idempotencyKey",
+      "value": ""
+    },
+    {
+      "key": "identityNumber",
+      "value": ""
+    },
+    {
+      "key": "mobile",
+      "value": ""
+    }
+  ]
+}

@@ -149,6 +149,7 @@ The current implementation is still a local development skeleton using in-memory
 - [Local Infrastructure with Docker Compose](docs/11-local-infrastructure.md)
 - [Docker Desktop Run Guide](docs/12-docker-desktop-run.md)
 - [End-to-End Manual Test Guide](docs/13-end-to-end-manual-test.md)
+- [Postman Testing Guide](docs/14-postman-testing.md)
 
 ### Chinese Docs
 
