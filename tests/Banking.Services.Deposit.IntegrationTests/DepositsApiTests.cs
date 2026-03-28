@@ -3,15 +3,14 @@ using System.Net.Http.Json;
 using Banking.Services.Deposit.Contracts;
 using Banking.Services.Deposit.Domain;
 using FluentAssertions;
-using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace Banking.Services.Deposit.IntegrationTests;
 
-public sealed class DepositsApiTests : IClassFixture<WebApplicationFactory<Program>>
+public sealed class DepositsApiTests : IClassFixture<DepositServiceWebApplicationFactory>
 {
     private readonly HttpClient _client;
 
-    public DepositsApiTests(WebApplicationFactory<Program> factory)
+    public DepositsApiTests(DepositServiceWebApplicationFactory factory)
     {
         _client = factory.CreateClient();
     }
@@ -31,7 +30,11 @@ public sealed class DepositsApiTests : IClassFixture<WebApplicationFactory<Progr
         response.StatusCode.Should().Be(HttpStatusCode.Accepted);
         var deposit = await response.Content.ReadFromJsonAsync<DepositResponse>();
         deposit.Should().NotBeNull();
-        deposit!.Status.Should().Be(DepositStatus.Succeeded);
+        deposit!.Status.Should().Be(DepositStatus.Received);
+
+        var completed = await WaitForDepositAsync(deposit.TransactionId, DepositStatus.Succeeded);
+        completed.Status.Should().Be(DepositStatus.Succeeded);
+        completed.PostedAt.Should().NotBeNull();
     }
 
     [Fact]
@@ -47,5 +50,21 @@ public sealed class DepositsApiTests : IClassFixture<WebApplicationFactory<Progr
         var response = await _client.SendAsync(message);
 
         response.StatusCode.Should().Be(HttpStatusCode.Conflict);
+    }
+
+    private async Task<DepositResponse> WaitForDepositAsync(string transactionId, DepositStatus expectedStatus)
+    {
+        for (var attempt = 0; attempt < 20; attempt++)
+        {
+            var response = await _client.GetFromJsonAsync<DepositResponse>($"/api/v1/deposits/{transactionId}");
+            if (response is not null && response.Status == expectedStatus)
+            {
+                return response;
+            }
+
+            await Task.Delay(100);
+        }
+
+        throw new TimeoutException($"Deposit {transactionId} did not reach status {expectedStatus} in time.");
     }
 }

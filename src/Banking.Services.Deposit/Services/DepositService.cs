@@ -3,13 +3,15 @@ using Banking.Services.Deposit.Accounts;
 using Banking.Services.Deposit.Contracts;
 using Banking.Services.Deposit.Domain;
 using Banking.Services.Deposit.Exceptions;
+using Banking.Services.Deposit.Messaging;
 using Banking.Services.Deposit.Repositories;
 
 namespace Banking.Services.Deposit.Services;
 
 public sealed class DepositService(
     IDepositRepository depositRepository,
-    IDepositAccountDirectory accountDirectory) : IDepositService
+    IDepositAccountDirectory accountDirectory,
+    IDepositEventPublisher eventPublisher) : IDepositService
 {
     public async Task<DepositResponse> CreateAsync(
         CreateDepositRequest request,
@@ -66,14 +68,20 @@ public sealed class DepositService(
         };
 
         await depositRepository.AddAsync(transaction, cancellationToken);
+        var response = Map(transaction);
 
-        transaction.Status = DepositStatus.Processing;
-        await accountDirectory.PostDepositAsync(transaction.AccountId, transaction.Amount, cancellationToken);
-        transaction.Status = DepositStatus.Succeeded;
-        transaction.PostedAt = DateTimeOffset.UtcNow;
+        await eventPublisher.PublishAsync(
+            new DepositRequestedMessage(
+                transaction.TransactionId,
+                transaction.CustomerId,
+                transaction.AccountId,
+                transaction.Amount,
+                transaction.Currency,
+                transaction.Channel,
+                transaction.CorrelationId),
+            cancellationToken);
 
-        await depositRepository.UpdateAsync(transaction, cancellationToken);
-        return Map(transaction);
+        return response;
     }
 
     public async Task<DepositResponse> GetByIdAsync(string transactionId, CancellationToken cancellationToken)

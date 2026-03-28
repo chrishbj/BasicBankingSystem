@@ -2,6 +2,7 @@ using Banking.Services.Deposit.Accounts;
 using Banking.Services.Deposit.Contracts;
 using Banking.Services.Deposit.Domain;
 using Banking.Services.Deposit.Exceptions;
+using Banking.Services.Deposit.Messaging;
 using Banking.Services.Deposit.Repositories;
 using Banking.Services.Deposit.Services;
 using FluentAssertions;
@@ -10,11 +11,15 @@ namespace Banking.Services.Deposit.UnitTests;
 
 public sealed class DepositServiceTests
 {
+    private readonly InMemoryDepositRepository _repository;
+    private readonly TestDepositEventPublisher _publisher;
     private readonly IDepositService _service;
 
     public DepositServiceTests()
     {
-        _service = new DepositService(new InMemoryDepositRepository(), new InMemoryDepositAccountDirectory());
+        _repository = new InMemoryDepositRepository();
+        _publisher = new TestDepositEventPublisher();
+        _service = new DepositService(_repository, new InMemoryDepositAccountDirectory(), _publisher);
     }
 
     [Fact]
@@ -28,14 +33,19 @@ public sealed class DepositServiceTests
     }
 
     [Fact]
-    public async Task CreateDeposit_Should_CreateSucceededTransaction_When_RequestIsValid()
+    public async Task CreateDeposit_Should_CreateReceivedTransaction_When_RequestIsValid()
     {
         var request = new CreateDepositRequest("cus_active_001", "acc_active_001", 200m, "CNY", DepositChannel.Counter, null, null);
 
         var result = await _service.CreateAsync(request, "idem-002", "corr-002", CancellationToken.None);
 
-        result.Status.Should().Be(DepositStatus.Succeeded);
-        result.PostedAt.Should().NotBeNull();
+        result.Status.Should().Be(DepositStatus.Received);
+        result.PostedAt.Should().BeNull();
+        _publisher.Messages.Should().ContainSingle();
+
+        var stored = await _repository.GetByIdAsync(result.TransactionId, CancellationToken.None);
+        stored.Should().NotBeNull();
+        stored!.Status.Should().Be(DepositStatus.Received);
     }
 
     [Fact]
@@ -48,5 +58,16 @@ public sealed class DepositServiceTests
 
         second.TransactionId.Should().Be(first.TransactionId);
         second.TransactionNumber.Should().Be(first.TransactionNumber);
+    }
+
+    private sealed class TestDepositEventPublisher : IDepositEventPublisher
+    {
+        public List<DepositRequestedMessage> Messages { get; } = new();
+
+        public Task PublishAsync(DepositRequestedMessage message, CancellationToken cancellationToken)
+        {
+            Messages.Add(message);
+            return Task.CompletedTask;
+        }
     }
 }
