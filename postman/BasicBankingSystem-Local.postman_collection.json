@@ -188,7 +188,10 @@
                   "    pm.response.to.have.status(201);",
                   "});",
                   "const json = pm.response.json();",
-                  "pm.collectionVariables.set('accountId', json.accountId);"
+                  "pm.collectionVariables.set('accountId', json.accountId);",
+                  "if (pm.collectionVariables.get('runnerMode') === 'true') {",
+                  "    pm.execution.setNextRequest('Submit Deposit');",
+                  "}"
                 ]
               }
             }
@@ -218,7 +221,10 @@
                 "exec": [
                   "pm.test('Get account returns 200', function () {",
                   "    pm.response.to.have.status(200);",
-                  "});"
+                  "});",
+                  "if (pm.collectionVariables.get('runnerMode') === 'true') {",
+                  "    pm.execution.setNextRequest('List Audits By Correlation');",
+                  "}"
                 ]
               }
             }
@@ -244,7 +250,8 @@
                 "exec": [
                   "const unique = Date.now().toString();",
                   "pm.collectionVariables.set('correlationId', `postman-correlation-${unique}`);",
-                  "pm.collectionVariables.set('idempotencyKey', `postman-idempotency-${unique}`);"
+                  "pm.collectionVariables.set('idempotencyKey', `postman-idempotency-${unique}`);",
+                  "pm.collectionVariables.set('runnerMode', 'true');"
                 ]
               }
             },
@@ -258,7 +265,10 @@
                   "});",
                   "const json = pm.response.json();",
                   "pm.collectionVariables.set('transactionId', json.transactionId);",
-                  "pm.collectionVariables.set('pollAttempt', '0');"
+                  "pm.collectionVariables.set('pollAttempt', '0');",
+                  "if (pm.collectionVariables.get('runnerMode') === 'true') {",
+                  "    pm.execution.setNextRequest('Wait For Deposit Completion');",
+                  "}"
                 ]
               }
             }
@@ -287,27 +297,6 @@
           }
         },
         {
-          "name": "Get Deposit By Id",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Get deposit returns 200', function () {",
-                  "    pm.response.to.have.status(200);",
-                  "});"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": "{{depositBaseUrl}}/api/v1/deposits/{{transactionId}}"
-          }
-        },
-        {
           "name": "Wait For Deposit Completion",
           "event": [
             {
@@ -330,18 +319,39 @@
                   "    pm.test('Deposit reaches succeeded status', function () {",
                   "        pm.expect(status).to.equal(3);",
                   "    });",
-                  "    postman.setNextRequest('Get Account By Id');",
+                  "    pm.execution.setNextRequest('Get Account By Id');",
                   "} else if (status === 5) {",
-                  "    postman.setNextRequest(null);",
+                  "    pm.execution.setNextRequest(null);",
                   "} else if (attempt >= maxAttempts) {",
                   "    pm.test('Deposit completes before max polling attempts', function () {",
                   "        pm.expect.fail(`Deposit did not complete within ${maxAttempts} polling attempts. Last status: ${status}`);",
                   "    });",
-                  "    postman.setNextRequest(null);",
+                  "    pm.execution.setNextRequest(null);",
                   "} else {",
-                  "    postman.setNextRequest('Wait For Deposit Completion');",
+                  "    pm.execution.setNextRequest('Wait For Deposit Completion');",
                   "}",
                   "console.log(`Polling deposit attempt ${attempt}/${maxAttempts}, status=${status}`);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{depositBaseUrl}}/api/v1/deposits/{{transactionId}}"
+          }
+        },
+        {
+          "name": "Get Deposit By Id",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Get deposit returns 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
                 ]
               }
             }
@@ -367,7 +377,10 @@
                 "exec": [
                   "pm.test('List audits returns 200', function () {",
                   "    pm.response.to.have.status(200);",
-                  "});"
+                  "});",
+                  "if (pm.collectionVariables.get('runnerMode') === 'true') {",
+                  "    pm.execution.setNextRequest(null);",
+                  "}"
                 ]
               }
             }
@@ -445,6 +458,10 @@
     {
       "key": "mobile",
       "value": ""
+    },
+    {
+      "key": "runnerMode",
+      "value": "false"
     },
     {
       "key": "pollAttempt",

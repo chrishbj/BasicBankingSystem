@@ -1,0 +1,70 @@
+name: Newman Local Regression
+
+on:
+  workflow_dispatch:
+
+jobs:
+  newman-regression:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Start Docker stack
+        run: docker compose --env-file infra/.env.example -f infra/docker-compose.docker-desktop.yml up --build -d
+
+      - name: Wait for services to become healthy
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          urls=(
+            "http://localhost:5101/api/v1/health"
+            "http://localhost:5102/api/v1/health"
+            "http://localhost:5103/api/v1/health"
+            "http://localhost:5104/api/v1/health"
+          )
+
+          for url in "${urls[@]}"; do
+            echo "Checking $url"
+            for attempt in {1..30}; do
+              if curl -fsS "$url" >/dev/null; then
+                echo "Healthy: $url"
+                break
+              fi
+
+              if [ "$attempt" -eq 30 ]; then
+                echo "Timed out waiting for $url"
+                docker ps
+                exit 1
+              fi
+
+              sleep 2
+            done
+          done
+
+      - name: Run Newman collection
+        run: |
+          npx --yes newman run postman/BasicBankingSystem-Local.postman_collection.json \
+            -e postman/BasicBankingSystem-Local-Docker.postman_environment.json \
+            --env-var pollMaxAttempts=30
+
+      - name: Dump container logs on failure
+        if: failure()
+        run: |
+          docker logs basicbanking-customer || true
+          docker logs basicbanking-account || true
+          docker logs basicbanking-deposit || true
+          docker logs basicbanking-audit || true
+          docker logs basicbanking-postgres || true
+          docker logs basicbanking-rabbitmq || true
+
+      - name: Shutdown Docker stack
+        if: always()
+        run: docker compose --env-file infra/.env.example -f infra/docker-compose.docker-desktop.yml down -v
