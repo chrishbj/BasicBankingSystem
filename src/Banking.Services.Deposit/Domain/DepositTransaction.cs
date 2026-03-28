@@ -13,12 +13,19 @@ public sealed class DepositTransaction
     public DepositSagaStepStatus AccountPostingStatus { get; set; }
     public DepositSagaStepStatus AuditStatus { get; set; }
     public DepositSagaStepStatus CompensationStatus { get; set; }
+    public DepositReviewResolution ReviewResolution { get; set; }
     public string IdempotencyKey { get; init; } = default!;
     public string CorrelationId { get; init; } = default!;
     public string? FailureCode { get; set; }
     public string? FailureReason { get; set; }
+    public int CompensationRetryCount { get; set; }
+    public string? ReviewLastActionBy { get; set; }
+    public string? ReviewNote { get; set; }
     public DateTimeOffset RequestedAt { get; init; }
     public DateTimeOffset? PostedAt { get; set; }
     public DateTimeOffset? ReversedAt { get; set; }
+    public DateTimeOffset? ReviewRequiredAt { get; set; }
+    public DateTimeOffset? ReviewResolvedAt { get; set; }
+    public DateTimeOffset? LastCompensationAttemptAt { get; set; }
     public DateTimeOffset? LastProcessedAt { get; set; }
 }

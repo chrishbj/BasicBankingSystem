@@ -1,17 +1,22 @@
 using System.Net;
 using System.Net.Http.Json;
 using Banking.Services.Deposit.Contracts;
+using Banking.Services.Deposit.Messaging;
+using Banking.Services.Deposit.Repositories;
 using Banking.Services.Deposit.Domain;
 using FluentAssertions;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Banking.Services.Deposit.IntegrationTests;
 
 public sealed class DepositsApiTests : IClassFixture<DepositServiceWebApplicationFactory>
 {
     private readonly HttpClient _client;
+    private readonly DepositServiceWebApplicationFactory _factory;
 
     public DepositsApiTests(DepositServiceWebApplicationFactory factory)
     {
+        _factory = factory;
         _client = factory.CreateClient();
     }
 
@@ -54,6 +59,27 @@ public sealed class DepositsApiTests : IClassFixture<DepositServiceWebApplicatio
         response.StatusCode.Should().Be(HttpStatusCode.Conflict);
     }
 
+    [Fact]
+    public async Task ResolvePendingReview_Should_ReturnOk_When_DepositIsManuallyResolved()
+    {
+        var transactionId = "dep-review-api-001";
+        await SeedPendingReviewDepositAsync(transactionId);
+
+        var response = await _client.PostAsJsonAsync(
+            $"/api/v1/deposits/{transactionId}/review/resolve",
+            new ResolveDepositReviewRequest(
+                DepositReviewResolution.ReversedExternally,
+                "ops-user",
+                "Compensation completed through offline operations."));
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var deposit = await response.Content.ReadFromJsonAsync<DepositResponse>();
+        deposit.Should().NotBeNull();
+        deposit!.Status.Should().Be(DepositStatus.Reversed);
+        deposit.ReviewResolution.Should().Be(DepositReviewResolution.ReversedExternally);
+        deposit.ReviewLastActionBy.Should().Be("ops-user");
+    }
+
     private async Task<DepositResponse> WaitForDepositAsync(string transactionId, DepositStatus expectedStatus)
     {
         for (var attempt = 0; attempt < 20; attempt++)
@@ -68,5 +94,44 @@ public sealed class DepositsApiTests : IClassFixture<DepositServiceWebApplicatio
         }
 
         throw new TimeoutException($"Deposit {transactionId} did not reach status {expectedStatus} in time.");
+    }
+
+    private async Task SeedPendingReviewDepositAsync(string transactionId)
+    {
+        using var scope = _factory.Services.CreateScope();
+
+        var repository = scope.ServiceProvider.GetRequiredService<IDepositRepository>();
+        var transaction = new DepositTransaction
+        {
+            TransactionId = transactionId,
+            TransactionNumber = $"D{DateTimeOffset.UtcNow:yyyyMMddHHmmssfff}",
+            CustomerId = "cus_active_001",
+            AccountId = "acc_active_001",
+            Amount = 100m,
+            Currency = "CNY",
+            Channel = DepositChannel.Counter,
+            Status = DepositStatus.PendingReview,
+            AccountPostingStatus = DepositSagaStepStatus.Succeeded,
+            AuditStatus = DepositSagaStepStatus.NotStarted,
+            CompensationStatus = DepositSagaStepStatus.Failed,
+            ReviewRequiredAt = DateTimeOffset.UtcNow.AddMinutes(-5),
+            IdempotencyKey = $"idem-{transactionId}",
+            CorrelationId = $"corr-{transactionId}",
+            RequestedAt = DateTimeOffset.UtcNow.AddMinutes(-10)
+        };
+
+        var outboxMessage = DepositOutboxMessage.CreateRequestedMessage(
+            new DepositRequestedMessage(
+                transaction.TransactionId,
+                transaction.CustomerId,
+                transaction.AccountId,
+                transaction.Amount,
+                transaction.Currency,
+                transaction.Channel,
+                transaction.CorrelationId),
+            transaction.RequestedAt);
+
+        await repository.AddAsync(transaction, outboxMessage, CancellationToken.None);
+        await repository.MarkOutboxMessageProcessedAsync(outboxMessage.MessageId, DateTimeOffset.UtcNow, CancellationToken.None);
     }
 }

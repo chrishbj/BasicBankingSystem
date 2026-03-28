@@ -116,6 +116,40 @@ public sealed class DepositTransactionProcessorTests
         auditLogWriter.Actions.Should().Contain("DepositCompensated");
     }
 
+    [Fact]
+    public async Task RetryCompensationAsync_Should_ResolvePendingReview_When_ReversalLaterSucceeds()
+    {
+        var repository = new InMemoryDepositRepository();
+        var transaction = BuildTransaction("dep-review-retry-001");
+        transaction.Status = DepositStatus.PendingReview;
+        transaction.AccountPostingStatus = DepositSagaStepStatus.Succeeded;
+        transaction.CompensationStatus = DepositSagaStepStatus.Failed;
+        transaction.ReviewRequiredAt = DateTimeOffset.UtcNow.AddMinutes(-2);
+        await repository.AddAsync(
+            transaction,
+            DepositOutboxMessage.CreateRequestedMessage(BuildRequestedMessage(transaction), transaction.RequestedAt),
+            CancellationToken.None);
+
+        var accountDirectory = new RetryableCompensationDepositAccountDirectory();
+        var auditLogWriter = new TestAuditLogWriter();
+        var processor = new DepositTransactionProcessor(
+            repository,
+            accountDirectory,
+            auditLogWriter,
+            NullLogger<DepositTransactionProcessor>.Instance);
+
+        await processor.RetryCompensationAsync(transaction.TransactionId, "ops-user", "Retry after queue recovery.", CancellationToken.None);
+
+        var stored = await repository.GetByIdAsync(transaction.TransactionId, CancellationToken.None);
+        stored.Should().NotBeNull();
+        stored!.Status.Should().Be(DepositStatus.Reversed);
+        stored.CompensationStatus.Should().Be(DepositSagaStepStatus.Compensated);
+        stored.ReviewResolution.Should().Be(DepositReviewResolution.RetryRequested);
+        stored.ReviewLastActionBy.Should().Be("ops-user");
+        stored.CompensationRetryCount.Should().Be(1);
+        auditLogWriter.Actions.Should().Contain("DepositCompensated");
+    }
+
     private static DepositTransaction BuildTransaction(string transactionId)
     {
         return new DepositTransaction
@@ -211,6 +245,38 @@ public sealed class DepositTransactionProcessorTests
             CancellationToken cancellationToken)
         {
             ReversedReferences.Add(reversalReference);
+            return Task.CompletedTask;
+        }
+    }
+
+    private sealed class RetryableCompensationDepositAccountDirectory : IDepositAccountDirectory
+    {
+        public Task<DepositAccountRecord?> GetByIdAsync(string accountId, CancellationToken cancellationToken)
+        {
+            return Task.FromResult<DepositAccountRecord?>(null);
+        }
+
+        public Task PostDepositAsync(
+            string accountId,
+            decimal amount,
+            string currency,
+            string postingReference,
+            string? correlationId,
+            CancellationToken cancellationToken)
+        {
+            return Task.CompletedTask;
+        }
+
+        public Task ReverseDepositAsync(
+            string accountId,
+            decimal amount,
+            string currency,
+            string originalPostingReference,
+            string reversalReference,
+            string? correlationId,
+            string reason,
+            CancellationToken cancellationToken)
+        {
             return Task.CompletedTask;
         }
     }

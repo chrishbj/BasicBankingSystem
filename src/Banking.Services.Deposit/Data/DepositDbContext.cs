@@ -26,13 +26,17 @@ public sealed class DepositDbContext(DbContextOptions<DepositDbContext> options)
         deposit.Property(x => x.AccountPostingStatus).HasConversion<string>().HasMaxLength(30);
         deposit.Property(x => x.AuditStatus).HasConversion<string>().HasMaxLength(30);
         deposit.Property(x => x.CompensationStatus).HasConversion<string>().HasMaxLength(30);
+        deposit.Property(x => x.ReviewResolution).HasConversion<string>().HasMaxLength(30);
         deposit.Property(x => x.IdempotencyKey).HasMaxLength(128);
         deposit.Property(x => x.CorrelationId).HasMaxLength(128);
         deposit.Property(x => x.FailureCode).HasMaxLength(64);
         deposit.Property(x => x.FailureReason).HasMaxLength(500);
+        deposit.Property(x => x.ReviewLastActionBy).HasMaxLength(100);
+        deposit.Property(x => x.ReviewNote).HasMaxLength(1000);
 
         deposit.HasIndex(x => x.TransactionNumber).IsUnique();
         deposit.HasIndex(x => x.IdempotencyKey).IsUnique();
+        deposit.HasIndex(x => new { x.Status, x.LastCompensationAttemptAt });
 
         var outbox = modelBuilder.Entity<DepositOutboxMessage>();
 

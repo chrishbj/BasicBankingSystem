@@ -39,6 +39,7 @@ builder.Services.AddDbContext<DepositDbContext>(options =>
 builder.Services.AddScoped<IDepositRepository, EfDepositRepository>();
 builder.Services.AddScoped<IDepositService, DepositService>();
 builder.Services.AddScoped<IDepositTransactionProcessor, DepositTransactionProcessor>();
+builder.Services.Configure<PendingReviewRetryOptions>(builder.Configuration.GetSection(PendingReviewRetryOptions.SectionName));
 builder.Services.Configure<RabbitMqOptions>(builder.Configuration.GetSection(RabbitMqOptions.SectionName));
 builder.Services.Configure<AuditServiceOptions>(builder.Configuration.GetSection(AuditServiceOptions.SectionName));
 builder.Services.Configure<AccountServiceOptions>(builder.Configuration.GetSection(AccountServiceOptions.SectionName));
@@ -84,6 +85,7 @@ else
 }
 
 builder.Services.AddHostedService<DepositOutboxDispatcher>();
+builder.Services.AddHostedService<DepositPendingReviewRetryWorker>();
 
 var app = builder.Build();
 

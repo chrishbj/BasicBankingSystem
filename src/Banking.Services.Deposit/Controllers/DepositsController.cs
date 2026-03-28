@@ -74,4 +74,54 @@ public sealed class DepositsController(IDepositService depositService) : Control
     {
         return Ok(await depositService.GetAllAsync(pageNumber, pageSize, cancellationToken));
     }
+
+    [HttpPost("{transactionId}/review/retry-compensation")]
+    public async Task<IActionResult> RetryCompensation(
+        string transactionId,
+        [FromBody] RetryDepositReviewRequest request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            return Ok(await depositService.RetryPendingReviewAsync(transactionId, request, cancellationToken));
+        }
+        catch (DepositNotFoundException)
+        {
+            return NotFound();
+        }
+        catch (InvalidDepositReviewActionException exception)
+        {
+            return Conflict(new ProblemDetails
+            {
+                Title = "Deposit review action is invalid",
+                Detail = exception.Message,
+                Status = StatusCodes.Status409Conflict
+            });
+        }
+    }
+
+    [HttpPost("{transactionId}/review/resolve")]
+    public async Task<IActionResult> ResolvePendingReview(
+        string transactionId,
+        [FromBody] ResolveDepositReviewRequest request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            return Ok(await depositService.ResolvePendingReviewAsync(transactionId, request, cancellationToken));
+        }
+        catch (DepositNotFoundException)
+        {
+            return NotFound();
+        }
+        catch (InvalidDepositReviewActionException exception)
+        {
+            return Conflict(new ProblemDetails
+            {
+                Title = "Deposit review action is invalid",
+                Detail = exception.Message,
+                Status = StatusCodes.Status409Conflict
+            });
+        }
+    }
 }

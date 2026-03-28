@@ -1,10 +1,12 @@
 using Banking.Services.Deposit.Accounts;
+using Banking.Services.Deposit.Auditing;
 using Banking.Services.Deposit.Contracts;
 using Banking.Services.Deposit.Domain;
 using Banking.Services.Deposit.Exceptions;
 using Banking.Services.Deposit.Repositories;
 using Banking.Services.Deposit.Services;
 using FluentAssertions;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Banking.Services.Deposit.UnitTests;
 
@@ -16,7 +18,12 @@ public sealed class DepositServiceTests
     public DepositServiceTests()
     {
         _repository = new InMemoryDepositRepository();
-        _service = new DepositService(_repository, new InMemoryDepositAccountDirectory());
+        _service = new DepositService(
+            _repository,
+            new InMemoryDepositAccountDirectory(),
+            new NoOpDepositTransactionProcessor(),
+            new NullAuditLogWriter(),
+            NullLogger<DepositService>.Instance);
     }
 
     [Fact]
@@ -56,5 +63,72 @@ public sealed class DepositServiceTests
 
         second.TransactionId.Should().Be(first.TransactionId);
         second.TransactionNumber.Should().Be(first.TransactionNumber);
+    }
+
+    [Fact]
+    public async Task ResolvePendingReview_Should_CloseDepositAsReversed_When_ResolvedExternally()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var transaction = new DepositTransaction
+        {
+            TransactionId = "dep-review-001",
+            TransactionNumber = "D202603280001",
+            CustomerId = "cus_active_001",
+            AccountId = "acc_active_001",
+            Amount = 100m,
+            Currency = "CNY",
+            Channel = DepositChannel.Counter,
+            Status = DepositStatus.PendingReview,
+            AccountPostingStatus = DepositSagaStepStatus.Succeeded,
+            AuditStatus = DepositSagaStepStatus.NotStarted,
+            CompensationStatus = DepositSagaStepStatus.Failed,
+            ReviewRequiredAt = now.AddMinutes(-5),
+            IdempotencyKey = "idem-review-001",
+            CorrelationId = "corr-review-001",
+            RequestedAt = now.AddMinutes(-10)
+        };
+
+        await _repository.AddAsync(
+            transaction,
+            Banking.Services.Deposit.Messaging.DepositOutboxMessage.CreateRequestedMessage(
+                new Banking.Services.Deposit.Messaging.DepositRequestedMessage(
+                    transaction.TransactionId,
+                    transaction.CustomerId,
+                    transaction.AccountId,
+                    transaction.Amount,
+                    transaction.Currency,
+                    transaction.Channel,
+                    transaction.CorrelationId),
+                transaction.RequestedAt),
+            CancellationToken.None);
+
+        var result = await _service.ResolvePendingReviewAsync(
+            transaction.TransactionId,
+            new ResolveDepositReviewRequest(DepositReviewResolution.ReversedExternally, "ops-user", "Reversed offline after ledger check."),
+            CancellationToken.None);
+
+        result.Status.Should().Be(DepositStatus.Reversed);
+        result.ReviewResolution.Should().Be(DepositReviewResolution.ReversedExternally);
+        result.ReviewLastActionBy.Should().Be("ops-user");
+        result.ReviewResolvedAt.Should().NotBeNull();
+    }
+
+    private sealed class NoOpDepositTransactionProcessor : IDepositTransactionProcessor
+    {
+        public Task ProcessAsync(string transactionId, CancellationToken cancellationToken) => Task.CompletedTask;
+
+        public Task RetryCompensationAsync(string transactionId, string? requestedBy, string? note, CancellationToken cancellationToken)
+            => Task.CompletedTask;
+    }
+
+    private sealed class NullAuditLogWriter : IAuditLogWriter
+    {
+        public Task WriteAsync(
+            string action,
+            DepositTransaction transaction,
+            Dictionary<string, object?> beforeSnapshot,
+            Dictionary<string, object?> afterSnapshot,
+            CancellationToken cancellationToken)
+            => Task.CompletedTask;
     }
 }

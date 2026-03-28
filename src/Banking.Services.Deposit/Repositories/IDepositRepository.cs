@@ -9,6 +9,7 @@ public interface IDepositRepository
     Task<DepositTransaction?> GetByIdAsync(string transactionId, CancellationToken cancellationToken);
     Task<DepositTransaction?> GetByIdempotencyKeyAsync(string idempotencyKey, CancellationToken cancellationToken);
     Task<IReadOnlyCollection<DepositTransaction>> GetAllAsync(CancellationToken cancellationToken);
+    Task<IReadOnlyCollection<DepositTransaction>> GetPendingReviewAsync(int maxCount, CancellationToken cancellationToken);
     Task<IReadOnlyCollection<DepositOutboxMessage>> GetPendingOutboxMessagesAsync(int maxCount, CancellationToken cancellationToken);
     Task MarkOutboxMessageProcessedAsync(string messageId, DateTimeOffset processedAt, CancellationToken cancellationToken);
     Task UpdateAsync(DepositTransaction transaction, CancellationToken cancellationToken);

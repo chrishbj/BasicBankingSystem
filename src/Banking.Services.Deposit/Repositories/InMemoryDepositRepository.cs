@@ -38,6 +38,16 @@ public class InMemoryDepositRepository : IDepositRepository
                 .ToArray());
     }
 
+    public Task<IReadOnlyCollection<DepositTransaction>> GetPendingReviewAsync(int maxCount, CancellationToken cancellationToken)
+    {
+        return Task.FromResult<IReadOnlyCollection<DepositTransaction>>(
+            _transactions.Values
+                .Where(item => item.Status == DepositStatus.PendingReview)
+                .OrderBy(item => item.LastCompensationAttemptAt ?? item.ReviewRequiredAt ?? item.RequestedAt)
+                .Take(maxCount)
+                .ToArray());
+    }
+
     public Task<IReadOnlyCollection<DepositOutboxMessage>> GetPendingOutboxMessagesAsync(int maxCount, CancellationToken cancellationToken)
     {
         return Task.FromResult<IReadOnlyCollection<DepositOutboxMessage>>(

@@ -1,5 +1,6 @@
 using Banking.BuildingBlocks.Contracts;
 using Banking.Services.Deposit.Accounts;
+using Banking.Services.Deposit.Auditing;
 using Banking.Services.Deposit.Contracts;
 using Banking.Services.Deposit.Domain;
 using Banking.Services.Deposit.Exceptions;
@@ -10,7 +11,10 @@ namespace Banking.Services.Deposit.Services;
 
 public sealed class DepositService(
     IDepositRepository depositRepository,
-    IDepositAccountDirectory accountDirectory) : IDepositService
+    IDepositAccountDirectory accountDirectory,
+    IDepositTransactionProcessor depositTransactionProcessor,
+    IAuditLogWriter auditLogWriter,
+    ILogger<DepositService> logger) : IDepositService
 {
     public async Task<DepositResponse> CreateAsync(
         CreateDepositRequest request,
@@ -64,6 +68,7 @@ public sealed class DepositService(
             AccountPostingStatus = DepositSagaStepStatus.NotStarted,
             AuditStatus = DepositSagaStepStatus.NotStarted,
             CompensationStatus = DepositSagaStepStatus.NotStarted,
+            ReviewResolution = DepositReviewResolution.None,
             IdempotencyKey = idempotencyKey,
             CorrelationId = correlationId,
             RequestedAt = now
@@ -121,6 +126,122 @@ public sealed class DepositService(
         return new PagedResponse<DepositSummaryResponse>(items, pageNumber, pageSize, totalCount, totalPages);
     }
 
+    public async Task<DepositResponse> RetryPendingReviewAsync(
+        string transactionId,
+        RetryDepositReviewRequest request,
+        CancellationToken cancellationToken)
+    {
+        await depositTransactionProcessor.RetryCompensationAsync(
+            transactionId,
+            request.OperatorId,
+            request.Note,
+            cancellationToken);
+
+        return await GetByIdAsync(transactionId, cancellationToken);
+    }
+
+    public async Task<DepositResponse> ResolvePendingReviewAsync(
+        string transactionId,
+        ResolveDepositReviewRequest request,
+        CancellationToken cancellationToken)
+    {
+        var transaction = await depositRepository.GetByIdAsync(transactionId, cancellationToken)
+            ?? throw new DepositNotFoundException(transactionId);
+
+        if (transaction.Status != DepositStatus.PendingReview)
+        {
+            throw new InvalidDepositReviewActionException(transactionId, "Only pending review deposits can be resolved.");
+        }
+
+        if (string.IsNullOrWhiteSpace(request.OperatorId) || string.IsNullOrWhiteSpace(request.Note))
+        {
+            throw new InvalidDepositReviewActionException(transactionId, "OperatorId and note are required.");
+        }
+
+        switch (request.Resolution)
+        {
+            case DepositReviewResolution.ReversedExternally:
+                transaction.Status = DepositStatus.Reversed;
+                transaction.CompensationStatus = DepositSagaStepStatus.Compensated;
+                transaction.ReversedAt = DateTimeOffset.UtcNow;
+                transaction.ReviewResolution = DepositReviewResolution.ReversedExternally;
+                transaction.FailureCode = "DEPOSIT_COMPENSATED_EXTERNALLY";
+                transaction.FailureReason = request.Note;
+                break;
+            case DepositReviewResolution.FailedExternally:
+                transaction.Status = DepositStatus.Failed;
+                transaction.ReviewResolution = DepositReviewResolution.FailedExternally;
+                transaction.FailureCode = "DEPOSIT_REVIEW_RESOLVED_EXTERNALLY";
+                transaction.FailureReason = request.Note;
+                break;
+            default:
+                throw new InvalidDepositReviewActionException(
+                    transactionId,
+                    $"Resolution '{request.Resolution}' is not supported for manual review closure.");
+        }
+
+        transaction.ReviewLastActionBy = request.OperatorId.Trim();
+        transaction.ReviewNote = request.Note.Trim();
+        transaction.ReviewResolvedAt = DateTimeOffset.UtcNow;
+        transaction.LastProcessedAt = DateTimeOffset.UtcNow;
+        await depositRepository.UpdateAsync(transaction, cancellationToken);
+        await TryRecordReviewAuditAsync(transaction, cancellationToken);
+
+        return Map(transaction);
+    }
+
+    private async Task TryRecordReviewAuditAsync(
+        DepositTransaction transaction,
+        CancellationToken cancellationToken)
+    {
+        var snapshot = BuildSnapshot(transaction);
+
+        try
+        {
+            await auditLogWriter.WriteAsync(
+                "DepositReviewResolved",
+                transaction,
+                snapshot,
+                BuildSnapshot(transaction),
+                cancellationToken);
+            transaction.AuditStatus = DepositSagaStepStatus.Succeeded;
+            transaction.LastProcessedAt = DateTimeOffset.UtcNow;
+            await depositRepository.UpdateAsync(transaction, cancellationToken);
+        }
+        catch (Exception exception)
+        {
+            transaction.AuditStatus = DepositSagaStepStatus.Failed;
+            transaction.LastProcessedAt = DateTimeOffset.UtcNow;
+            await depositRepository.UpdateAsync(transaction, cancellationToken);
+            logger.LogError(
+                exception,
+                "Audit recording failed for manual deposit review resolution {TransactionId}.",
+                transaction.TransactionId);
+        }
+    }
+
+    private static Dictionary<string, object?> BuildSnapshot(DepositTransaction transaction)
+    {
+        return new Dictionary<string, object?>
+        {
+            ["transactionId"] = transaction.TransactionId,
+            ["status"] = transaction.Status.ToString(),
+            ["failureCode"] = transaction.FailureCode,
+            ["failureReason"] = transaction.FailureReason,
+            ["accountPostingStatus"] = transaction.AccountPostingStatus.ToString(),
+            ["auditStatus"] = transaction.AuditStatus.ToString(),
+            ["compensationStatus"] = transaction.CompensationStatus.ToString(),
+            ["reviewResolution"] = transaction.ReviewResolution.ToString(),
+            ["compensationRetryCount"] = transaction.CompensationRetryCount,
+            ["reviewLastActionBy"] = transaction.ReviewLastActionBy,
+            ["reviewNote"] = transaction.ReviewNote,
+            ["reviewRequiredAt"] = transaction.ReviewRequiredAt,
+            ["reviewResolvedAt"] = transaction.ReviewResolvedAt,
+            ["lastCompensationAttemptAt"] = transaction.LastCompensationAttemptAt,
+            ["lastProcessedAt"] = transaction.LastProcessedAt
+        };
+    }
+
     private static DepositResponse Map(DepositTransaction transaction)
     {
         return new DepositResponse(
@@ -135,12 +256,19 @@ public sealed class DepositService(
             transaction.AccountPostingStatus,
             transaction.AuditStatus,
             transaction.CompensationStatus,
+            transaction.ReviewResolution,
             transaction.CorrelationId,
             transaction.FailureCode,
             transaction.FailureReason,
+            transaction.CompensationRetryCount,
+            transaction.ReviewLastActionBy,
+            transaction.ReviewNote,
             transaction.RequestedAt,
             transaction.PostedAt,
             transaction.ReversedAt,
+            transaction.ReviewRequiredAt,
+            transaction.ReviewResolvedAt,
+            transaction.LastCompensationAttemptAt,
             transaction.LastProcessedAt);
     }
 }
