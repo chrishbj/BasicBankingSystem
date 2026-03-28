@@ -113,6 +113,67 @@ public sealed class DepositServiceTests
         result.ReviewResolvedAt.Should().NotBeNull();
     }
 
+    [Fact]
+    public async Task GetPendingReview_Should_ReturnOnlyPendingReviewDeposits()
+    {
+        await SeedDepositAsync("dep-pending-001", DepositStatus.PendingReview);
+        await SeedDepositAsync("dep-succeeded-001", DepositStatus.Succeeded);
+
+        var result = await _service.GetPendingReviewAsync(1, 20, CancellationToken.None);
+
+        result.TotalCount.Should().Be(1);
+        result.Items.Should().ContainSingle();
+        result.Items.Should().ContainSingle(item => item.TransactionId == "dep-pending-001");
+    }
+
+    [Fact]
+    public async Task GetAll_Should_FilterByStatus_When_StatusProvided()
+    {
+        await SeedDepositAsync("dep-filter-pending-001", DepositStatus.PendingReview);
+        await SeedDepositAsync("dep-filter-succeeded-001", DepositStatus.Succeeded);
+
+        var result = await _service.GetAllAsync(DepositStatus.PendingReview, 1, 20, CancellationToken.None);
+
+        result.TotalCount.Should().Be(1);
+        result.Items.Should().ContainSingle();
+        result.Items.Should().ContainSingle(item => item.TransactionId == "dep-filter-pending-001");
+    }
+
+    private async Task SeedDepositAsync(string transactionId, DepositStatus status)
+    {
+        var now = DateTimeOffset.UtcNow;
+        await _repository.AddAsync(
+            new DepositTransaction
+            {
+                TransactionId = transactionId,
+                TransactionNumber = $"D{now:yyyyMMddHHmmssfff}{Random.Shared.Next(10, 99)}",
+                CustomerId = "cus_active_001",
+                AccountId = "acc_active_001",
+                Amount = 100m,
+                Currency = "CNY",
+                Channel = DepositChannel.Counter,
+                Status = status,
+                AccountPostingStatus = status == DepositStatus.PendingReview ? DepositSagaStepStatus.Succeeded : DepositSagaStepStatus.Succeeded,
+                AuditStatus = DepositSagaStepStatus.NotStarted,
+                CompensationStatus = status == DepositStatus.PendingReview ? DepositSagaStepStatus.Failed : DepositSagaStepStatus.Skipped,
+                ReviewRequiredAt = status == DepositStatus.PendingReview ? now.AddMinutes(-5) : null,
+                IdempotencyKey = $"idem-{transactionId}",
+                CorrelationId = $"corr-{transactionId}",
+                RequestedAt = now.AddMinutes(-10)
+            },
+            Banking.Services.Deposit.Messaging.DepositOutboxMessage.CreateRequestedMessage(
+                new Banking.Services.Deposit.Messaging.DepositRequestedMessage(
+                    transactionId,
+                    "cus_active_001",
+                    "acc_active_001",
+                    100m,
+                    "CNY",
+                    DepositChannel.Counter,
+                    $"corr-{transactionId}"),
+                now),
+            CancellationToken.None);
+    }
+
     private sealed class NoOpDepositTransactionProcessor : IDepositTransactionProcessor
     {
         public Task ProcessAsync(string transactionId, CancellationToken cancellationToken) => Task.CompletedTask;

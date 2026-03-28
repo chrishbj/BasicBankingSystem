@@ -100,11 +100,17 @@ public sealed class DepositService(
     }
 
     public async Task<PagedResponse<DepositSummaryResponse>> GetAllAsync(
+        DepositStatus? status,
         int pageNumber,
         int pageSize,
         CancellationToken cancellationToken)
     {
         var deposits = await depositRepository.GetAllAsync(cancellationToken);
+        if (status is not null)
+        {
+            deposits = deposits.Where(item => item.Status == status.Value).ToArray();
+        }
+
         var totalCount = deposits.Count;
         var items = deposits
             .Skip((pageNumber - 1) * pageSize)
@@ -124,6 +130,40 @@ public sealed class DepositService(
 
         var totalPages = totalCount == 0 ? 0 : (int)Math.Ceiling(totalCount / (double)pageSize);
         return new PagedResponse<DepositSummaryResponse>(items, pageNumber, pageSize, totalCount, totalPages);
+    }
+
+    public async Task<PagedResponse<PendingReviewDepositSummaryResponse>> GetPendingReviewAsync(
+        int pageNumber,
+        int pageSize,
+        CancellationToken cancellationToken)
+    {
+        var deposits = await depositRepository.GetPendingReviewAsync(int.MaxValue, cancellationToken);
+        var totalCount = deposits.Count;
+        var items = deposits
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
+            .Select(item => new PendingReviewDepositSummaryResponse(
+                item.TransactionId,
+                item.TransactionNumber,
+                item.CustomerId,
+                item.AccountId,
+                item.Amount,
+                item.Currency,
+                item.CompensationStatus,
+                item.ReviewResolution,
+                item.FailureCode,
+                item.FailureReason,
+                item.CompensationRetryCount,
+                item.ReviewLastActionBy,
+                item.ReviewNote,
+                item.RequestedAt,
+                item.ReviewRequiredAt,
+                item.LastCompensationAttemptAt,
+                item.LastProcessedAt))
+            .ToArray();
+
+        var totalPages = totalCount == 0 ? 0 : (int)Math.Ceiling(totalCount / (double)pageSize);
+        return new PagedResponse<PendingReviewDepositSummaryResponse>(items, pageNumber, pageSize, totalCount, totalPages);
     }
 
     public async Task<DepositResponse> RetryPendingReviewAsync(

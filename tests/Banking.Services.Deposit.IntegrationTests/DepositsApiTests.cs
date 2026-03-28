@@ -80,6 +80,46 @@ public sealed class DepositsApiTests : IClassFixture<DepositServiceWebApplicatio
         deposit.ReviewLastActionBy.Should().Be("ops-user");
     }
 
+    [Fact]
+    public async Task GetPendingReview_Should_ReturnPendingReviewDeposits()
+    {
+        var transactionId = "dep-review-api-002";
+        await SeedPendingReviewDepositAsync(transactionId);
+
+        var response = await _client.GetFromJsonAsync<Banking.BuildingBlocks.Contracts.PagedResponse<PendingReviewDepositSummaryResponse>>(
+            "/api/v1/deposits/review/pending?pageNumber=1&pageSize=20");
+
+        response.Should().NotBeNull();
+        response!.Items.Should().ContainSingle(item => item.TransactionId == transactionId);
+    }
+
+    [Fact]
+    public async Task GetAll_Should_FilterByStatus_When_QueryStringProvided()
+    {
+        var request = new CreateDepositRequest("cus_active_001", "acc_active_001", 320m, "CNY", DepositChannel.Counter, null, null);
+        var message = new HttpRequestMessage(HttpMethod.Post, "/api/v1/deposits")
+        {
+            Content = JsonContent.Create(request)
+        };
+        message.Headers.Add("Idempotency-Key", "dep-integration-filter-001");
+
+        var createResponse = await _client.SendAsync(message);
+        createResponse.StatusCode.Should().Be(HttpStatusCode.Accepted);
+        var created = await createResponse.Content.ReadFromJsonAsync<DepositResponse>();
+        created.Should().NotBeNull();
+
+        var completed = created!.Status == DepositStatus.Succeeded
+            ? created
+            : await WaitForDepositAsync(created.TransactionId, DepositStatus.Succeeded);
+
+        var response = await _client.GetFromJsonAsync<Banking.BuildingBlocks.Contracts.PagedResponse<DepositSummaryResponse>>(
+            "/api/v1/deposits?status=Succeeded&pageNumber=1&pageSize=20");
+
+        response.Should().NotBeNull();
+        response!.Items.Should().Contain(item => item.TransactionId == completed.TransactionId);
+        response.Items.Should().OnlyContain(item => item.Status == DepositStatus.Succeeded);
+    }
+
     private async Task<DepositResponse> WaitForDepositAsync(string transactionId, DepositStatus expectedStatus)
     {
         for (var attempt = 0; attempt < 20; attempt++)

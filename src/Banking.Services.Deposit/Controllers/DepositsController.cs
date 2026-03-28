@@ -2,6 +2,7 @@ using Banking.BuildingBlocks.Security;
 using Microsoft.AspNetCore.Authorization;
 using Banking.BuildingBlocks.Observability;
 using Banking.Services.Deposit.Contracts;
+using Banking.Services.Deposit.Domain;
 using Banking.Services.Deposit.Exceptions;
 using Banking.Services.Deposit.Services;
 using Microsoft.AspNetCore.Mvc;
@@ -68,11 +69,21 @@ public sealed class DepositsController(IDepositService depositService) : Control
 
     [HttpGet]
     public async Task<IActionResult> GetAll(
+        [FromQuery] DepositStatus? status = null,
         [FromQuery] int pageNumber = 1,
         [FromQuery] int pageSize = 20,
         CancellationToken cancellationToken = default)
     {
-        return Ok(await depositService.GetAllAsync(pageNumber, pageSize, cancellationToken));
+        return Ok(await depositService.GetAllAsync(status, pageNumber, pageSize, cancellationToken));
+    }
+
+    [HttpGet("review/pending")]
+    public async Task<IActionResult> GetPendingReview(
+        [FromQuery] int pageNumber = 1,
+        [FromQuery] int pageSize = 20,
+        CancellationToken cancellationToken = default)
+    {
+        return Ok(await depositService.GetPendingReviewAsync(pageNumber, pageSize, cancellationToken));
     }
 
     [HttpPost("{transactionId}/review/retry-compensation")]

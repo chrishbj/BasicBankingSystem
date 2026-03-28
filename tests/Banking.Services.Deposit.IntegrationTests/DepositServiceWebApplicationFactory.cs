@@ -18,7 +18,8 @@ public sealed class DepositServiceWebApplicationFactory : WebApplicationFactory<
                 ["Infrastructure:Postgres:Provider"] = "Sqlite",
                 ["Infrastructure:Postgres:SqliteTestingConnectionString"] = $"Data Source={_databasePath}",
                 ["Infrastructure:RabbitMq:Transport"] = "InMemory",
-                ["Infrastructure:RabbitMq:PollingIntervalMilliseconds"] = "50"
+                ["Infrastructure:RabbitMq:PollingIntervalMilliseconds"] = "50",
+                ["Deposit:PendingReview:Enabled"] = "false"
             });
         });
     }
