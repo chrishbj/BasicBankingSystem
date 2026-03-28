@@ -132,16 +132,48 @@ public sealed class DepositServiceTests
         await SeedDepositAsync("dep-filter-pending-001", DepositStatus.PendingReview);
         await SeedDepositAsync("dep-filter-succeeded-001", DepositStatus.Succeeded);
 
-        var result = await _service.GetAllAsync(DepositStatus.PendingReview, 1, 20, CancellationToken.None);
+        var result = await _service.GetAllAsync(
+            new DepositSearchRequest(DepositStatus.PendingReview, null, null, null, null),
+            1,
+            20,
+            CancellationToken.None);
 
         result.TotalCount.Should().Be(1);
         result.Items.Should().ContainSingle();
         result.Items.Should().ContainSingle(item => item.TransactionId == "dep-filter-pending-001");
     }
 
-    private async Task SeedDepositAsync(string transactionId, DepositStatus status)
+    [Fact]
+    public async Task GetAll_Should_FilterByCorrelationId_And_FailureCode_When_Provided()
     {
-        var now = DateTimeOffset.UtcNow;
+        var matchingRequestedAt = DateTimeOffset.UtcNow.AddMinutes(-15);
+        await SeedDepositAsync("dep-filter-ops-001", DepositStatus.PendingReview, "corr-ops-001", "DEPOSIT_COMPENSATION_REVIEW_REQUIRED", matchingRequestedAt);
+        await SeedDepositAsync("dep-filter-ops-002", DepositStatus.PendingReview, "corr-ops-002", "DEPOSIT_COMPENSATION_REVIEW_REQUIRED", matchingRequestedAt);
+        await SeedDepositAsync("dep-filter-ops-003", DepositStatus.Failed, "corr-ops-001", "DEPOSIT_PROCESSING_FAILED", matchingRequestedAt);
+
+        var result = await _service.GetAllAsync(
+            new DepositSearchRequest(
+                null,
+                "corr-ops-001",
+                "DEPOSIT_COMPENSATION_REVIEW_REQUIRED",
+                matchingRequestedAt.AddMinutes(-1),
+                matchingRequestedAt.AddMinutes(1)),
+            1,
+            20,
+            CancellationToken.None);
+
+        result.TotalCount.Should().Be(1);
+        result.Items.Should().ContainSingle(item => item.TransactionId == "dep-filter-ops-001");
+    }
+
+    private async Task SeedDepositAsync(
+        string transactionId,
+        DepositStatus status,
+        string? correlationId = null,
+        string? failureCode = null,
+        DateTimeOffset? requestedAt = null)
+    {
+        var now = requestedAt ?? DateTimeOffset.UtcNow;
         await _repository.AddAsync(
             new DepositTransaction
             {
@@ -158,8 +190,9 @@ public sealed class DepositServiceTests
                 CompensationStatus = status == DepositStatus.PendingReview ? DepositSagaStepStatus.Failed : DepositSagaStepStatus.Skipped,
                 ReviewRequiredAt = status == DepositStatus.PendingReview ? now.AddMinutes(-5) : null,
                 IdempotencyKey = $"idem-{transactionId}",
-                CorrelationId = $"corr-{transactionId}",
-                RequestedAt = now.AddMinutes(-10)
+                CorrelationId = correlationId ?? $"corr-{transactionId}",
+                FailureCode = failureCode,
+                RequestedAt = now
             },
             Banking.Services.Deposit.Messaging.DepositOutboxMessage.CreateRequestedMessage(
                 new Banking.Services.Deposit.Messaging.DepositRequestedMessage(
@@ -169,7 +202,7 @@ public sealed class DepositServiceTests
                     100m,
                     "CNY",
                     DepositChannel.Counter,
-                    $"corr-{transactionId}"),
+                    correlationId ?? $"corr-{transactionId}"),
                 now),
             CancellationToken.None);
     }

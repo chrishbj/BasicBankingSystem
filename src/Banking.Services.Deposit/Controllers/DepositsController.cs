@@ -70,11 +70,19 @@ public sealed class DepositsController(IDepositService depositService) : Control
     [HttpGet]
     public async Task<IActionResult> GetAll(
         [FromQuery] DepositStatus? status = null,
+        [FromQuery] string? correlationId = null,
+        [FromQuery] string? failureCode = null,
+        [FromQuery] DateTimeOffset? requestedFrom = null,
+        [FromQuery] DateTimeOffset? requestedTo = null,
         [FromQuery] int pageNumber = 1,
         [FromQuery] int pageSize = 20,
         CancellationToken cancellationToken = default)
     {
-        return Ok(await depositService.GetAllAsync(status, pageNumber, pageSize, cancellationToken));
+        return Ok(await depositService.GetAllAsync(
+            new DepositSearchRequest(status, correlationId, failureCode, requestedFrom, requestedTo),
+            pageNumber,
+            pageSize,
+            cancellationToken));
     }
 
     [HttpGet("review/pending")]

@@ -120,6 +120,20 @@ public sealed class DepositsApiTests : IClassFixture<DepositServiceWebApplicatio
         response.Items.Should().OnlyContain(item => item.Status == DepositStatus.Succeeded);
     }
 
+    [Fact]
+    public async Task GetAll_Should_FilterByCorrelationId_When_QueryStringProvided()
+    {
+        var matchingCorrelationId = "corr-filter-api-001";
+        var first = await CreateAndCompleteDepositAsync("dep-integration-filter-101", matchingCorrelationId);
+        await CreateAndCompleteDepositAsync("dep-integration-filter-102", "corr-filter-api-002");
+
+        var response = await _client.GetFromJsonAsync<Banking.BuildingBlocks.Contracts.PagedResponse<DepositSummaryResponse>>(
+            $"/api/v1/deposits?correlationId={matchingCorrelationId}&pageNumber=1&pageSize=20");
+
+        response.Should().NotBeNull();
+        response!.Items.Should().ContainSingle(item => item.TransactionId == first.TransactionId);
+    }
+
     private async Task<DepositResponse> WaitForDepositAsync(string transactionId, DepositStatus expectedStatus)
     {
         for (var attempt = 0; attempt < 20; attempt++)
@@ -134,6 +148,29 @@ public sealed class DepositsApiTests : IClassFixture<DepositServiceWebApplicatio
         }
 
         throw new TimeoutException($"Deposit {transactionId} did not reach status {expectedStatus} in time.");
+    }
+
+    private async Task<DepositResponse> CreateAndCompleteDepositAsync(string idempotencyKey, string? correlationId)
+    {
+        var request = new CreateDepositRequest("cus_active_001", "acc_active_001", 210m, "CNY", DepositChannel.Counter, null, null);
+        var message = new HttpRequestMessage(HttpMethod.Post, "/api/v1/deposits")
+        {
+            Content = JsonContent.Create(request)
+        };
+        message.Headers.Add("Idempotency-Key", idempotencyKey);
+        if (!string.IsNullOrWhiteSpace(correlationId))
+        {
+            message.Headers.Add("X-Correlation-Id", correlationId);
+        }
+
+        var createResponse = await _client.SendAsync(message);
+        createResponse.StatusCode.Should().Be(HttpStatusCode.Accepted);
+        var created = await createResponse.Content.ReadFromJsonAsync<DepositResponse>();
+        created.Should().NotBeNull();
+
+        return created!.Status == DepositStatus.Succeeded
+            ? created
+            : await WaitForDepositAsync(created.TransactionId, DepositStatus.Succeeded);
     }
 
     private async Task SeedPendingReviewDepositAsync(string transactionId)

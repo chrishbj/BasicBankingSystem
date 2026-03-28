@@ -100,15 +100,44 @@ public sealed class DepositService(
     }
 
     public async Task<PagedResponse<DepositSummaryResponse>> GetAllAsync(
-        DepositStatus? status,
+        DepositSearchRequest request,
         int pageNumber,
         int pageSize,
         CancellationToken cancellationToken)
     {
         var deposits = await depositRepository.GetAllAsync(cancellationToken);
-        if (status is not null)
+
+        if (request.Status is not null)
         {
-            deposits = deposits.Where(item => item.Status == status.Value).ToArray();
+            deposits = deposits.Where(item => item.Status == request.Status.Value).ToArray();
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.CorrelationId))
+        {
+            deposits = deposits
+                .Where(item => string.Equals(item.CorrelationId, request.CorrelationId.Trim(), StringComparison.Ordinal))
+                .ToArray();
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.FailureCode))
+        {
+            deposits = deposits
+                .Where(item => string.Equals(item.FailureCode, request.FailureCode.Trim(), StringComparison.Ordinal))
+                .ToArray();
+        }
+
+        if (request.RequestedFrom is not null)
+        {
+            deposits = deposits
+                .Where(item => item.RequestedAt >= request.RequestedFrom.Value)
+                .ToArray();
+        }
+
+        if (request.RequestedTo is not null)
+        {
+            deposits = deposits
+                .Where(item => item.RequestedAt <= request.RequestedTo.Value)
+                .ToArray();
         }
 
         var totalCount = deposits.Count;
