@@ -42,6 +42,7 @@ Environment variables:
 - `accountBaseUrl`
 - `depositBaseUrl`
 - `auditBaseUrl`
+- `apiKey`
 - `currency`
 - `depositAmount`
 
@@ -76,6 +77,7 @@ Run requests in this order:
 ## Notes
 
 - `Submit Deposit` sends both `Idempotency-Key` and `X-Correlation-Id`.
+- External requests in the collection send `X-Api-Key`.
 - `Create Customer` uses a pre-request script to generate unique values for local retesting.
 - `Get Deposit By Id` can be re-run until the transaction reaches `Succeeded`.
 - `Wait For Deposit Completion` is intended for Postman Runner and Newman.

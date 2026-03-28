@@ -45,6 +45,14 @@ services:
       ASPNETCORE_ENVIRONMENT: Docker
       ASPNETCORE_URLS: http://+:8080
       Infrastructure__Postgres__ConnectionString: Host=postgres;Port=5432;Database=${POSTGRES_DB:-basic_banking};Username=${POSTGRES_USER:-banking};Password=${POSTGRES_PASSWORD:-banking_dev_password}
+      Security__Authentication__ExternalApiKeys__0__Name: local-dev-client
+      Security__Authentication__ExternalApiKeys__0__ApiKey: ${LOCAL_DEV_API_KEY:-local-dev-api-key}
+      Security__Authentication__InternalServices__0__Name: account-service
+      Security__Authentication__InternalServices__0__ApiKey: ${ACCOUNT_SERVICE_API_KEY:-account-service-dev-key}
+      Security__Authentication__InternalServices__1__Name: deposit-service
+      Security__Authentication__InternalServices__1__ApiKey: ${DEPOSIT_SERVICE_API_KEY:-deposit-service-dev-key}
+      Security__CurrentServiceIdentity__ServiceName: customer-service
+      Security__CurrentServiceIdentity__ApiKey: ${CUSTOMER_SERVICE_API_KEY:-customer-service-dev-key}
     depends_on:
       postgres:
         condition: service_healthy
@@ -62,6 +70,14 @@ services:
       ASPNETCORE_URLS: http://+:8080
       Infrastructure__Postgres__ConnectionString: Host=postgres;Port=5432;Database=${POSTGRES_DB:-basic_banking};Username=${POSTGRES_USER:-banking};Password=${POSTGRES_PASSWORD:-banking_dev_password}
       Infrastructure__CustomerService__BaseUrl: http://customer-service:8080/
+      Security__Authentication__ExternalApiKeys__0__Name: local-dev-client
+      Security__Authentication__ExternalApiKeys__0__ApiKey: ${LOCAL_DEV_API_KEY:-local-dev-api-key}
+      Security__Authentication__InternalServices__0__Name: deposit-service
+      Security__Authentication__InternalServices__0__ApiKey: ${DEPOSIT_SERVICE_API_KEY:-deposit-service-dev-key}
+      Security__Authentication__InternalServices__1__Name: customer-service
+      Security__Authentication__InternalServices__1__ApiKey: ${CUSTOMER_SERVICE_API_KEY:-customer-service-dev-key}
+      Security__CurrentServiceIdentity__ServiceName: account-service
+      Security__CurrentServiceIdentity__ApiKey: ${ACCOUNT_SERVICE_API_KEY:-account-service-dev-key}
     depends_on:
       postgres:
         condition: service_healthy
@@ -80,6 +96,12 @@ services:
       ASPNETCORE_ENVIRONMENT: Docker
       ASPNETCORE_URLS: http://+:8080
       Infrastructure__Postgres__ConnectionString: Host=postgres;Port=5432;Database=${POSTGRES_DB:-basic_banking};Username=${POSTGRES_USER:-banking};Password=${POSTGRES_PASSWORD:-banking_dev_password}
+      Security__Authentication__ExternalApiKeys__0__Name: local-dev-client
+      Security__Authentication__ExternalApiKeys__0__ApiKey: ${LOCAL_DEV_API_KEY:-local-dev-api-key}
+      Security__Authentication__InternalServices__0__Name: deposit-service
+      Security__Authentication__InternalServices__0__ApiKey: ${DEPOSIT_SERVICE_API_KEY:-deposit-service-dev-key}
+      Security__CurrentServiceIdentity__ServiceName: audit-service
+      Security__CurrentServiceIdentity__ApiKey: ${AUDIT_SERVICE_API_KEY:-audit-service-dev-key}
     depends_on:
       postgres:
         condition: service_healthy
@@ -100,6 +122,14 @@ services:
       Infrastructure__RabbitMq__ConnectionString: amqp://${RABBITMQ_DEFAULT_USER:-banking}:${RABBITMQ_DEFAULT_PASS:-banking_dev_password}@rabbitmq:5672
       Infrastructure__AuditService__BaseUrl: http://audit-service:8080/
       Infrastructure__AccountService__BaseUrl: http://account-service:8080/
+      Security__Authentication__ExternalApiKeys__0__Name: local-dev-client
+      Security__Authentication__ExternalApiKeys__0__ApiKey: ${LOCAL_DEV_API_KEY:-local-dev-api-key}
+      Security__Authentication__InternalServices__0__Name: account-service
+      Security__Authentication__InternalServices__0__ApiKey: ${ACCOUNT_SERVICE_API_KEY:-account-service-dev-key}
+      Security__Authentication__InternalServices__1__Name: deposit-service
+      Security__Authentication__InternalServices__1__ApiKey: ${DEPOSIT_SERVICE_API_KEY:-deposit-service-dev-key}
+      Security__CurrentServiceIdentity__ServiceName: deposit-service
+      Security__CurrentServiceIdentity__ApiKey: ${DEPOSIT_SERVICE_API_KEY:-deposit-service-dev-key}
     depends_on:
       postgres:
         condition: service_healthy

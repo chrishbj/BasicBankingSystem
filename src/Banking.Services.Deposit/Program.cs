@@ -1,3 +1,5 @@
+using Banking.BuildingBlocks.Security;
+using Banking.BuildingBlocks.Swagger;
 using Banking.BuildingBlocks.Extensions;
 using Banking.Services.Deposit.Accounts;
 using Banking.Services.Deposit.Auditing;
@@ -9,10 +11,10 @@ using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddBankingApiDefaults();
+builder.Services.AddBankingApiDefaults(builder.Configuration, builder.Environment);
 builder.Services.AddOpenApi();
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(options => options.OperationFilter<BankingSecurityHeadersOperationFilter>());
 
 var isTesting = builder.Environment.IsEnvironment("Testing");
 var provider = isTesting
@@ -53,14 +55,16 @@ else
         var settings = serviceProvider.GetRequiredService<Microsoft.Extensions.Options.IOptions<AccountServiceOptions>>().Value;
         httpClient.BaseAddress = new Uri(settings.BaseUrl);
         httpClient.Timeout = TimeSpan.FromSeconds(settings.TimeoutSeconds);
-    });
+    })
+    .AddHttpMessageHandler<InternalServiceAuthenticationDelegatingHandler>();
 
     builder.Services.AddHttpClient<IAuditLogWriter, HttpAuditLogWriter>((serviceProvider, httpClient) =>
     {
         var settings = serviceProvider.GetRequiredService<Microsoft.Extensions.Options.IOptions<AuditServiceOptions>>().Value;
         httpClient.BaseAddress = new Uri(settings.BaseUrl);
         httpClient.Timeout = TimeSpan.FromSeconds(settings.TimeoutSeconds);
-    });
+    })
+    .AddHttpMessageHandler<InternalServiceAuthenticationDelegatingHandler>();
 }
 
 var transport = builder.Environment.IsEnvironment("Testing")

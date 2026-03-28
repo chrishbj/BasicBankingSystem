@@ -1,3 +1,5 @@
+using Banking.BuildingBlocks.Security;
+using Microsoft.AspNetCore.Authorization;
 using Banking.Services.Audit.Contracts;
 using Banking.Services.Audit.Exceptions;
 using Banking.Services.Audit.Services;
@@ -7,9 +9,11 @@ namespace Banking.Services.Audit.Controllers;
 
 [ApiController]
 [Route("api/v1/audits")]
+[Authorize(Policy = BankingPolicies.ExternalOrInternal)]
 public sealed class AuditsController(IAuditService auditService) : ControllerBase
 {
     [HttpPost]
+    [Authorize(Policy = BankingPolicies.InternalServiceOnly)]
     public async Task<IActionResult> Create([FromBody] CreateAuditLogRequest request, CancellationToken cancellationToken)
     {
         try

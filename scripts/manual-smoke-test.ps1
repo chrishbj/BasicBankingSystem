@@ -3,6 +3,7 @@ param(
     [string]$AccountBaseUrl = "http://localhost:5102",
     [string]$DepositBaseUrl = "http://localhost:5103",
     [string]$AuditBaseUrl = "http://localhost:5104",
+    [string]$ApiKey = "local-dev-api-key",
     [decimal]$DepositAmount = 1000,
     [string]$Currency = "CNY",
     [int]$PollAttempts = 30,
@@ -60,12 +61,13 @@ function Wait-ForDepositCompletion {
     param(
         [Parameter(Mandatory = $true)][string]$TransactionId,
         [Parameter(Mandatory = $true)][string]$BaseUrl,
+        [Parameter(Mandatory = $true)][hashtable]$Headers,
         [Parameter(Mandatory = $true)][int]$Attempts,
         [Parameter(Mandatory = $true)][int]$DelaySeconds
     )
 
     for ($attempt = 1; $attempt -le $Attempts; $attempt++) {
-        $deposit = Invoke-RestMethod -Method Get -Uri "$BaseUrl/api/v1/deposits/$TransactionId"
+        $deposit = Invoke-RestMethod -Method Get -Uri "$BaseUrl/api/v1/deposits/$TransactionId" -Headers $Headers
         Write-Host ("Attempt {0}/{1}: deposit status = {2}" -f $attempt, $Attempts, $deposit.status)
 
         if ($deposit.status -eq 3 -or $deposit.status -eq 5) {
@@ -82,12 +84,13 @@ function Wait-ForAuditRecord {
     param(
         [Parameter(Mandatory = $true)][string]$CorrelationId,
         [Parameter(Mandatory = $true)][string]$BaseUrl,
+        [Parameter(Mandatory = $true)][hashtable]$Headers,
         [Parameter(Mandatory = $true)][int]$Attempts,
         [Parameter(Mandatory = $true)][int]$DelaySeconds
     )
 
     for ($attempt = 1; $attempt -le $Attempts; $attempt++) {
-        $response = Invoke-RestMethod -Method Get -Uri "$BaseUrl/api/v1/audits?pageNumber=1&pageSize=100"
+        $response = Invoke-RestMethod -Method Get -Uri "$BaseUrl/api/v1/audits?pageNumber=1&pageSize=100" -Headers $Headers
         $matched = @($response.items | Where-Object { $_.correlationId -eq $CorrelationId })
 
         if ($matched.Count -gt 0) {
@@ -106,6 +109,9 @@ $mobileSuffix = Get-Random -Minimum 10000000 -Maximum 99999999
 $mobile = "138$mobileSuffix"
 $idempotencyKey = "manual-deposit-$uniqueSuffix"
 $correlationId = "manual-correlation-$uniqueSuffix"
+$externalHeaders = @{
+    "X-Api-Key" = $ApiKey
+}
 
 Write-Step "Checking service health"
 Assert-ServiceHealthy -Name "Customer" -BaseUrl $CustomerBaseUrl
@@ -128,14 +134,14 @@ $customer = Invoke-JsonRequest -Method Post -Uri "$CustomerBaseUrl/api/v1/custom
         postalCode = "100000"
     }
     riskLevel      = "Low"
-}
+} -Headers $externalHeaders
 Write-Host "CustomerId: $($customer.customerId)"
 
 Write-Step "Activating the customer"
 $activatedCustomer = Invoke-JsonRequest -Method Post -Uri "$CustomerBaseUrl/api/v1/customers/$($customer.customerId)/status" -Body @{
     targetStatus = 2
     reason       = "Manual smoke test activation"
-}
+} -Headers $externalHeaders
 Write-Host "Customer status: $($activatedCustomer.status)"
 
 Write-Step "Opening an account"
@@ -143,7 +149,7 @@ $account = Invoke-JsonRequest -Method Post -Uri "$AccountBaseUrl/api/v1/accounts
     customerId  = $customer.customerId
     accountType = "Checking"
     currency    = $Currency
-}
+} -Headers $externalHeaders
 Write-Host "AccountId: $($account.accountId)"
 
 Write-Step "Submitting a deposit"
@@ -158,12 +164,13 @@ $deposit = Invoke-JsonRequest -Method Post -Uri "$DepositBaseUrl/api/v1/deposits
 } -Headers @{
     "Idempotency-Key" = $idempotencyKey
     "X-Correlation-Id" = $correlationId
+    "X-Api-Key" = $ApiKey
 }
 Write-Host "TransactionId: $($deposit.transactionId)"
 Write-Host "Initial deposit status: $($deposit.status)"
 
 Write-Step "Waiting for deposit completion"
-$completedDeposit = Wait-ForDepositCompletion -TransactionId $deposit.transactionId -BaseUrl $DepositBaseUrl -Attempts $PollAttempts -DelaySeconds $PollDelaySeconds
+$completedDeposit = Wait-ForDepositCompletion -TransactionId $deposit.transactionId -BaseUrl $DepositBaseUrl -Headers $externalHeaders -Attempts $PollAttempts -DelaySeconds $PollDelaySeconds
 Write-Host "Final deposit status: $($completedDeposit.status)"
 
 if ($completedDeposit.status -ne 3) {
@@ -171,7 +178,7 @@ if ($completedDeposit.status -ne 3) {
 }
 
 Write-Step "Verifying account balance"
-$updatedAccount = Invoke-RestMethod -Method Get -Uri "$AccountBaseUrl/api/v1/accounts/$($account.accountId)"
+$updatedAccount = Invoke-RestMethod -Method Get -Uri "$AccountBaseUrl/api/v1/accounts/$($account.accountId)" -Headers $externalHeaders
 Write-Host "Available balance: $($updatedAccount.availableBalance)"
 Write-Host "Ledger balance: $($updatedAccount.ledgerBalance)"
 
@@ -184,7 +191,7 @@ if ([decimal]$updatedAccount.ledgerBalance -ne $DepositAmount) {
 }
 
 Write-Step "Verifying audit records"
-$auditRecords = Wait-ForAuditRecord -CorrelationId $correlationId -BaseUrl $AuditBaseUrl -Attempts $PollAttempts -DelaySeconds $PollDelaySeconds
+$auditRecords = Wait-ForAuditRecord -CorrelationId $correlationId -BaseUrl $AuditBaseUrl -Headers $externalHeaders -Attempts $PollAttempts -DelaySeconds $PollDelaySeconds
 Write-Host "Audit records found: $($auditRecords.Count)"
 
 $summary = [PSCustomObject]@{

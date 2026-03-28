@@ -1,3 +1,5 @@
+using Banking.BuildingBlocks.Security;
+using Microsoft.AspNetCore.Authorization;
 using Banking.Services.Customer.Contracts;
 using Banking.Services.Customer.Exceptions;
 using Banking.Services.Customer.Services;
@@ -7,6 +9,7 @@ namespace Banking.Services.Customer.Controllers;
 
 [ApiController]
 [Route("api/v1/customers")]
+[Authorize(Policy = BankingPolicies.ExternalOrInternal)]
 public sealed class CustomersController(ICustomerService customerService) : ControllerBase
 {
     [HttpPost]

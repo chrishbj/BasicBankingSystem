@@ -1,3 +1,5 @@
+using Banking.BuildingBlocks.Security;
+using Microsoft.AspNetCore.Authorization;
 using Banking.BuildingBlocks.Observability;
 using Banking.Services.Deposit.Contracts;
 using Banking.Services.Deposit.Exceptions;
@@ -8,6 +10,7 @@ namespace Banking.Services.Deposit.Controllers;
 
 [ApiController]
 [Route("api/v1/deposits")]
+[Authorize(Policy = BankingPolicies.ExternalOrInternal)]
 public sealed class DepositsController(IDepositService depositService) : ControllerBase
 {
     [HttpPost]

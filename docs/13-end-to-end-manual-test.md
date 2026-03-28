@@ -24,6 +24,8 @@ docker compose --env-file infra/.env.example -f infra/docker-compose.docker-desk
   - `http://localhost:5102/swagger`
   - `http://localhost:5103/swagger`
   - `http://localhost:5104/swagger`
+- Protected API calls need:
+  - `X-Api-Key: local-dev-api-key`
 
 ## Fastest Option
 
@@ -108,6 +110,7 @@ Open `http://localhost:5103/swagger` and call `POST /api/v1/deposits`.
 
 Add headers:
 
+- `X-Api-Key`: `local-dev-api-key`
 - `Idempotency-Key`: any unique value, for example `manual-deposit-001`
 - `X-Correlation-Id`: any unique value, for example `manual-correlation-001`
 
@@ -151,6 +154,10 @@ Expected result after a successful deposit:
 ### 7. Verify Audit Trail
 
 Open `http://localhost:5104/swagger` and call `GET /api/v1/audits`.
+
+Add header:
+
+- `X-Api-Key`: `local-dev-api-key`
 
 Look for a row where one of these matches:
 

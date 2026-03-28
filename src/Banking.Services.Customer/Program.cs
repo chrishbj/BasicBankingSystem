@@ -1,3 +1,4 @@
+using Banking.BuildingBlocks.Swagger;
 using Banking.BuildingBlocks.Extensions;
 using Banking.Services.Customer.Data;
 using Banking.Services.Customer.Repositories;
@@ -6,10 +7,10 @@ using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddBankingApiDefaults();
+builder.Services.AddBankingApiDefaults(builder.Configuration, builder.Environment);
 builder.Services.AddOpenApi();
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(options => options.OperationFilter<BankingSecurityHeadersOperationFilter>());
 
 var isTesting = builder.Environment.IsEnvironment("Testing");
 var provider = isTesting

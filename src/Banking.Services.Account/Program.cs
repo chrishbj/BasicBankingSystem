@@ -1,3 +1,5 @@
+using Banking.BuildingBlocks.Security;
+using Banking.BuildingBlocks.Swagger;
 using Banking.BuildingBlocks.Extensions;
 using Banking.Services.Account.CustomerDirectory;
 using Banking.Services.Account.Data;
@@ -7,10 +9,10 @@ using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddBankingApiDefaults();
+builder.Services.AddBankingApiDefaults(builder.Configuration, builder.Environment);
 builder.Services.AddOpenApi();
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(options => options.OperationFilter<BankingSecurityHeadersOperationFilter>());
 
 var isTesting = builder.Environment.IsEnvironment("Testing");
 var provider = isTesting
@@ -45,7 +47,8 @@ else
         var settings = serviceProvider.GetRequiredService<Microsoft.Extensions.Options.IOptions<CustomerServiceOptions>>().Value;
         httpClient.BaseAddress = new Uri(settings.BaseUrl);
         httpClient.Timeout = TimeSpan.FromSeconds(settings.TimeoutSeconds);
-    });
+    })
+    .AddHttpMessageHandler<InternalServiceAuthenticationDelegatingHandler>();
 }
 
 builder.Services.AddScoped<IAccountRepository, EfAccountRepository>();

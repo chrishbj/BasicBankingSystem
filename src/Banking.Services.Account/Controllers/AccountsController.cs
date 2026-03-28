@@ -1,3 +1,5 @@
+using Banking.BuildingBlocks.Security;
+using Microsoft.AspNetCore.Authorization;
 using Banking.Services.Account.Contracts;
 using Banking.Services.Account.Exceptions;
 using Banking.Services.Account.Services;
@@ -7,6 +9,7 @@ namespace Banking.Services.Account.Controllers;
 
 [ApiController]
 [Route("api/v1/accounts")]
+[Authorize(Policy = BankingPolicies.ExternalOrInternal)]
 public sealed class AccountsController(IAccountService accountService) : ControllerBase
 {
     [HttpPost]
@@ -42,6 +45,7 @@ public sealed class AccountsController(IAccountService accountService) : Control
     }
 
     [HttpPost("{accountId}/deposit-postings")]
+    [Authorize(Policy = BankingPolicies.InternalServiceOnly)]
     public async Task<IActionResult> ApplyDeposit(
         string accountId,
         [FromBody] ApplyDepositRequest request,

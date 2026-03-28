@@ -9,6 +9,10 @@ This repository includes both a local Newman script and a GitHub Actions workflo
 
 ## Local Usage
 
+The regression flow authenticates external API calls with:
+
+- `X-Api-Key: local-dev-api-key`
+
 Run against an already running Docker Desktop stack:
 
 ```powershell

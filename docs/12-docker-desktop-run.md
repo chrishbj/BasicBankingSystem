@@ -49,6 +49,19 @@ docker compose --env-file infra/.env.example -f infra/docker-compose.docker-desk
 - `Deposit Swagger`: `http://localhost:5103/swagger`
 - `Audit Swagger`: `http://localhost:5104/swagger`
 
+## Authentication Headers
+
+Protected business endpoints now require authentication.
+
+External testing header:
+
+- `X-Api-Key: local-dev-api-key`
+
+Internal service-to-service headers are attached automatically by the services:
+
+- `X-Service-Name`
+- `X-Service-Key`
+
 ## Quick Checks
 
 ```powershell
@@ -63,3 +76,4 @@ Invoke-RestMethod http://localhost:5104/api/v1/health
 - Services use PostgreSQL inside Docker instead of SQLite.
 - `deposit-service` talks to `account-service` and `audit-service` through container DNS names.
 - RabbitMQ is enabled for the event-driven deposit flow.
+- Health and readiness endpoints remain anonymous for local diagnostics.

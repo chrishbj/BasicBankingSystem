@@ -21,6 +21,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Banking.Gateway\Banking.Gateway.csproj" />
+    <ProjectReference Include="..\..\src\Banking.BuildingBlocks\Banking.BuildingBlocks.csproj" />
   </ItemGroup>
 
 </Project>

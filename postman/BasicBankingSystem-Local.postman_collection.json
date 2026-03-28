@@ -130,6 +130,10 @@
             "method": "POST",
             "header": [
               {
+                "key": "X-Api-Key",
+                "value": "{{apiKey}}"
+              },
+              {
                 "key": "Content-Type",
                 "value": "application/json"
               }
@@ -159,6 +163,10 @@
           "request": {
             "method": "POST",
             "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{apiKey}}"
+              },
               {
                 "key": "Content-Type",
                 "value": "application/json"
@@ -200,6 +208,10 @@
             "method": "POST",
             "header": [
               {
+                "key": "X-Api-Key",
+                "value": "{{apiKey}}"
+              },
+              {
                 "key": "Content-Type",
                 "value": "application/json"
               }
@@ -231,7 +243,12 @@
           ],
           "request": {
             "method": "GET",
-            "header": [],
+            "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{apiKey}}"
+              }
+            ],
             "url": "{{accountBaseUrl}}/api/v1/accounts/{{accountId}}"
           }
         }
@@ -283,6 +300,10 @@
               {
                 "key": "Idempotency-Key",
                 "value": "{{idempotencyKey}}"
+              },
+              {
+                "key": "X-Api-Key",
+                "value": "{{apiKey}}"
               },
               {
                 "key": "X-Correlation-Id",
@@ -337,7 +358,12 @@
           ],
           "request": {
             "method": "GET",
-            "header": [],
+            "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{apiKey}}"
+              }
+            ],
             "url": "{{depositBaseUrl}}/api/v1/deposits/{{transactionId}}"
           }
         },
@@ -358,7 +384,12 @@
           ],
           "request": {
             "method": "GET",
-            "header": [],
+            "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{apiKey}}"
+              }
+            ],
             "url": "{{depositBaseUrl}}/api/v1/deposits/{{transactionId}}"
           }
         }
@@ -387,7 +418,12 @@
           ],
           "request": {
             "method": "GET",
-            "header": [],
+            "header": [
+              {
+                "key": "X-Api-Key",
+                "value": "{{apiKey}}"
+              }
+            ],
             "url": {
               "raw": "{{auditBaseUrl}}/api/v1/audits?pageNumber=1&pageSize=100",
               "host": [
@@ -457,6 +493,10 @@
     },
     {
       "key": "mobile",
+      "value": ""
+    },
+    {
+      "key": "apiKey",
       "value": ""
     },
     {

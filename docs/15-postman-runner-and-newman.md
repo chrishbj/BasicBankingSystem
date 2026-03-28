@@ -49,6 +49,10 @@ Collection variables:
 - `pollAttempt`
 - `pollMaxAttempts`
 
+Environment variable:
+
+- `apiKey`
+
 Default value:
 
 - `pollMaxAttempts = 20`
@@ -83,3 +87,4 @@ newman run postman/BasicBankingSystem-Local.postman_collection.json `
 - `Get Deposit By Id` remains useful for manual debugging.
 - `Wait For Deposit Completion` is the better choice for automated runs.
 - The collection uses unique customer identity and mobile values on each run to avoid duplicate-customer conflicts.
+- The default local external API key is `local-dev-api-key`.
