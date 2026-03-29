@@ -34,11 +34,10 @@ public sealed class EfDepositRepository(DepositDbContext dbContext) : IDepositRe
 
     public async Task<IReadOnlyCollection<DepositTransaction>> GetPendingReviewAsync(int maxCount, CancellationToken cancellationToken)
     {
-        var items = await dbContext.Deposits
-            .Where(x => x.Status == DepositStatus.PendingReview)
-            .ToListAsync(cancellationToken);
+        var items = await dbContext.Deposits.ToListAsync(cancellationToken);
 
         return items
+            .Where(x => x.Status == DepositStatus.PendingReview)
             .OrderBy(x => x.LastCompensationAttemptAt ?? x.ReviewRequiredAt ?? x.RequestedAt)
             .Take(maxCount)
             .ToArray();

@@ -109,6 +109,7 @@ if (isTesting)
 else
 {
     await app.Services.EnsureContextObjectsCreatedAsync<DepositDbContext>();
+    await app.Services.EnsureDepositSchemaUpToDateAsync();
 }
 
 app.Run();
