@@ -13,6 +13,11 @@ import {
   submitDeposit,
 } from './api'
 import './App.css'
+import { AccountPanel } from './components/AccountPanel'
+import { CustomerPanel } from './components/CustomerPanel'
+import { DepositPanel } from './components/DepositPanel'
+import { EnvironmentPanel } from './components/EnvironmentPanel'
+import { PendingReviewPanel } from './components/PendingReviewPanel'
 import type {
   AccountResponse,
   CustomerResponse,
@@ -250,145 +255,40 @@ function App() {
       </section>
 
       <section className="grid">
-        <article className="panel">
-          <h2>Environment</h2>
-          <div className="health-grid">
-            {Object.entries(health).map(([name, value]) => (
-              <div key={name} className="health-card">
-                <span>{name}</span>
-                <strong>{value}</strong>
-              </div>
-            ))}
-          </div>
-        </article>
-
-        <article className="panel">
-          <h2>Customer</h2>
-          <div className="form-grid">
-            <input value={customerForm.fullName} onChange={(event) => setCustomerForm((state) => ({ ...state, fullName: event.target.value }))} placeholder="Full name" />
-            <input value={customerForm.identityNumber} onChange={(event) => setCustomerForm((state) => ({ ...state, identityNumber: event.target.value }))} placeholder="Identity number" />
-            <input value={customerForm.mobile} onChange={(event) => setCustomerForm((state) => ({ ...state, mobile: event.target.value }))} placeholder="Mobile" />
-            <input value={customerForm.email} onChange={(event) => setCustomerForm((state) => ({ ...state, email: event.target.value }))} placeholder="Email" />
-          </div>
-          <div className="actions">
-            <button onClick={() => void handleCreateCustomer()}>Create customer</button>
-            <button className="ghost-button" onClick={() => void handleActivateCustomer()}>Activate</button>
-          </div>
-          {customer && (
-            <dl className="detail-list">
-              <div><dt>ID</dt><dd>{customer.customerId}</dd></div>
-              <div><dt>Number</dt><dd>{customer.customerNumber}</dd></div>
-              <div><dt>Status</dt><dd>{customer.status}</dd></div>
-            </dl>
-          )}
-        </article>
-
-        <article className="panel">
-          <h2>Account</h2>
-          <div className="actions">
-            <button onClick={() => void handleOpenAccount()}>Open checking account</button>
-            <button className="ghost-button" onClick={() => void handleRefreshAccount()}>Refresh</button>
-          </div>
-          {account && (
-            <dl className="detail-list">
-              <div><dt>Account ID</dt><dd>{account.accountId}</dd></div>
-              <div><dt>Currency</dt><dd>{account.currency}</dd></div>
-              <div><dt>Available</dt><dd>{account.availableBalance.toFixed(2)}</dd></div>
-              <div><dt>Ledger</dt><dd>{account.ledgerBalance.toFixed(2)}</dd></div>
-            </dl>
-          )}
-        </article>
-
-        <article className="panel">
-          <h2>Deposit</h2>
-          <div className="form-grid">
-            <input value={depositForm.amount} onChange={(event) => setDepositForm((state) => ({ ...state, amount: event.target.value }))} placeholder="Amount" />
-            <input value={depositForm.referenceNumber} onChange={(event) => setDepositForm((state) => ({ ...state, referenceNumber: event.target.value }))} placeholder="Reference number" />
-            <textarea value={depositForm.note} onChange={(event) => setDepositForm((state) => ({ ...state, note: event.target.value }))} placeholder="Deposit note" rows={3} />
-          </div>
-          <div className="actions">
-            <button onClick={() => void handleSubmitDeposit()}>Submit deposit</button>
-            <button className="ghost-button" onClick={() => void handleRefreshDeposit()}>Refresh transaction</button>
-          </div>
-          {deposit && (
-            <dl className="detail-list">
-              <div><dt>Transaction</dt><dd>{deposit.transactionId}</dd></div>
-              <div><dt>Status</dt><dd>{deposit.status}</dd></div>
-              <div><dt>Correlation</dt><dd>{deposit.correlationId}</dd></div>
-              <div><dt>Failure</dt><dd>{deposit.failureCode ?? 'None'}</dd></div>
-            </dl>
-          )}
-        </article>
+        <EnvironmentPanel health={health} />
+        <CustomerPanel
+          customer={customer}
+          form={customerForm}
+          onFormChange={setCustomerForm}
+          onCreate={() => void handleCreateCustomer()}
+          onActivate={() => void handleActivateCustomer()}
+        />
+        <AccountPanel
+          account={account}
+          onOpen={() => void handleOpenAccount()}
+          onRefresh={() => void handleRefreshAccount()}
+        />
+        <DepositPanel
+          deposit={deposit}
+          form={depositForm}
+          onFormChange={setDepositForm}
+          onSubmit={() => void handleSubmitDeposit()}
+          onRefresh={() => void handleRefreshDeposit()}
+        />
       </section>
 
-      <section className="panel wide-panel">
-        <div className="panel-head">
-          <div>
-            <p className="eyebrow">Operations Search</p>
-            <h2>Pending Review Queue</h2>
-          </div>
-          <div className="toolbar">
-            <select value={sortBy} onChange={(event) => setSortBy(event.target.value as PendingReviewSortBy)}>
-              <option value="ReviewRequiredAt">Review required</option>
-              <option value="LastCompensationAttemptAt">Last compensation attempt</option>
-              <option value="RequestedAt">Requested at</option>
-            </select>
-            <label className="toggle">
-              <input type="checkbox" checked={descending} onChange={(event) => setDescending(event.target.checked)} />
-              Desc
-            </label>
-            <button onClick={() => void handleLoadPendingReview()}>Load queue</button>
-            <button className="ghost-button" onClick={() => void handleSearchDeposits()}>Search matching deposits</button>
-          </div>
-        </div>
-
-        <div className="table-scroll">
-          <table>
-            <thead>
-              <tr>
-                <th>Transaction</th>
-                <th>Failure</th>
-                <th>Retries</th>
-                <th>Review required</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {pendingReviewItems.map((item) => (
-                <tr key={item.transactionId}>
-                  <td>
-                    <strong>{item.transactionId}</strong>
-                    <span>{item.customerId}</span>
-                  </td>
-                  <td>{item.failureCode ?? 'N/A'}</td>
-                  <td>{item.compensationRetryCount}</td>
-                  <td>{item.reviewRequiredAt ?? item.requestedAt}</td>
-                  <td className="table-actions">
-                    <button className="tiny-button" onClick={() => void handleRetryPendingReview(item.transactionId)}>Retry</button>
-                    <button className="tiny-button ghost-button" onClick={() => void handleResolvePendingReview(item.transactionId, 3)}>Mark reversed</button>
-                    <button className="tiny-button ghost-button" onClick={() => void handleResolvePendingReview(item.transactionId, 4)}>Mark failed</button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        {depositSearchResult.length > 0 && (
-          <div className="search-results">
-            <h3>Latest filtered deposits</h3>
-            <ul>
-              {depositSearchResult.map((item) => (
-                <li key={item.transactionId}>
-                  <strong>{item.transactionId}</strong>
-                  <span>{item.status}</span>
-                  <span>{item.correlationId}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-      </section>
+      <PendingReviewPanel
+        sortBy={sortBy}
+        descending={descending}
+        pendingReviewItems={pendingReviewItems}
+        depositSearchResult={depositSearchResult}
+        onSortByChange={setSortBy}
+        onDescendingChange={setDescending}
+        onLoadQueue={() => void handleLoadPendingReview()}
+        onSearchDeposits={() => void handleSearchDeposits()}
+        onRetry={(transactionId) => void handleRetryPendingReview(transactionId)}
+        onResolve={(transactionId, resolution) => void handleResolvePendingReview(transactionId, resolution)}
+      />
     </main>
   )
 }
