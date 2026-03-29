@@ -10,6 +10,8 @@ public sealed class BankingSecurityHeadersOperationFilter : IOperationFilter
     {
         operation.Parameters ??= [];
 
+        // Swagger is used as a first-class manual testing surface in this repository,
+        // so the required security headers are injected into every operation.
         AddHeaderParameter(
             operation,
             BankingAuthenticationDefaults.ApiKeyHeaderName,

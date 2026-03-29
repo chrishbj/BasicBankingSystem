@@ -137,6 +137,8 @@ function App() {
       return
     }
 
+    // The portal keeps customer and account context local in the browser, then
+    // refreshes the deposit list whenever that context changes.
     void loadDepositStatuses(currentCustomer.customerId, selectedAccount?.accountId)
   }, [currentCustomer?.customerId, selectedAccount?.accountId])
 
@@ -148,6 +150,8 @@ function App() {
       return
     }
 
+    // Customer-facing polling only runs for transient states so the portal behaves
+    // like a live transaction tracker without turning every screen into a polling client.
     const handle = window.setInterval(() => {
       void loadDepositStatuses(currentCustomer.customerId, selectedAccount?.accountId, true)
     }, 2000)
@@ -163,6 +167,8 @@ function App() {
       setAccounts(accountResponse.items)
 
       if (accountResponse.items.length > 0) {
+        // The first account is loaded automatically so the portal feels task-ready
+        // immediately after sign-in.
         await loadAccountWorkspace(accountResponse.items[0].accountId)
       } else {
         setSelectedAccount(null)
@@ -190,6 +196,8 @@ function App() {
 
     try {
       setBusy(true)
+      // The portal never inspects raw identity values from the customer list. Sign-in
+      // goes through a dedicated backend check instead of leaking verification logic to the UI.
       const matched = await signInCustomer(customerNumber, identityLast4)
       await loadCustomerWorkspace(matched)
     } catch (error) {
@@ -275,6 +283,8 @@ function App() {
 
     try {
       setBusy(true)
+      // The portal reuses the same idempotent deposit contract as the operator console,
+      // which keeps financial safety in the backend instead of forking client logic.
       const result = await submitDeposit(
         {
           customerId: currentCustomer.customerId,
@@ -292,6 +302,8 @@ function App() {
       setLatestDeposit(result)
       await refreshCurrentAccount()
       await loadDepositStatuses(currentCustomer.customerId, selectedAccount.accountId, true)
+      // After submission, the portal pivots to the transaction-status view because
+      // that is the next decision point for the customer.
       setActiveTab('transactions')
       setMessage(`Deposit submitted. Current status: ${getDepositStatusLabel(result.status)}.`)
     } catch (error) {

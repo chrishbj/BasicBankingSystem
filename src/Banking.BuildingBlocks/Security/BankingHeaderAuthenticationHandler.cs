@@ -21,6 +21,8 @@ public sealed class BankingHeaderAuthenticationHandler(
             return Task.FromResult(AuthenticateResult.NoResult());
         }
 
+        // Header validation allows the same authentication handler to support both
+        // external API-key clients and internal service-to-service callers.
         var validationResult = headerValidator.Validate(Request.Headers);
         if (!validationResult.Succeeded)
         {
@@ -46,6 +48,7 @@ public sealed class BankingHeaderAuthenticationHandler(
 
         if (validationResult.PrincipalType == BankingPrincipalTypes.InternalService)
         {
+            // Internal callers receive a dedicated role so services can protect machine-only endpoints.
             claims.Add(new Claim(ClaimTypes.Role, BankingPrincipalTypes.InternalService));
         }
 

@@ -17,6 +17,7 @@ public static class BankingServiceCollectionExtensions
         var securityOptions = configuration.GetSection(BankingSecurityOptions.SectionName).Get<BankingSecurityOptions>() ?? new();
         var authenticationEnabled = securityOptions.Authentication.Enabled && !environment.IsEnvironment("Testing");
 
+        // This shared extension keeps each microservice startup intentionally thin and consistent.
         services.AddControllers();
         services.AddProblemDetails();
         services.AddHealthChecks();
@@ -35,6 +36,7 @@ public static class BankingServiceCollectionExtensions
         {
             if (authenticationEnabled)
             {
+                // By default, business endpoints require auth unless a service explicitly opts out.
                 options.FallbackPolicy = new AuthorizationPolicyBuilder()
                     .AddAuthenticationSchemes(BankingAuthenticationDefaults.SchemeName)
                     .RequireAuthenticatedUser()
@@ -56,6 +58,7 @@ public static class BankingServiceCollectionExtensions
             }
             else
             {
+                // Testing disables auth globally so test cases can focus on business behavior.
                 options.AddPolicy(BankingPolicies.ExternalOrInternal, policy => policy.RequireAssertion(_ => true));
                 options.AddPolicy(BankingPolicies.ExternalClientOnly, policy => policy.RequireAssertion(_ => true));
                 options.AddPolicy(BankingPolicies.InternalServiceOnly, policy => policy.RequireAssertion(_ => true));

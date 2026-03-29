@@ -11,6 +11,9 @@ using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Deposit Service is the most orchestration-heavy service in the system, so it wires
+// HTTP APIs, persistence, downstream clients, outbox dispatch, message transport, and
+// retry workers in one place.
 builder.Services.AddBankingApiDefaults(builder.Configuration, builder.Environment);
 builder.Services.AddOpenApi();
 builder.Services.AddEndpointsApiExplorer();
@@ -51,6 +54,8 @@ if (isTesting)
 }
 else
 {
+    // Internal service calls flow through authenticated HttpClient handlers so the same
+    // service identity model is used consistently in runtime and Docker environments.
     builder.Services.AddHttpClient<IDepositAccountDirectory, HttpDepositAccountDirectory>((serviceProvider, httpClient) =>
     {
         var settings = serviceProvider.GetRequiredService<Microsoft.Extensions.Options.IOptions<AccountServiceOptions>>().Value;
@@ -74,16 +79,21 @@ var transport = builder.Environment.IsEnvironment("Testing")
 
 if (string.Equals(transport, DepositMessageTransport.InMemory, StringComparison.OrdinalIgnoreCase))
 {
+    // In-memory transport keeps integration tests fast and deterministic while preserving
+    // the same logical publish/consume flow as RabbitMQ.
     builder.Services.AddSingleton<InMemoryDepositMessageQueue>();
     builder.Services.AddSingleton<IDepositEventPublisher>(serviceProvider => serviceProvider.GetRequiredService<InMemoryDepositMessageQueue>());
     builder.Services.AddHostedService<InMemoryDepositMessageConsumer>();
 }
 else
 {
+    // RabbitMQ is used for the real asynchronous branch of the deposit workflow.
     builder.Services.AddSingleton<IDepositEventPublisher, RabbitMqDepositEventPublisher>();
     builder.Services.AddHostedService<RabbitMqDepositMessageConsumer>();
 }
 
+// These hosted services represent the operational side of the deposit workflow:
+// outbox dispatch for reliable publication and retry scanning for review recovery.
 builder.Services.AddHostedService<DepositOutboxDispatcher>();
 builder.Services.AddHostedService<DepositPendingReviewRetryWorker>();
 
@@ -109,6 +119,8 @@ if (isTesting)
 else
 {
     await app.Services.EnsureContextObjectsCreatedAsync<DepositDbContext>();
+    // Deposit schema evolves faster than the other services, so local startup also performs
+    // lightweight compatibility upgrades for added saga/review columns.
     await app.Services.EnsureDepositSchemaUpToDateAsync();
 }
 
