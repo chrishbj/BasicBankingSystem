@@ -8,11 +8,13 @@ The current first version is a demo portal that proves the UI boundary, customer
 
 ## Phase 1 Scope
 
-- demo customer sign-in by choosing an existing customer
+- demo customer sign-in with `customer number + identity last 4 digits`
 - dashboard with portfolio totals and recent activity
 - account list and account selection
 - grouped activity history
 - customer profile display
+- self-service deposit and withdrawal
+- deposit transaction status tracking
 
 ## Why A Separate Frontend
 
@@ -27,10 +29,14 @@ Separating them now keeps future authentication, authorization, routing, and dep
 
 The current portal reuses:
 
-- `GET /api/v1/customers`
+- `POST /api/v1/customers/portal-sign-in`
 - `GET /api/v1/accounts`
 - `GET /api/v1/accounts/{accountId}`
 - `GET /api/v1/accounts/{accountId}/activities`
+- `POST /api/v1/deposits`
+- `GET /api/v1/deposits`
+- `GET /api/v1/deposits/{transactionId}`
+- `POST /api/v1/accounts/{accountId}/withdrawals`
 
 This keeps the first version thin while a more customer-specific API surface is still being defined.
 
@@ -55,15 +61,23 @@ It intentionally hides review, compensation, and other back-office operations.
 
 ## Key Tradeoffs
 
-### Demo Sign-In First
+### Demo Sign-In Before Real IAM
 
-The portal currently uses a customer selector instead of real authentication.
+The portal now uses a dedicated demo sign-in endpoint instead of a customer selector.
 
 Why:
 
+- keeps raw identity numbers out of the customer directory response
 - helps validate navigation and customer-facing UX now
 - avoids blocking frontend progress on IAM design
 - keeps the first delivery lightweight
+
+Current behavior:
+
+- input: `customer number + identity last 4 digits`
+- backend validation: `POST /api/v1/customers/portal-sign-in`
+- non-standard demo identities are normalized by extracting digits and left-padding to four digits
+  - example: `WITHDRAW-DEMO-001` becomes `0001`
 
 ### Reuse Existing Services Before Adding BFF APIs
 

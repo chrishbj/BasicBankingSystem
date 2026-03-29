@@ -11,6 +11,7 @@ This guide starts the current local stack on Docker Desktop.
 - `deposit-service`
 - `audit-service`
 - `banking-web`
+- `banking-customer-portal`
 
 ## Prerequisites
 
@@ -41,7 +42,8 @@ docker compose --env-file infra/.env.example -f infra/docker-compose.docker-desk
 - `Account`: `http://localhost:5102`
 - `Deposit`: `http://localhost:5103`
 - `Audit`: `http://localhost:5104`
-- `Frontend`: `http://localhost:5300`
+- `Operations Console`: `http://localhost:5300`
+- `Customer Portal`: `http://localhost:5301`
 - `RabbitMQ Management`: `http://localhost:15672`
 
 ## Swagger UI
@@ -54,8 +56,15 @@ docker compose --env-file infra/.env.example -f infra/docker-compose.docker-desk
 ## Frontend
 
 - `Operations Console`: `http://localhost:5300`
+- `Customer Portal`: `http://localhost:5301`
 
 The frontend proxies API calls to the containerized backend services through Nginx, so you can use it directly without running Vite locally.
+
+Customer portal demo sign-in:
+
+- enter a `Customer Number`
+- enter the last 4 digits of the stored identity number
+- for demo identities such as `WITHDRAW-DEMO-001`, use the normalized last 4 digits `0001`
 
 ## Authentication Headers
 

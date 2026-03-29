@@ -64,6 +64,7 @@ BasicBankingSystem/
 - `POST /api/v1/customers`
 - `GET /api/v1/customers/{customerId}`
 - `GET /api/v1/customers`
+- `POST /api/v1/customers/portal-sign-in`
 - `POST /api/v1/customers/{customerId}/status`
 
 ### Account Service
@@ -127,6 +128,15 @@ npm install
 npm run dev
 ```
 
+The current demo customer portal sign-in uses:
+
+- `customer number`
+- the last 4 digits normalized from the stored identity number
+
+Example:
+
+- `WITHDRAW-DEMO-001` -> `0001`
+
 The Vite development server proxies API traffic to:
 
 - `Customer`: `http://localhost:5101`
@@ -144,6 +154,11 @@ Then open:
 
 - `http://localhost:5300`
 - `http://localhost:5301`
+
+Frontend notes:
+
+- `Operations Console` at `5300` now shows `Customer Number` explicitly in customer cards and the current selection panel
+- `Customer Portal` at `5301` signs in with `Customer Number + Identity Last 4 Digits`
 
 Default local ports:
 

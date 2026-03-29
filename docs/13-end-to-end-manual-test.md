@@ -53,6 +53,14 @@ The script will:
 
 Use Swagger UI to execute the following calls in order.
 
+## UI Notes
+
+- `Operations Console` at `http://localhost:5300` shows `Customer Number` explicitly in customer cards and in the current selection summary.
+- `Customer Portal` at `http://localhost:5301` signs in with `Customer Number + Identity Last 4 Digits`.
+- Demo identity normalization example:
+  - stored identity `WITHDRAW-DEMO-001`
+  - sign-in input `0001`
+
 ### 1. Create a Customer
 
 Open `http://localhost:5101/swagger` and call `POST /api/v1/customers` with:
