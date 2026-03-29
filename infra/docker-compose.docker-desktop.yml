@@ -160,6 +160,24 @@ services:
     ports:
       - "5300:80"
 
+  banking-customer-portal:
+    build:
+      context: ..
+      dockerfile: src/Banking.CustomerPortal/Dockerfile
+    container_name: basicbanking-customer-portal
+    restart: unless-stopped
+    depends_on:
+      customer-service:
+        condition: service_started
+      account-service:
+        condition: service_started
+      deposit-service:
+        condition: service_started
+      audit-service:
+        condition: service_started
+    ports:
+      - "5301:80"
+
 volumes:
   postgres-data:
   rabbitmq-data:

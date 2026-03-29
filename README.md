@@ -40,6 +40,7 @@ BasicBankingSystem/
     Banking.Gateway/
     Banking.BuildingBlocks/
     Banking.Web/
+    Banking.CustomerPortal/
     Banking.Services.Customer/
     Banking.Services.Account/
     Banking.Services.Deposit/
@@ -118,6 +119,14 @@ npm install
 npm run dev
 ```
 
+### Run the Customer Portal
+
+```powershell
+cd src/Banking.CustomerPortal
+npm install
+npm run dev
+```
+
 The Vite development server proxies API traffic to:
 
 - `Customer`: `http://localhost:5101`
@@ -134,6 +143,7 @@ docker compose --env-file infra/.env.example -f infra/docker-compose.docker-desk
 Then open:
 
 - `http://localhost:5300`
+- `http://localhost:5301`
 
 Default local ports:
 
@@ -192,6 +202,7 @@ The current implementation is still a local development skeleton using in-memory
 - [Postman Runner and Newman Guide](docs/15-postman-runner-and-newman.md)
 - [Frontend Technical Guide](docs/16-frontend-technical-guide.md)
 - [Backend Technical Guide](docs/17-backend-technical-guide.md)
+- [Customer Portal Overview](docs/18-customer-portal-overview.md)
 
 ### Chinese Docs
 

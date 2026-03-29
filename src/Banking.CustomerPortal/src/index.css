@@ -1,0 +1,84 @@
+:root {
+  --text: #56616c;
+  --text-h: #162433;
+  --bg: #f1f5f7;
+  --border: #d4dde4;
+  --accent: #0f6d62;
+  --panel-bg: rgba(255, 255, 255, 0.92);
+  --panel-accent: #f7fbfc;
+  --accent-border: rgba(15, 109, 98, 0.42);
+  --shadow:
+    rgba(28, 52, 74, 0.08) 0 20px 44px -28px,
+    rgba(28, 52, 74, 0.12) 0 10px 22px -18px;
+
+  --sans: 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  --heading: 'Trebuchet MS', 'Segoe UI', sans-serif;
+
+  font: 18px/145% var(--sans);
+  color: var(--text);
+  background: var(--bg);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#root {
+  width: 1400px;
+  max-width: 100%;
+  margin: 0 auto;
+  min-height: 100svh;
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background:
+    radial-gradient(circle at top left, rgba(15, 109, 98, 0.12), transparent 24%),
+    radial-gradient(circle at 80% 10%, rgba(38, 104, 184, 0.08), transparent 22%),
+    linear-gradient(180deg, #f7fafb 0%, #eef3f6 100%);
+}
+
+h1,
+h2,
+h3 {
+  color: var(--text-h);
+  font-family: var(--heading);
+  margin: 0;
+}
+
+h1 {
+  font-size: 58px;
+  line-height: 0.98;
+  letter-spacing: -0.04em;
+}
+
+h2 {
+  font-size: 28px;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+  margin-bottom: 10px;
+}
+
+h3 {
+  font-size: 22px;
+  margin-bottom: 10px;
+}
+
+p {
+  margin: 0;
+}
+
+@media (max-width: 1024px) {
+  :root {
+    font-size: 16px;
+  }
+
+  h1 {
+    font-size: 40px;
+  }
+
+  h2 {
+    font-size: 22px;
+  }
+}

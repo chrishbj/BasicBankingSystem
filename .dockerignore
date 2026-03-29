@@ -9,3 +9,5 @@
 docs/ch-cn/
 artifacts/
 infra/.env
+**/node_modules/
+**/dist/
