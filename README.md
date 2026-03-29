@@ -229,6 +229,7 @@ The current implementation is still a local development skeleton using in-memory
 - [GitHub About Snippets](docs/27-github-about-snippets.md)
 - [Interview Q And A](docs/28-interview-q-and-a.md)
 - [Database Schema And Relationships](docs/29-database-schema-and-relationships.md)
+- [Source Code Reading Guide](docs/30-source-code-reading-guide.md)
 
 ### Chinese Docs
 
