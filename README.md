@@ -39,6 +39,7 @@ BasicBankingSystem/
   src/
     Banking.Gateway/
     Banking.BuildingBlocks/
+    Banking.Web/
     Banking.Services.Customer/
     Banking.Services.Account/
     Banking.Services.Deposit/
@@ -107,6 +108,21 @@ dotnet run --project src/Banking.Services.Account
 dotnet run --project src/Banking.Services.Deposit
 dotnet run --project src/Banking.Services.Audit
 ```
+
+### Run the Frontend
+
+```powershell
+cd src/Banking.Web
+npm install
+npm run dev
+```
+
+The Vite development server proxies API traffic to:
+
+- `Customer`: `http://localhost:5101`
+- `Account`: `http://localhost:5102`
+- `Deposit`: `http://localhost:5103`
+- `Audit`: `http://localhost:5104`
 
 Default local ports:
 
