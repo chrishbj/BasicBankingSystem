@@ -57,8 +57,15 @@ type AccountHistoryFilterState = {
   to: string
 }
 
+const initialHealthState: Record<string, string> = {
+  customer: 'Checking',
+  account: 'Checking',
+  deposit: 'Checking',
+  audit: 'Checking',
+}
+
 export function useOperationsConsole() {
-  const [health, setHealth] = useState<Record<string, string>>({})
+  const [health, setHealth] = useState<Record<string, string>>(initialHealthState)
   const [message, setMessage] = useState('Ready.')
   const [toast, setToast] = useState('')
   const [busyAction, setBusyAction] = useState('')
@@ -193,6 +200,15 @@ export function useOperationsConsole() {
   const canSubmitDeposit = !!customer && !!account && Object.values(depositFormErrors).every((item) => !item) && !busyAction
 
   async function loadHealth() {
+    setHealth((current) => {
+      const next = { ...current }
+      for (const service of Object.keys(initialHealthState)) {
+        next[service] = current[service] === 'Healthy' ? 'Checking' : (current[service] ?? 'Checking')
+      }
+
+      return next
+    })
+
     const services = [
       ['customer', '/customer-api'],
       ['account', '/account-api'],

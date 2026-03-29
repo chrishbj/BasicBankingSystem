@@ -11,6 +11,7 @@ import type {
 } from './types'
 
 const apiKey = 'local-dev-api-key'
+const healthRequestTimeoutMs = 1500
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(path, {
@@ -31,7 +32,24 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export async function getHealth(basePath: string): Promise<string> {
-  const response = await fetch(`${basePath}/api/v1/health`)
+  const controller = new AbortController()
+  const timeoutHandle = window.setTimeout(() => controller.abort(), healthRequestTimeoutMs)
+
+  let response: Response
+  try {
+    response = await fetch(`${basePath}/api/v1/health`, {
+      signal: controller.signal,
+    })
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      throw new Error('Timed out')
+    }
+
+    throw error
+  } finally {
+    window.clearTimeout(timeoutHandle)
+  }
+
   if (!response.ok) {
     throw new Error(`${response.status} ${response.statusText}`)
   }

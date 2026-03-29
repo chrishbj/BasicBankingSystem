@@ -19,14 +19,14 @@ It demonstrates:
 
 When the Docker Desktop stack is running, the main entry points are:
 
-- `Operations Console`: `http://localhost:5300`
-- `Customer Portal`: `http://localhost:5301`
-- `Customer Swagger`: `http://localhost:5101/swagger`
-- `Account Swagger`: `http://localhost:5102/swagger`
-- `Deposit Swagger`: `http://localhost:5103/swagger`
-- `Audit Swagger`: `http://localhost:5104/swagger`
+- `Operations Console`: `http://localhost:18090`
+- `Customer Portal`: `http://localhost:18091`
+- `Customer Swagger`: `http://localhost:18081/swagger`
+- `Account Swagger`: `http://localhost:18082/swagger`
+- `Deposit Swagger`: `http://localhost:18083/swagger`
+- `Audit Swagger`: `http://localhost:18084/swagger`
 
-If those host ports are already taken on your machine, the Docker Compose file supports overriding them with environment variables such as `BANKING_WEB_PORT`, `BANKING_CUSTOMER_PORTAL_PORT`, and the individual service port settings in [infra/.env.example](/E:/DemoProjects/BasicBankingSystem/infra/.env.example).
+The recommended Docker Desktop port set is defined in [docker.env.local](/E:/DemoProjects/BasicBankingSystem/infra/docker.env.local). If you need different host ports, adjust that file or use [\.env.example](/E:/DemoProjects/BasicBankingSystem/infra/.env.example) as a template.
 
 Customer portal demo sign-in uses:
 
@@ -149,7 +149,7 @@ npm run dev
 ### Run Docker Desktop Stack
 
 ```powershell
-docker compose --env-file infra/.env.example -f infra/docker-compose.docker-desktop.yml up --build -d
+docker compose --env-file infra/docker.env.local -f infra/docker-compose.docker-desktop.yml up --build -d
 ```
 
 ## Documentation Roadmap
