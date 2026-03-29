@@ -223,6 +223,8 @@ The current implementation is still a local development skeleton using in-memory
 - [Saga, Outbox, And Idempotency](docs/21-saga-outbox-idempotency.md)
 - [Testing And Quality](docs/22-testing-and-quality.md)
 - [OpenAPI And API Contracts](docs/23-openapi-and-api-contracts.md)
+- [One-Page Showcase Summary](docs/24-showcase-one-page-summary.md)
+- [Showcase Talk Track](docs/25-showcase-talk-track.md)
 
 ### Chinese Docs
 
