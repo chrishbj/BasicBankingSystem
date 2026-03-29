@@ -111,6 +111,10 @@ function groupActivitiesByDate(items: AccountActivityResponse[]) {
   return Array.from(grouped.entries())
 }
 
+function getIdentityLast4(identityNumber?: string) {
+  return (identityNumber ?? '').slice(-4)
+}
+
 function App() {
   const [activeTab, setActiveTab] = useState<PortalTab>('dashboard')
   const [customers, setCustomers] = useState<CustomerResponse[]>([])
@@ -125,8 +129,12 @@ function App() {
     referenceNumber: `PORTAL-REF-${Date.now()}`,
     note: 'Submitted from the customer portal.',
   })
+  const [loginForm, setLoginForm] = useState({
+    customerNumber: '',
+    identityLast4: '',
+  })
   const [busy, setBusy] = useState(false)
-  const [message, setMessage] = useState('Pick a customer to enter the portal demo.')
+  const [message, setMessage] = useState('Enter your customer number and the last 4 digits of your identity number.')
 
   useEffect(() => {
     void loadCustomers()
@@ -161,12 +169,7 @@ function App() {
       setBusy(true)
       const response = await getCustomers()
       setCustomers(response.items)
-
-      if (!currentCustomer && response.items.length > 0) {
-        await loadCustomerWorkspace(response.items[0])
-      } else {
-        setMessage('Customer directory loaded.')
-      }
+      setMessage('Customer directory loaded. Sign in to continue.')
     } catch (error) {
       setMessage(`Could not load customers: ${error instanceof Error ? error.message : String(error)}`)
     } finally {
@@ -196,6 +199,42 @@ function App() {
     } finally {
       setBusy(false)
     }
+  }
+
+  async function handleSignIn() {
+    const customerNumber = loginForm.customerNumber.trim()
+    const identityLast4 = loginForm.identityLast4.trim()
+
+    if (!customerNumber || identityLast4.length !== 4) {
+      setMessage('Enter a customer number and the last 4 digits of your identity number.')
+      return
+    }
+
+    const matched = customers.find((item) =>
+      item.customerNumber.trim().toUpperCase() === customerNumber.toUpperCase()
+      && getIdentityLast4(item.identityNumber) === identityLast4)
+
+    if (!matched) {
+      setMessage('Sign-in details did not match an existing customer.')
+      return
+    }
+
+    await loadCustomerWorkspace(matched)
+  }
+
+  function handleSignOut() {
+    setCurrentCustomer(null)
+    setAccounts([])
+    setSelectedAccount(null)
+    setActivities([])
+    setLatestDeposit(null)
+    setDepositStatuses([])
+    setActiveTab('dashboard')
+    setLoginForm({
+      customerNumber: '',
+      identityLast4: '',
+    })
+    setMessage('Signed out. Enter your customer number and identity last 4 digits to sign in again.')
   }
 
   async function loadAccountWorkspace(accountId: string) {
@@ -314,6 +353,75 @@ function App() {
     }
   }
 
+  if (!currentCustomer) {
+    return (
+      <main className="portal-shell">
+        <section className="portal-hero portal-login-hero">
+          <div>
+            <p className="eyebrow">Basic Banking System</p>
+            <h1>Customer Sign In</h1>
+            <p className="intro">
+              Use your customer number and the last 4 digits of your identity number to enter this local demo portal.
+            </p>
+          </div>
+        </section>
+
+        <section className="portal-login-shell">
+          <article className="panel portal-login-card">
+            <div className="panel-head">
+              <div>
+                <p className="eyebrow">Secure Access</p>
+                <h2>Sign In</h2>
+              </div>
+            </div>
+
+            <div className="form-grid">
+              <label className="field-label">
+                <span>Customer number</span>
+                <input
+                  value={loginForm.customerNumber}
+                  onChange={(event) => setLoginForm({ ...loginForm, customerNumber: event.target.value })}
+                  placeholder="Example: C202603..."
+                  disabled={busy}
+                />
+              </label>
+              <label className="field-label">
+                <span>Identity number last 4 digits</span>
+                <input
+                  value={loginForm.identityLast4}
+                  onChange={(event) => setLoginForm({ ...loginForm, identityLast4: event.target.value.slice(0, 4) })}
+                  placeholder="Example: 1234"
+                  maxLength={4}
+                  disabled={busy}
+                />
+              </label>
+            </div>
+
+            <div className="action-row">
+              <button type="button" onClick={() => void handleSignIn()} disabled={busy || customers.length === 0}>
+                {busy ? 'Signing in...' : 'Sign in'}
+              </button>
+              <button type="button" className="ghost-button" onClick={() => void loadCustomers()} disabled={busy}>
+                Refresh customer directory
+              </button>
+            </div>
+
+            <p className="status-note">{message}</p>
+          </article>
+
+          <article className="panel portal-login-help">
+            <p className="eyebrow">Demo Access Notes</p>
+            <ul className="bullet-list">
+              <li>This local demo sign-in does not replace real authentication.</li>
+              <li>It matches an existing customer record by customer number and identity last 4 digits.</li>
+              <li>The next step after this demo is to replace it with customer-scoped authentication.</li>
+            </ul>
+          </article>
+        </section>
+      </main>
+    )
+  }
+
   return (
     <main className="portal-shell">
       <section className="portal-hero">
@@ -322,30 +430,17 @@ function App() {
           <h1>Customer Portal</h1>
           <p className="intro">
             A customer-facing self-service experience for balances, activity history, and profile information.
-            This first version uses a demo customer selector in place of full authentication.
+            The current sign-in flow is still a local demo credential check.
           </p>
         </div>
         <div className="hero-side">
-          <label className="field-label">
-            <span>Portal customer sign-in</span>
-            <select
-              value={currentCustomer?.customerId ?? ''}
-              onChange={(event) => {
-                const next = customers.find((item) => item.customerId === event.target.value)
-                if (next) {
-                  void loadCustomerWorkspace(next)
-                }
-              }}
-              disabled={busy || customers.length === 0}
-            >
-              <option value="">Choose customer</option>
-              {customers.map((item) => (
-                <option key={item.customerId} value={item.customerId}>
-                  {item.fullName} | {item.customerNumber}
-                </option>
-              ))}
-            </select>
-          </label>
+          <div className="mini-detail-list">
+            <div><dt>Signed in as</dt><dd>{currentCustomer.fullName}</dd></div>
+            <div><dt>Customer number</dt><dd>{currentCustomer.customerNumber}</dd></div>
+          </div>
+          <div className="action-row">
+            <button type="button" className="ghost-button" onClick={handleSignOut} disabled={busy}>Sign out</button>
+          </div>
           <p className="status-note">{message}</p>
         </div>
       </section>
@@ -378,15 +473,11 @@ function App() {
 
           <article className="panel compact-panel">
             <p className="eyebrow">Current Customer</p>
-            {currentCustomer ? (
-              <dl className="mini-detail-list">
-                <div><dt>Name</dt><dd>{currentCustomer.fullName}</dd></div>
-                <div><dt>Customer number</dt><dd>{currentCustomer.customerNumber}</dd></div>
-                <div><dt>Status</dt><dd>{getCustomerStatusLabel(currentCustomer.status)}</dd></div>
-              </dl>
-            ) : (
-              <p>Select a customer to start the demo portal.</p>
-            )}
+            <dl className="mini-detail-list">
+              <div><dt>Name</dt><dd>{currentCustomer.fullName}</dd></div>
+              <div><dt>Customer number</dt><dd>{currentCustomer.customerNumber}</dd></div>
+              <div><dt>Status</dt><dd>{getCustomerStatusLabel(currentCustomer.status)}</dd></div>
+            </dl>
           </article>
         </aside>
 

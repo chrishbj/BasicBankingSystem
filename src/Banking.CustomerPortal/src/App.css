@@ -21,6 +21,23 @@
   padding: 28px;
 }
 
+.portal-login-hero {
+  align-items: center;
+  justify-content: flex-start;
+  min-height: 220px;
+}
+
+.portal-login-shell {
+  display: grid;
+  grid-template-columns: minmax(0, 520px) minmax(0, 1fr);
+  gap: 20px;
+}
+
+.portal-login-card,
+.portal-login-help {
+  min-width: 0;
+}
+
 .hero-side {
   min-width: 280px;
   display: grid;
@@ -429,6 +446,10 @@ textarea {
 
   .portal-layout {
     display: flex;
+  }
+
+  .portal-login-shell {
+    grid-template-columns: 1fr;
   }
 
   .summary-grid,
