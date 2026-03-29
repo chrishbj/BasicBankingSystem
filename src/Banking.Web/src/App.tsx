@@ -152,7 +152,8 @@ function App() {
 
           {activeTab === 'account' && (
             <AccountPanel
-              customerId={customer?.customerId}
+              customerName={customer?.fullName}
+              customerNumber={customer?.customerNumber}
               account={account}
               accountList={accountList}
               lookupAccountId={accountQuery.accountId}
@@ -178,9 +179,8 @@ function App() {
 
           {activeTab === 'deposit' && (
             <DepositPanel
-              customerId={customer?.customerId}
               customerName={customer?.fullName}
-              accountId={account?.accountId}
+              customerNumber={customer?.customerNumber}
               accountNumber={account?.accountNumber}
               accountCurrency={account?.currency}
               deposit={deposit}
@@ -205,7 +205,8 @@ function App() {
               pendingReviewItems={pendingReviewItems}
               depositSearchResult={depositSearchResult}
               selectedCustomerName={customer?.fullName}
-              selectedCustomerId={customer?.customerId}
+              selectedCustomerNumber={customer?.customerNumber}
+              selectedAccountNumber={account?.accountNumber}
               selectedAccountId={account?.accountId}
               onSortByChange={setSortBy}
               onDescendingChange={setDescending}

@@ -87,6 +87,7 @@
 .context-summary-grid dd {
   margin: 8px 0 0;
   color: var(--text-h);
+  word-break: break-word;
 }
 
 .info-card {
@@ -293,6 +294,13 @@
   align-items: center;
 }
 
+.subtle-code {
+  color: var(--text);
+  font-size: 12px;
+  word-break: break-all;
+  overflow-wrap: anywhere;
+}
+
 .health-grid {
   display: grid;
   grid-template-columns: 1fr;
@@ -448,6 +456,8 @@ td span,
   border: 1px solid var(--border);
   color: var(--text-h);
   font-size: 13px;
+  max-width: 100%;
+  overflow-wrap: anywhere;
 }
 
 .account-history-table {

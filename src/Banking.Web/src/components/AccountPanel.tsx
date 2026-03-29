@@ -10,7 +10,8 @@ type AccountHistoryFilterState = {
 }
 
 type AccountPanelProps = {
-  customerId?: string
+  customerName?: string
+  customerNumber?: string
   account: AccountResponse | null
   accountList: AccountSummaryResponse[]
   lookupAccountId: string
@@ -61,7 +62,8 @@ function getAccountStatusTone(status: number): StatusTone {
 }
 
 export function AccountPanel({
-  customerId,
+  customerName,
+  customerNumber,
   account,
   accountList,
   lookupAccountId,
@@ -106,11 +108,11 @@ export function AccountPanel({
 
       <div className="search-grid account-search-grid">
         <label className="field-label">
-          <span>Lookup account ID</span>
+          <span>Lookup internal account reference</span>
           <input
             value={lookupAccountId}
             onChange={(event) => onLookupAccountIdChange(event.target.value)}
-            placeholder="Account ID"
+            placeholder="Internal account reference"
             disabled={busy}
           />
         </label>
@@ -161,9 +163,9 @@ export function AccountPanel({
       </div>
 
       <div className="actions">
-        {customerId && <span className="helper-chip">Active customer: {customerId}</span>}
-        {account && <span className="helper-chip">Selected account: {account.accountId}</span>}
-        <button className="ghost-button" onClick={onLoadCustomerAccounts} disabled={!customerId || busy}>
+        {customerName && <span className="helper-chip">Customer: {customerName}{customerNumber ? ` | ${customerNumber}` : ''}</span>}
+        {account && <span className="helper-chip">Account: {account.accountNumber}</span>}
+        <button className="ghost-button" onClick={onLoadCustomerAccounts} disabled={!customerName || busy}>
           {busy ? 'Working...' : 'Load customer accounts'}
         </button>
       </div>
@@ -182,8 +184,8 @@ export function AccountPanel({
                 <StatusBadge label={getAccountStatusLabel(item.status)} tone={getAccountStatusTone(item.status)} />
               </div>
               <span>{item.accountNumber}</span>
-              <span>{item.accountId}</span>
               <span>{item.availableBalance.toFixed(2)} / {item.ledgerBalance.toFixed(2)} {item.currency}</span>
+              <span className="subtle-code">{item.accountId}</span>
             </button>
           ))}
         </div>
@@ -191,8 +193,8 @@ export function AccountPanel({
 
       {account && (
         <dl className="detail-list">
-          <div><dt>Customer ID</dt><dd>{account.customerId}</dd></div>
-          <div><dt>Account ID</dt><dd>{account.accountId}</dd></div>
+          <div><dt>Customer</dt><dd>{customerName ?? 'Selected customer'}</dd></div>
+          {customerNumber && <div><dt>Customer Number</dt><dd>{customerNumber}</dd></div>}
           <div><dt>Account Number</dt><dd>{account.accountNumber}</dd></div>
           <div><dt>Status</dt><dd>{getAccountStatusLabel(account.status)}</dd></div>
           <div><dt>Type</dt><dd>{account.accountType}</dd></div>
@@ -200,6 +202,7 @@ export function AccountPanel({
           <div><dt>Available</dt><dd>{account.availableBalance.toFixed(2)}</dd></div>
           <div><dt>Ledger</dt><dd>{account.ledgerBalance.toFixed(2)}</dd></div>
           <div><dt>Opened At</dt><dd>{new Date(account.openedAt).toLocaleString()}</dd></div>
+          <div><dt>Internal Reference</dt><dd className="subtle-code">{account.accountId}</dd></div>
         </dl>
       )}
 
@@ -224,8 +227,8 @@ export function AccountPanel({
                     onClick={() => onSelectHistoryItem(item)}
                   >
                     <td>
-                      <strong>{item.transactionId}</strong>
-                      <span>{item.transactionNumber}</span>
+                      <strong>{item.transactionNumber}</strong>
+                      <span className="subtle-code">{item.transactionId}</span>
                     </td>
                     <td>
                       <StatusBadge label={getDepositStatusLabel(item.status)} tone={getDepositStatusTone(item.status)} />
@@ -247,7 +250,7 @@ export function AccountPanel({
               <p className="eyebrow">Transaction Detail</p>
               <h3>{selectedHistoryItem.transactionNumber}</h3>
               <dl className="detail-list">
-                <div><dt>Transaction ID</dt><dd>{selectedHistoryItem.transactionId}</dd></div>
+                <div><dt>Transaction Number</dt><dd>{selectedHistoryItem.transactionNumber}</dd></div>
                 <div>
                   <dt>Status</dt>
                   <dd>
@@ -257,12 +260,11 @@ export function AccountPanel({
                     />
                   </dd>
                 </div>
-                <div><dt>Customer ID</dt><dd>{selectedHistoryItem.customerId}</dd></div>
-                <div><dt>Account ID</dt><dd>{selectedHistoryItem.accountId}</dd></div>
                 <div><dt>Amount</dt><dd>{selectedHistoryItem.amount.toFixed(2)} {selectedHistoryItem.currency}</dd></div>
                 <div><dt>Channel</dt><dd>{selectedHistoryItem.channel}</dd></div>
                 <div><dt>Requested At</dt><dd>{new Date(selectedHistoryItem.requestedAt).toLocaleString()}</dd></div>
                 <div><dt>Posted At</dt><dd>{selectedHistoryItem.postedAt ? new Date(selectedHistoryItem.postedAt).toLocaleString() : 'Pending'}</dd></div>
+                <div><dt>Internal Reference</dt><dd className="subtle-code">{selectedHistoryItem.transactionId}</dd></div>
               </dl>
             </aside>
           )}

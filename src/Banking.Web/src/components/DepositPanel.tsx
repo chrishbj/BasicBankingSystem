@@ -9,9 +9,8 @@ type DepositFormState = {
 }
 
 type DepositPanelProps = {
-  customerId?: string
   customerName?: string
-  accountId?: string
+  customerNumber?: string
   accountNumber?: string
   accountCurrency?: string
   deposit: DepositResponse | null
@@ -26,9 +25,8 @@ type DepositPanelProps = {
 }
 
 export function DepositPanel({
-  customerId,
   customerName,
-  accountId,
+  customerNumber,
   accountNumber,
   accountCurrency,
   deposit,
@@ -50,13 +48,14 @@ export function DepositPanel({
       <div className="info-card">
         <p className="eyebrow">Deposit Target</p>
         <p>
-          {customerId && accountId
-            ? `This deposit will be submitted for ${customerName ?? customerId}, account ${accountNumber ?? accountId}.`
+          {customerName && accountNumber
+            ? `This deposit will be submitted for ${customerName}${customerNumber ? ` (${customerNumber})` : ''}, account ${accountNumber}.`
             : 'Select a customer and one of its accounts before submitting a deposit.'}
         </p>
         <div className="actions">
-          {customerId && <span className="helper-chip">Customer: {customerId}</span>}
-          {accountId && <span className="helper-chip">Account: {accountId}</span>}
+          {customerName && <span className="helper-chip">Customer: {customerName}</span>}
+          {customerNumber && <span className="helper-chip">Customer No: {customerNumber}</span>}
+          {accountNumber && <span className="helper-chip">Account No: {accountNumber}</span>}
           {accountCurrency && <span className="helper-chip">Currency: {accountCurrency}</span>}
         </div>
       </div>
@@ -95,10 +94,11 @@ export function DepositPanel({
       </div>
       {deposit && (
         <dl className="detail-list">
-          <div><dt>Transaction</dt><dd>{deposit.transactionId}</dd></div>
+          <div><dt>Transaction Number</dt><dd>{deposit.transactionNumber}</dd></div>
           <div><dt>Status</dt><dd>{badge && <StatusBadge label={badge.label} tone={badge.tone} />}</dd></div>
           <div><dt>Correlation</dt><dd>{deposit.correlationId}</dd></div>
           <div><dt>Failure</dt><dd>{deposit.failureCode ?? 'None'}</dd></div>
+          <div><dt>Internal Reference</dt><dd className="subtle-code">{deposit.transactionId}</dd></div>
         </dl>
       )}
     </article>

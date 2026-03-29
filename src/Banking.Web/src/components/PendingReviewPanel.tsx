@@ -17,7 +17,8 @@ type PendingReviewPanelProps = {
   pendingReviewItems: PendingReviewDepositSummaryResponse[]
   depositSearchResult: DepositResponse[]
   selectedCustomerName?: string
-  selectedCustomerId?: string
+  selectedCustomerNumber?: string
+  selectedAccountNumber?: string
   selectedAccountId?: string
   onSortByChange: (sortBy: PendingReviewSortBy) => void
   onDescendingChange: (descending: boolean) => void
@@ -38,7 +39,8 @@ export function PendingReviewPanel({
   pendingReviewItems,
   depositSearchResult,
   selectedCustomerName,
-  selectedCustomerId,
+  selectedCustomerNumber,
+  selectedAccountNumber,
   selectedAccountId,
   onSortByChange,
   onDescendingChange,
@@ -76,7 +78,7 @@ export function PendingReviewPanel({
             Descending order
           </label>
           <button onClick={onLoadQueue} disabled={busy}>{busy ? 'Working...' : 'Load queue'}</button>
-          <button className="ghost-button" onClick={onCreateDemo} disabled={!selectedCustomerId || !selectedAccountId || busy}>
+          <button className="ghost-button" onClick={onCreateDemo} disabled={!selectedCustomerName || !selectedAccountId || busy}>
             Create demo review item
           </button>
           <button className="ghost-button" onClick={onSearchDeposits} disabled={busy}>Search matching deposits</button>
@@ -90,8 +92,9 @@ export function PendingReviewPanel({
           In this local environment, you can create a safe demo item for the selected customer and account, then retry or resolve it here.
         </p>
         <div className="actions">
-          {selectedCustomerId && <span className="helper-chip">Customer: {selectedCustomerName ?? selectedCustomerId}</span>}
-          {selectedAccountId && <span className="helper-chip">Account: {selectedAccountId}</span>}
+          {selectedCustomerName && <span className="helper-chip">Customer: {selectedCustomerName}</span>}
+          {selectedCustomerNumber && <span className="helper-chip">Customer No: {selectedCustomerNumber}</span>}
+          {selectedAccountNumber && <span className="helper-chip">Account No: {selectedAccountNumber}</span>}
         </div>
       </div>
 
@@ -145,8 +148,9 @@ export function PendingReviewPanel({
               {pendingReviewItems.map((item) => (
                 <tr key={item.transactionId}>
                   <td>
-                    <strong>{item.transactionId}</strong>
-                    <span>{item.customerId}</span>
+                    <strong>{item.transactionNumber}</strong>
+                    <span>{item.amount.toFixed(2)} {item.currency}</span>
+                    <span className="subtle-code">{item.transactionId}</span>
                   </td>
                   <td>
                     <StatusBadge
@@ -178,10 +182,10 @@ export function PendingReviewPanel({
           <ul>
               {depositSearchResult.map((item) => (
                 <li key={item.transactionId}>
-                  <strong>{item.transactionId}</strong>
+                  <strong>{item.transactionNumber}</strong>
                   <span>{getDepositStatusLabel(item.status)}</span>
                   <span>{getReviewResolutionLabel(item.reviewResolution)}</span>
-                  <span>{item.correlationId}</span>
+                  <span className="subtle-code">{item.transactionId}</span>
                 </li>
               ))}
           </ul>

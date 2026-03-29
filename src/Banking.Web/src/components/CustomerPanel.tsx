@@ -122,11 +122,12 @@ export function CustomerPanel({
       </div>
       {customer && (
         <dl className="detail-list">
-          <div><dt>Customer ID</dt><dd>{customer.customerId}</dd></div>
+          <div><dt>Customer Name</dt><dd>{customer.fullName}</dd></div>
           <div><dt>Customer Number</dt><dd>{customer.customerNumber}</dd></div>
           <div><dt>Status</dt><dd>{getCustomerStatusLabel(customer.status)}</dd></div>
           <div><dt>Mobile</dt><dd>{customer.mobile}</dd></div>
           <div><dt>Email</dt><dd>{customer.email}</dd></div>
+          <div><dt>Internal Reference</dt><dd className="subtle-code">{customer.customerId}</dd></div>
         </dl>
       )}
       {customers.length > 0 && (
@@ -145,8 +146,8 @@ export function CustomerPanel({
                   <StatusBadge label={getCustomerStatusLabel(item.status)} tone={getCustomerStatusTone(item.status)} />
                 </div>
                 <span>{item.customerNumber}</span>
-                <span>{item.customerId}</span>
                 <span>{item.mobile}</span>
+                <span className="subtle-code">{item.customerId}</span>
               </button>
             ))}
           </div>
