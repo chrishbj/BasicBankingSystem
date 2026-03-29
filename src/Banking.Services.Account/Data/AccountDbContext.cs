@@ -23,6 +23,8 @@ public sealed class AccountDbContext(DbContextOptions<AccountDbContext> options)
         account.Property(x => x.AvailableBalance).HasPrecision(18, 2);
         account.Property(x => x.LedgerBalance).HasPrecision(18, 2);
 
+        // Human-facing account numbers must stay unique because UI and service lookup flows
+        // prefer account number over internal ids.
         account.HasIndex(x => x.AccountNumber).IsUnique();
         account.HasIndex(x => x.CustomerId);
 
@@ -38,6 +40,7 @@ public sealed class AccountDbContext(DbContextOptions<AccountDbContext> options)
         posting.Property(x => x.CorrelationId).HasMaxLength(128);
         posting.Property(x => x.ReversalOfPostingReference).HasMaxLength(64);
 
+        // Account posting history is append-like and queried mostly by account or reversal reference.
         posting.HasIndex(x => x.AccountId);
         posting.HasIndex(x => x.ReversalOfPostingReference);
     }

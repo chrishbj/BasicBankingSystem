@@ -35,8 +35,10 @@ public sealed class DepositDbContext(DbContextOptions<DepositDbContext> options)
         deposit.Property(x => x.ReviewLastActionBy).HasMaxLength(100);
         deposit.Property(x => x.ReviewNote).HasMaxLength(1000);
 
+        // Unique transaction and idempotency keys protect both operator visibility and financial safety.
         deposit.HasIndex(x => x.TransactionNumber).IsUnique();
         deposit.HasIndex(x => x.IdempotencyKey).IsUnique();
+        // PendingReview scanning is status-driven, so this index favors the retry worker and operator queue.
         deposit.HasIndex(x => new { x.Status, x.LastCompensationAttemptAt });
 
         var outbox = modelBuilder.Entity<DepositOutboxMessage>();
@@ -49,6 +51,8 @@ public sealed class DepositDbContext(DbContextOptions<DepositDbContext> options)
         outbox.Property(x => x.Payload).HasColumnType("text");
         outbox.Property(x => x.LastError).HasMaxLength(1000);
 
+        // The dispatcher reads unprocessed messages in occurred order, so the processed/occurred
+        // index keeps outbox polling efficient even as the table grows.
         outbox.HasIndex(x => new { x.ProcessedAt, x.OccurredAt });
     }
 }

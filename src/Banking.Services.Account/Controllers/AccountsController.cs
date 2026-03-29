@@ -64,6 +64,8 @@ public sealed class AccountsController(IAccountService accountService) : Control
         [FromBody] ApplyDepositRequest request,
         CancellationToken cancellationToken)
     {
+        // Balance mutation endpoints stay internal-only so external callers cannot bypass
+        // the transaction workflow owned by Deposit Service.
         try
         {
             return Ok(await accountService.ApplyDepositAsync(accountId, request, cancellationToken));
@@ -115,6 +117,8 @@ public sealed class AccountsController(IAccountService accountService) : Control
         [FromBody] ReverseDepositRequest request,
         CancellationToken cancellationToken)
     {
+        // Compensation is a first-class API because the saga may need to reverse a posted deposit
+        // after the happy path has already moved balance in the account ledger.
         try
         {
             return Ok(await accountService.ReverseDepositAsync(accountId, request, cancellationToken));

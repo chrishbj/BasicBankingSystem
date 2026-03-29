@@ -22,6 +22,7 @@ public sealed class DepositsController(IDepositService depositService, IHostEnvi
     {
         if (string.IsNullOrWhiteSpace(idempotencyKey))
         {
+            // Deposit creation is intentionally idempotent because retries are normal in financial clients.
             return BadRequest(new ProblemDetails
             {
                 Title = "Missing idempotency key",
@@ -41,6 +42,8 @@ public sealed class DepositsController(IDepositService depositService, IHostEnvi
                 correlationId,
                 cancellationToken);
 
+            // AcceptedAtAction reflects the asynchronous nature of the workflow:
+            // the request is durable, but downstream processing may still be running.
             return AcceptedAtAction(nameof(GetById), new { transactionId = deposit.TransactionId }, deposit);
         }
         catch (InvalidDepositRequestException exception)
@@ -95,6 +98,8 @@ public sealed class DepositsController(IDepositService depositService, IHostEnvi
         [FromQuery] int pageSize = 20,
         CancellationToken cancellationToken = default)
     {
+        // This endpoint exposes the operator queue for cases where saga automation stopped
+        // and manual intervention or supervised retry is required.
         return Ok(await depositService.GetPendingReviewAsync(sortBy, descending, pageNumber, pageSize, cancellationToken));
     }
 
@@ -113,6 +118,8 @@ public sealed class DepositsController(IDepositService depositService, IHostEnvi
 
         try
         {
+            // Demo-only endpoint: creates a stable PendingReview item so the UI can showcase
+            // retry and manual resolution flows without manufacturing real downstream failures.
             return Ok(await depositService.CreatePendingReviewDemoAsync(request, correlationId, cancellationToken));
         }
         catch (InvalidDepositRequestException exception)

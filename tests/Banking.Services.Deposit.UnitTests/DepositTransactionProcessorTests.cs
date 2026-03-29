@@ -14,6 +14,7 @@ public sealed class DepositTransactionProcessorTests
     [Fact]
     public async Task ProcessAsync_Should_MarkDepositSucceeded_When_PostingSucceeds()
     {
+        // Happy-path saga test: posting succeeds, audit succeeds, and the workflow reaches Succeeded.
         var repository = new InMemoryDepositRepository();
         var transaction = BuildTransaction("dep-success-001");
         await repository.AddAsync(
@@ -67,6 +68,7 @@ public sealed class DepositTransactionProcessorTests
     [Fact]
     public async Task ProcessAsync_Should_NotRollbackTransaction_When_AuditRecordingFails()
     {
+        // Audit failure is intentionally non-transactional with respect to the balance workflow.
         var repository = new InMemoryDepositRepository();
         var transaction = BuildTransaction("dep-audit-failure-001");
         await repository.AddAsync(
@@ -90,6 +92,8 @@ public sealed class DepositTransactionProcessorTests
     [Fact]
     public async Task ProcessAsync_Should_Compensate_When_LocalFinalizationFails_After_AccountPosting()
     {
+        // This simulates the most interesting distributed failure: the balance moved, but a later
+        // local step failed, so the saga must compensate instead of simply returning Failed.
         var repository = new FailAfterPostingDepositRepository();
         var transaction = BuildTransaction("dep-compensated-001");
         await repository.AddAsync(
@@ -119,6 +123,7 @@ public sealed class DepositTransactionProcessorTests
     [Fact]
     public async Task RetryCompensationAsync_Should_ResolvePendingReview_When_ReversalLaterSucceeds()
     {
+        // Review retry proves the workflow can re-enter the compensation branch after an operator action.
         var repository = new InMemoryDepositRepository();
         var transaction = BuildTransaction("dep-review-retry-001");
         transaction.Status = DepositStatus.PendingReview;
