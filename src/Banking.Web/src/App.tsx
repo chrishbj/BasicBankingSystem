@@ -195,6 +195,7 @@ function App() {
               onSubmit={() => void handleSubmitDeposit()}
               onWithdraw={() => void handleSubmitWithdrawal()}
               onRefresh={() => void handleRefreshDeposit()}
+              onGoToAccount={() => setActiveTab('account')}
             />
           )}
 
@@ -216,6 +217,7 @@ function App() {
               onSubmit={() => void handleSubmitDeposit()}
               onWithdraw={() => void handleSubmitWithdrawal()}
               onRefresh={() => void handleRefreshDeposit()}
+              onGoToAccount={() => setActiveTab('account')}
             />
           )}
 
@@ -240,6 +242,7 @@ function App() {
               onSearchDeposits={() => void handleSearchDeposits()}
               onRetry={(transactionId) => void handleRetryPendingReview(transactionId)}
               onResolve={(transactionId, resolution) => void handleResolvePendingReview(transactionId, resolution)}
+              onGoToAccount={() => setActiveTab('account')}
             />
           )}
         </section>

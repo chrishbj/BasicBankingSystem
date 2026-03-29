@@ -190,6 +190,8 @@ The current implementation is still a local development skeleton using in-memory
 - [End-to-End Manual Test Guide](docs/13-end-to-end-manual-test.md)
 - [Postman Testing Guide](docs/14-postman-testing.md)
 - [Postman Runner and Newman Guide](docs/15-postman-runner-and-newman.md)
+- [Frontend Technical Guide](docs/16-frontend-technical-guide.md)
+- [Backend Technical Guide](docs/17-backend-technical-guide.md)
 
 ### Chinese Docs
 

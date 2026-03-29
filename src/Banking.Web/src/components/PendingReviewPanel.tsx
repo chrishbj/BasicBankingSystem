@@ -29,6 +29,7 @@ type PendingReviewPanelProps = {
   onSearchDeposits: () => void
   onRetry: (transactionId: string) => void
   onResolve: (transactionId: string, resolution: 3 | 4) => void
+  onGoToAccount: () => void
 }
 
 export function PendingReviewPanel({
@@ -51,6 +52,7 @@ export function PendingReviewPanel({
   onSearchDeposits,
   onRetry,
   onResolve,
+  onGoToAccount,
 }: PendingReviewPanelProps) {
   return (
     <section className="panel wide-panel">
@@ -96,6 +98,7 @@ export function PendingReviewPanel({
           {selectedCustomerName && <span className="helper-chip">Customer: {selectedCustomerName}</span>}
           {selectedCustomerNumber && <span className="helper-chip">Customer No: {selectedCustomerNumber}</span>}
           {selectedAccountNumber && <span className="helper-chip">Account No: {selectedAccountNumber}</span>}
+          {selectedAccountId && <button className="ghost-button" type="button" onClick={onGoToAccount}>Open account workspace</button>}
         </div>
       </div>
 

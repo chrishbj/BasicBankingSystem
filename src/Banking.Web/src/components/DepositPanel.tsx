@@ -26,6 +26,7 @@ type DepositPanelProps = {
   onSubmit: () => void
   onWithdraw: () => void
   onRefresh: () => void
+  onGoToAccount: () => void
 }
 
 export function DepositPanel({
@@ -45,6 +46,7 @@ export function DepositPanel({
   onSubmit,
   onWithdraw,
   onRefresh,
+  onGoToAccount,
 }: DepositPanelProps) {
   const badge = deposit ? buildDepositBadge(deposit) : null
   const isWithdraw = mode === 'withdraw'
@@ -73,6 +75,7 @@ export function DepositPanel({
           {customerNumber && <span className="helper-chip">Customer No: {customerNumber}</span>}
           {accountNumber && <span className="helper-chip">Account No: {accountNumber}</span>}
           {accountCurrency && <span className="helper-chip">Currency: {accountCurrency} ($)</span>}
+          {accountNumber && <button className="ghost-button" type="button" onClick={onGoToAccount}>Open account workspace</button>}
         </div>
       </div>
       <div className="form-grid">
