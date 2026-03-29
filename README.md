@@ -124,6 +124,16 @@ The Vite development server proxies API traffic to:
 - `Deposit`: `http://localhost:5103`
 - `Audit`: `http://localhost:5104`
 
+### Run the Frontend in Docker
+
+```powershell
+docker compose --env-file infra/.env.example -f infra/docker-compose.docker-desktop.yml up --build -d banking-web
+```
+
+Then open:
+
+- `http://localhost:5300`
+
 Default local ports:
 
 - `Gateway`: `http://localhost:5000`

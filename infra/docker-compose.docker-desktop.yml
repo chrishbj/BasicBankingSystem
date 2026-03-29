@@ -142,6 +142,24 @@ services:
     ports:
       - "5103:8080"
 
+  banking-web:
+    build:
+      context: ..
+      dockerfile: src/Banking.Web/Dockerfile
+    container_name: basicbanking-web
+    restart: unless-stopped
+    depends_on:
+      customer-service:
+        condition: service_started
+      account-service:
+        condition: service_started
+      deposit-service:
+        condition: service_started
+      audit-service:
+        condition: service_started
+    ports:
+      - "5300:80"
+
 volumes:
   postgres-data:
   rabbitmq-data:

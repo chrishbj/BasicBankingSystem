@@ -1,6 +1,6 @@
 # Docker Desktop Run Guide
 
-This guide starts the current backend stack on Docker Desktop.
+This guide starts the current local stack on Docker Desktop.
 
 ## What It Starts
 
@@ -10,6 +10,7 @@ This guide starts the current backend stack on Docker Desktop.
 - `account-service`
 - `deposit-service`
 - `audit-service`
+- `banking-web`
 
 ## Prerequisites
 
@@ -40,6 +41,7 @@ docker compose --env-file infra/.env.example -f infra/docker-compose.docker-desk
 - `Account`: `http://localhost:5102`
 - `Deposit`: `http://localhost:5103`
 - `Audit`: `http://localhost:5104`
+- `Frontend`: `http://localhost:5300`
 - `RabbitMQ Management`: `http://localhost:15672`
 
 ## Swagger UI
@@ -48,6 +50,12 @@ docker compose --env-file infra/.env.example -f infra/docker-compose.docker-desk
 - `Account Swagger`: `http://localhost:5102/swagger`
 - `Deposit Swagger`: `http://localhost:5103/swagger`
 - `Audit Swagger`: `http://localhost:5104/swagger`
+
+## Frontend
+
+- `Operations Console`: `http://localhost:5300`
+
+The frontend proxies API calls to the containerized backend services through Nginx, so you can use it directly without running Vite locally.
 
 ## Authentication Headers
 
