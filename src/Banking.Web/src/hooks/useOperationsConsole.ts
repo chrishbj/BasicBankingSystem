@@ -42,6 +42,8 @@ type ReviewSearchState = {
 export function useOperationsConsole() {
   const [health, setHealth] = useState<Record<string, string>>({})
   const [message, setMessage] = useState('Ready.')
+  const [toast, setToast] = useState('')
+  const [busyAction, setBusyAction] = useState('')
   const [depositStatusText, setDepositStatusText] = useState('No deposit submitted yet.')
   const [reviewStatusText, setReviewStatusText] = useState('Load the queue to inspect pending review items.')
   const [customer, setCustomer] = useState<CustomerResponse | null>(null)
@@ -67,6 +69,15 @@ export function useOperationsConsole() {
     referenceNumber: `WEB-REF-${Date.now()}`,
     note: 'Created from the React operations console.',
   })
+
+  useEffect(() => {
+    if (!toast) {
+      return
+    }
+
+    const handle = window.setTimeout(() => setToast(''), 3000)
+    return () => window.clearTimeout(handle)
+  }, [toast])
 
   useEffect(() => {
     void loadHealth()
@@ -99,13 +110,40 @@ export function useOperationsConsole() {
 
   async function runAction(label: string, action: () => Promise<void>) {
     try {
+      setBusyAction(label)
       setMessage(`${label} in progress...`)
       await action()
       setMessage(`${label} completed.`)
+      setToast(`${label} completed.`)
     } catch (error) {
-      setMessage(`${label} failed: ${error instanceof Error ? error.message : String(error)}`)
+      const messageText = `${label} failed: ${error instanceof Error ? error.message : String(error)}`
+      setMessage(messageText)
+      setToast(messageText)
+    } finally {
+      setBusyAction('')
     }
   }
+
+  const trimmedCustomerForm = {
+    fullName: customerForm.fullName.trim(),
+    identityNumber: customerForm.identityNumber.trim(),
+    mobile: customerForm.mobile.trim(),
+    email: customerForm.email.trim(),
+  }
+
+  const depositAmount = Number(depositForm.amount)
+  const customerFormErrors = {
+    fullName: trimmedCustomerForm.fullName ? '' : 'Full name is required.',
+    identityNumber: trimmedCustomerForm.identityNumber ? '' : 'Identity number is required.',
+    mobile: trimmedCustomerForm.mobile ? '' : 'Mobile is required.',
+    email: trimmedCustomerForm.email.includes('@') ? '' : 'Email must be valid.',
+  }
+  const depositFormErrors = {
+    amount: Number.isFinite(depositAmount) && depositAmount > 0 ? '' : 'Amount must be greater than zero.',
+    referenceNumber: depositForm.referenceNumber.trim() ? '' : 'Reference number is required.',
+  }
+  const canCreateCustomer = Object.values(customerFormErrors).every((item) => !item) && !busyAction
+  const canSubmitDeposit = !!customer && !!account && Object.values(depositFormErrors).every((item) => !item) && !busyAction
 
   async function loadHealth() {
     const services = [
@@ -132,11 +170,11 @@ export function useOperationsConsole() {
   async function handleCreateCustomer() {
     await runAction('Create customer', async () => {
       const created = await createCustomer({
-        fullName: customerForm.fullName,
+        fullName: trimmedCustomerForm.fullName,
         identityType: 'NationalId',
-        identityNumber: customerForm.identityNumber,
-        mobile: customerForm.mobile,
-        email: customerForm.email,
+        identityNumber: trimmedCustomerForm.identityNumber,
+        mobile: trimmedCustomerForm.mobile,
+        email: trimmedCustomerForm.email,
         address: {
           country: 'CN',
           province: 'Shanghai',
@@ -206,11 +244,11 @@ export function useOperationsConsole() {
           {
             customerId: customer.customerId,
             accountId: account.accountId,
-            amount: Number(depositForm.amount),
+            amount: depositAmount,
             currency: account.currency,
             channel: 1,
-            referenceNumber: depositForm.referenceNumber,
-            note: depositForm.note,
+            referenceNumber: depositForm.referenceNumber.trim(),
+            note: depositForm.note.trim(),
           },
           `web-idem-${Date.now()}`,
           `web-corr-${Date.now()}`,
@@ -299,6 +337,8 @@ export function useOperationsConsole() {
   return {
     health,
     message,
+    toast,
+    busyAction,
     depositStatusText,
     reviewStatusText,
     customer,
@@ -311,6 +351,10 @@ export function useOperationsConsole() {
     reviewSearch,
     customerForm,
     depositForm,
+    customerFormErrors,
+    depositFormErrors,
+    canCreateCustomer,
+    canSubmitDeposit,
     setSortBy,
     setDescending,
     setReviewSearch,

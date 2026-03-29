@@ -13,6 +13,7 @@ type PendingReviewPanelProps = {
   descending: boolean
   statusText: string
   reviewSearch: ReviewSearchState
+  busy: boolean
   pendingReviewItems: PendingReviewDepositSummaryResponse[]
   depositSearchResult: DepositResponse[]
   onSortByChange: (sortBy: PendingReviewSortBy) => void
@@ -29,6 +30,7 @@ export function PendingReviewPanel({
   descending,
   statusText,
   reviewSearch,
+  busy,
   pendingReviewItems,
   depositSearchResult,
   onSortByChange,
@@ -58,11 +60,12 @@ export function PendingReviewPanel({
               type="checkbox"
               checked={descending}
               onChange={(event) => onDescendingChange(event.target.checked)}
+              disabled={busy}
             />
             Desc
           </label>
-          <button onClick={onLoadQueue}>Load queue</button>
-          <button className="ghost-button" onClick={onSearchDeposits}>Search matching deposits</button>
+          <button onClick={onLoadQueue} disabled={busy}>{busy ? 'Working...' : 'Load queue'}</button>
+          <button className="ghost-button" onClick={onSearchDeposits} disabled={busy}>Search matching deposits</button>
         </div>
       </div>
 
@@ -71,15 +74,18 @@ export function PendingReviewPanel({
           value={reviewSearch.correlationId}
           onChange={(event) => onReviewSearchChange({ ...reviewSearch, correlationId: event.target.value })}
           placeholder="Correlation ID"
+          disabled={busy}
         />
         <input
           value={reviewSearch.failureCode}
           onChange={(event) => onReviewSearchChange({ ...reviewSearch, failureCode: event.target.value })}
           placeholder="Failure code"
+          disabled={busy}
         />
         <select
           value={reviewSearch.status}
           onChange={(event) => onReviewSearchChange({ ...reviewSearch, status: event.target.value })}
+          disabled={busy}
         >
           <option value="">Any status</option>
           <option value="PendingReview">Pending Review</option>
@@ -117,11 +123,11 @@ export function PendingReviewPanel({
                   <td>{item.compensationRetryCount}</td>
                   <td>{item.reviewRequiredAt ?? item.requestedAt}</td>
                 <td className="table-actions">
-                  <button className="tiny-button" onClick={() => onRetry(item.transactionId)}>Retry</button>
-                  <button className="tiny-button ghost-button" onClick={() => onResolve(item.transactionId, 3)}>
+                  <button className="tiny-button" onClick={() => onRetry(item.transactionId)} disabled={busy}>Retry</button>
+                  <button className="tiny-button ghost-button" onClick={() => onResolve(item.transactionId, 3)} disabled={busy}>
                     Mark reversed
                   </button>
-                  <button className="tiny-button ghost-button" onClick={() => onResolve(item.transactionId, 4)}>
+                  <button className="tiny-button ghost-button" onClick={() => onResolve(item.transactionId, 4)} disabled={busy}>
                     Mark failed
                   </button>
                 </td>

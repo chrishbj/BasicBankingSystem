@@ -12,6 +12,9 @@ type DepositPanelProps = {
   deposit: DepositResponse | null
   form: DepositFormState
   statusText: string
+  errors: Record<string, string>
+  submitDisabled: boolean
+  busy: boolean
   onFormChange: (next: DepositFormState) => void
   onSubmit: () => void
   onRefresh: () => void
@@ -21,6 +24,9 @@ export function DepositPanel({
   deposit,
   form,
   statusText,
+  errors,
+  submitDisabled,
+  busy,
   onFormChange,
   onSubmit,
   onRefresh,
@@ -37,11 +43,13 @@ export function DepositPanel({
           onChange={(event) => onFormChange({ ...form, amount: event.target.value })}
           placeholder="Amount"
         />
+        {errors.amount && <p className="field-error">{errors.amount}</p>}
         <input
           value={form.referenceNumber}
           onChange={(event) => onFormChange({ ...form, referenceNumber: event.target.value })}
           placeholder="Reference number"
         />
+        {errors.referenceNumber && <p className="field-error">{errors.referenceNumber}</p>}
         <textarea
           value={form.note}
           onChange={(event) => onFormChange({ ...form, note: event.target.value })}
@@ -50,8 +58,8 @@ export function DepositPanel({
         />
       </div>
       <div className="actions">
-        <button onClick={onSubmit}>Submit deposit</button>
-        <button className="ghost-button" onClick={onRefresh}>Refresh transaction</button>
+        <button onClick={onSubmit} disabled={submitDisabled}>{busy ? 'Working...' : 'Submit deposit'}</button>
+        <button className="ghost-button" onClick={onRefresh} disabled={!deposit || busy}>Refresh transaction</button>
       </div>
       {deposit && (
         <dl className="detail-list">

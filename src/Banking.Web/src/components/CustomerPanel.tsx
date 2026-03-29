@@ -10,6 +10,9 @@ type CustomerFormState = {
 type CustomerPanelProps = {
   customer: CustomerResponse | null
   form: CustomerFormState
+  errors: Record<string, string>
+  createDisabled: boolean
+  busy: boolean
   onFormChange: (next: CustomerFormState) => void
   onCreate: () => void
   onActivate: () => void
@@ -18,6 +21,9 @@ type CustomerPanelProps = {
 export function CustomerPanel({
   customer,
   form,
+  errors,
+  createDisabled,
+  busy,
   onFormChange,
   onCreate,
   onActivate,
@@ -31,25 +37,29 @@ export function CustomerPanel({
           onChange={(event) => onFormChange({ ...form, fullName: event.target.value })}
           placeholder="Full name"
         />
+        {errors.fullName && <p className="field-error">{errors.fullName}</p>}
         <input
           value={form.identityNumber}
           onChange={(event) => onFormChange({ ...form, identityNumber: event.target.value })}
           placeholder="Identity number"
         />
+        {errors.identityNumber && <p className="field-error">{errors.identityNumber}</p>}
         <input
           value={form.mobile}
           onChange={(event) => onFormChange({ ...form, mobile: event.target.value })}
           placeholder="Mobile"
         />
+        {errors.mobile && <p className="field-error">{errors.mobile}</p>}
         <input
           value={form.email}
           onChange={(event) => onFormChange({ ...form, email: event.target.value })}
           placeholder="Email"
         />
+        {errors.email && <p className="field-error">{errors.email}</p>}
       </div>
       <div className="actions">
-        <button onClick={onCreate}>Create customer</button>
-        <button className="ghost-button" onClick={onActivate}>Activate</button>
+        <button onClick={onCreate} disabled={createDisabled}>{busy ? 'Working...' : 'Create customer'}</button>
+        <button className="ghost-button" onClick={onActivate} disabled={!customer || busy}>Activate</button>
       </div>
       {customer && (
         <dl className="detail-list">

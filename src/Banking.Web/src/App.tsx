@@ -4,12 +4,15 @@ import { CustomerPanel } from './components/CustomerPanel'
 import { DepositPanel } from './components/DepositPanel'
 import { EnvironmentPanel } from './components/EnvironmentPanel'
 import { PendingReviewPanel } from './components/PendingReviewPanel'
+import { ToastBar } from './components/ToastBar'
 import { useOperationsConsole } from './hooks/useOperationsConsole'
 
 function App() {
   const {
     health,
     message,
+    toast,
+    busyAction,
     depositStatusText,
     reviewStatusText,
     customer,
@@ -22,6 +25,10 @@ function App() {
     reviewSearch,
     customerForm,
     depositForm,
+    customerFormErrors,
+    depositFormErrors,
+    canCreateCustomer,
+    canSubmitDeposit,
     setSortBy,
     setDescending,
     setReviewSearch,
@@ -42,6 +49,7 @@ function App() {
 
   return (
     <main className="app-shell">
+      <ToastBar text={toast} />
       <section className="hero-panel">
         <div>
           <p className="eyebrow">Basic Banking System</p>
@@ -64,12 +72,17 @@ function App() {
         <CustomerPanel
           customer={customer}
           form={customerForm}
+          errors={customerFormErrors}
+          createDisabled={!canCreateCustomer}
+          busy={!!busyAction}
           onFormChange={setCustomerForm}
           onCreate={() => void handleCreateCustomer()}
           onActivate={() => void handleActivateCustomer()}
         />
         <AccountPanel
           account={account}
+          openDisabled={!customer || !!busyAction}
+          busy={!!busyAction}
           onOpen={() => void handleOpenAccount()}
           onRefresh={() => void handleRefreshAccount()}
         />
@@ -77,6 +90,9 @@ function App() {
           deposit={deposit}
           form={depositForm}
           statusText={depositStatusText}
+          errors={depositFormErrors}
+          submitDisabled={!canSubmitDeposit}
+          busy={!!busyAction}
           onFormChange={setDepositForm}
           onSubmit={() => void handleSubmitDeposit()}
           onRefresh={() => void handleRefreshDeposit()}
@@ -88,6 +104,7 @@ function App() {
         descending={descending}
         statusText={reviewStatusText}
         reviewSearch={reviewSearch}
+        busy={!!busyAction}
         pendingReviewItems={pendingReviewItems}
         depositSearchResult={depositSearchResult}
         onSortByChange={setSortBy}

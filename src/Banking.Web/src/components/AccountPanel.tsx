@@ -2,17 +2,19 @@ import type { AccountResponse } from '../types'
 
 type AccountPanelProps = {
   account: AccountResponse | null
+  openDisabled: boolean
+  busy: boolean
   onOpen: () => void
   onRefresh: () => void
 }
 
-export function AccountPanel({ account, onOpen, onRefresh }: AccountPanelProps) {
+export function AccountPanel({ account, openDisabled, busy, onOpen, onRefresh }: AccountPanelProps) {
   return (
     <article className="panel">
       <h2>Account</h2>
       <div className="actions">
-        <button onClick={onOpen}>Open checking account</button>
-        <button className="ghost-button" onClick={onRefresh}>Refresh</button>
+        <button onClick={onOpen} disabled={openDisabled}>{busy ? 'Working...' : 'Open checking account'}</button>
+        <button className="ghost-button" onClick={onRefresh} disabled={!account || busy}>Refresh</button>
       </div>
       {account && (
         <dl className="detail-list">
