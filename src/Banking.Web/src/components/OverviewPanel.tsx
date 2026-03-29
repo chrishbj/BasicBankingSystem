@@ -20,6 +20,7 @@ type OverviewPanelProps = {
   account: AccountResponse | null
   accountList: AccountSummaryResponse[]
   accountHistory: AccountActivityResponse[]
+  customerActivitySnapshot: AccountActivityResponse[]
   pendingReviewItems: PendingReviewDepositSummaryResponse[]
   onNavigate: (tab: WorkspaceTab) => void
 }
@@ -79,9 +80,12 @@ export function OverviewPanel({
   account,
   accountList,
   accountHistory,
+  customerActivitySnapshot,
   pendingReviewItems,
   onNavigate,
 }: OverviewPanelProps) {
+  const totalAvailableBalance = accountList.reduce((sum, item) => sum + item.availableBalance, 0)
+  const totalLedgerBalance = accountList.reduce((sum, item) => sum + item.ledgerBalance, 0)
   const customerPendingReviewCount = customer
     ? pendingReviewItems.filter((item) => item.customerId === customer.customerId).length
     : 0
@@ -91,6 +95,14 @@ export function OverviewPanel({
   const depositCount = accountHistory.filter((item) => item.postingType === 1).length
   const withdrawalCount = accountHistory.filter((item) => item.postingType === 3).length
   const latestActivity = accountHistory[0] ?? null
+  const reviewBreakdown = pendingReviewItems.reduce<Record<string, number>>((result, item) => {
+    const key = item.failureCode?.trim() || 'Unspecified'
+    result[key] = (result[key] ?? 0) + 1
+    return result
+  }, {})
+  const topReviewReasons = Object.entries(reviewBreakdown)
+    .sort((left, right) => right[1] - left[1])
+    .slice(0, 4)
 
   return (
     <article className="panel wide-panel">
@@ -136,6 +148,14 @@ export function OverviewPanel({
             <div>
               <dt>Accounts loaded</dt>
               <dd>{accountList.length}</dd>
+            </div>
+            <div>
+              <dt>Total available balance</dt>
+              <dd>{accountList.length > 0 ? formatCurrency(totalAvailableBalance, accountList[0]?.currency ?? 'USD') : '$0.00'}</dd>
+            </div>
+            <div>
+              <dt>Total ledger balance</dt>
+              <dd>{accountList.length > 0 ? formatCurrency(totalLedgerBalance, accountList[0]?.currency ?? 'USD') : '$0.00'}</dd>
             </div>
             <div>
               <dt>Pending review</dt>
@@ -236,11 +256,11 @@ export function OverviewPanel({
       <div className="overview-bottom-grid">
         <section className="info-card">
           <p className="eyebrow">Recent Activity</p>
-          {accountHistory.length === 0 ? (
-            <p>No account activity loaded yet. Select an account and load history to see recent deposits and withdrawals here.</p>
+          {customerActivitySnapshot.length === 0 ? (
+            <p>No customer activity snapshot is loaded yet. Select a customer to load related accounts and recent deposits or withdrawals here.</p>
           ) : (
             <ul className="overview-list">
-              {accountHistory.slice(0, 5).map((item) => (
+              {customerActivitySnapshot.slice(0, 6).map((item) => (
                 <li key={item.postingReference}>
                   <div>
                     <strong>{item.postingReference}</strong>
@@ -271,6 +291,27 @@ export function OverviewPanel({
                   <div className="overview-list-meta">
                     <span>{formatCurrency(item.amount, item.currency)}</span>
                     <span>{item.compensationRetryCount} retries</span>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+
+        <section className="info-card">
+          <p className="eyebrow">Review Reason Breakdown</p>
+          {topReviewReasons.length === 0 ? (
+            <p>No failure reasons are currently present in the pending review queue.</p>
+          ) : (
+            <ul className="overview-list">
+              {topReviewReasons.map(([reason, count]) => (
+                <li key={reason}>
+                  <div>
+                    <strong>{reason}</strong>
+                    <span>Pending review failure code</span>
+                  </div>
+                  <div className="overview-list-meta">
+                    <StatusBadge label={`${count} item${count === 1 ? '' : 's'}`} tone={count > 1 ? 'warning' : 'info'} />
                   </div>
                 </li>
               ))}

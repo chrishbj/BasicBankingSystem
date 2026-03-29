@@ -29,6 +29,7 @@ function App() {
     accountList,
     deposit,
     accountHistory,
+    customerActivitySnapshot,
     selectedAccountHistoryItem,
     depositSearchResult,
     pendingReviewItems,
@@ -143,6 +144,7 @@ function App() {
               account={account}
               accountList={accountList}
               accountHistory={accountHistory}
+              customerActivitySnapshot={customerActivitySnapshot}
               pendingReviewItems={pendingReviewItems}
               onNavigate={setActiveTab}
             />

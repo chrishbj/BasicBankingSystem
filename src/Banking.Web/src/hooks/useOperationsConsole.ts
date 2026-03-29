@@ -72,6 +72,7 @@ export function useOperationsConsole() {
   const [accountList, setAccountList] = useState<AccountSummaryResponse[]>([])
   const [deposit, setDeposit] = useState<DepositResponse | null>(null)
   const [accountHistory, setAccountHistory] = useState<AccountActivityResponse[]>([])
+  const [customerActivitySnapshot, setCustomerActivitySnapshot] = useState<AccountActivityResponse[]>([])
   const [selectedAccountHistoryItem, setSelectedAccountHistoryItem] = useState<AccountActivityResponse | null>(null)
   const [depositSearchResult, setDepositSearchResult] = useState<DepositResponse[]>([])
   const [pendingReviewItems, setPendingReviewItems] = useState<PendingReviewDepositSummaryResponse[]>([])
@@ -232,6 +233,7 @@ export function useOperationsConsole() {
       setAccount(null)
       setAccountList([])
       setAccountHistory([])
+      setCustomerActivitySnapshot([])
       setSelectedAccountHistoryItem(null)
       setAccountQuery({ accountNumber: '' })
       setDeposit(null)
@@ -309,7 +311,34 @@ export function useOperationsConsole() {
   async function loadCustomerAccountsCore(customerId: string) {
     const response = await getAccountsByCustomer(customerId)
     setAccountList(response.items)
+    await loadCustomerActivitySnapshot(response.items)
     return response.items
+  }
+
+  async function loadCustomerActivitySnapshot(accounts: AccountSummaryResponse[]) {
+    if (accounts.length === 0) {
+      setCustomerActivitySnapshot([])
+      return
+    }
+
+    const snapshots = await Promise.all(
+      accounts.slice(0, 5).map(async (item) => {
+        const params = new URLSearchParams({
+          pageNumber: '1',
+          pageSize: '5',
+        })
+
+        const response = await getAccountActivities(item.accountId, params)
+        return response.items
+      }),
+    )
+
+    const merged = snapshots
+      .flat()
+      .sort((left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime())
+      .slice(0, 8)
+
+    setCustomerActivitySnapshot(merged)
   }
 
   async function loadCustomers(selectedCustomerId?: string) {
@@ -361,6 +390,7 @@ export function useOperationsConsole() {
         setAccount(null)
         setAccountQuery({ accountNumber: '' })
         setAccountHistory([])
+        setCustomerActivitySnapshot([])
         setSelectedAccountHistoryItem(null)
         setAccountHistoryStatusText(`Customer ${nextCustomer.fullName} does not have any accounts yet.`)
       }
@@ -414,6 +444,10 @@ export function useOperationsConsole() {
     setAccountHistory(response.items)
     setSelectedAccountHistoryItem(response.items[0] ?? null)
     setAccountHistoryStatusText(`Loaded ${response.items.length} activities for account ${account?.accountNumber ?? accountId}.`)
+
+    if (accountList.length > 0) {
+      await loadCustomerActivitySnapshot(accountList)
+    }
   }
 
   async function handleLoadAccountHistory() {
@@ -592,6 +626,7 @@ export function useOperationsConsole() {
     accountList,
     deposit,
     accountHistory,
+    customerActivitySnapshot,
     selectedAccountHistoryItem,
     depositSearchResult,
     pendingReviewItems,
