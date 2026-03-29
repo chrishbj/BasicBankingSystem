@@ -1,4 +1,6 @@
 import type { DepositResponse } from '../types'
+import { SectionStatus } from './SectionStatus'
+import { StatusBadge, buildDepositBadge } from './StatusBadge'
 
 type DepositFormState = {
   amount: string
@@ -9,6 +11,7 @@ type DepositFormState = {
 type DepositPanelProps = {
   deposit: DepositResponse | null
   form: DepositFormState
+  statusText: string
   onFormChange: (next: DepositFormState) => void
   onSubmit: () => void
   onRefresh: () => void
@@ -17,13 +20,17 @@ type DepositPanelProps = {
 export function DepositPanel({
   deposit,
   form,
+  statusText,
   onFormChange,
   onSubmit,
   onRefresh,
 }: DepositPanelProps) {
+  const badge = deposit ? buildDepositBadge(deposit) : null
+
   return (
     <article className="panel">
       <h2>Deposit</h2>
+      <SectionStatus text={statusText} />
       <div className="form-grid">
         <input
           value={form.amount}
@@ -49,7 +56,7 @@ export function DepositPanel({
       {deposit && (
         <dl className="detail-list">
           <div><dt>Transaction</dt><dd>{deposit.transactionId}</dd></div>
-          <div><dt>Status</dt><dd>{deposit.status}</dd></div>
+          <div><dt>Status</dt><dd>{badge && <StatusBadge label={badge.label} tone={badge.tone} />}</dd></div>
           <div><dt>Correlation</dt><dd>{deposit.correlationId}</dd></div>
           <div><dt>Failure</dt><dd>{deposit.failureCode ?? 'None'}</dd></div>
         </dl>

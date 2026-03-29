@@ -29,6 +29,8 @@ import type {
 function App() {
   const [health, setHealth] = useState<Record<string, string>>({})
   const [message, setMessage] = useState('Ready.')
+  const [depositStatusText, setDepositStatusText] = useState('No deposit submitted yet.')
+  const [reviewStatusText, setReviewStatusText] = useState('Load the queue to inspect pending review items.')
   const [customer, setCustomer] = useState<CustomerResponse | null>(null)
   const [account, setAccount] = useState<AccountResponse | null>(null)
   const [deposit, setDeposit] = useState<DepositResponse | null>(null)
@@ -36,6 +38,11 @@ function App() {
   const [pendingReviewItems, setPendingReviewItems] = useState<PendingReviewDepositSummaryResponse[]>([])
   const [sortBy, setSortBy] = useState<PendingReviewSortBy>('ReviewRequiredAt')
   const [descending, setDescending] = useState(false)
+  const [reviewSearch, setReviewSearch] = useState({
+    correlationId: '',
+    failureCode: '',
+    status: 'PendingReview',
+  })
 
   const [customerForm, setCustomerForm] = useState({
     fullName: 'Frontend Demo Customer',
@@ -53,6 +60,31 @@ function App() {
   useEffect(() => {
     void loadHealth()
   }, [])
+
+  useEffect(() => {
+    if (!deposit || ![1, 2].includes(deposit.status)) {
+      return
+    }
+
+    setDepositStatusText('Deposit is still processing. Auto-refresh is active.')
+
+    const handle = window.setInterval(async () => {
+      try {
+        const refreshed = await getDeposit(deposit.transactionId)
+        setDeposit(refreshed)
+
+        if (![1, 2].includes(refreshed.status)) {
+          setDepositStatusText(`Deposit finished with status ${refreshed.status}.`)
+          window.clearInterval(handle)
+        }
+      } catch (error) {
+        setDepositStatusText(`Deposit auto-refresh failed: ${error instanceof Error ? error.message : String(error)}`)
+        window.clearInterval(handle)
+      }
+    }, 2000)
+
+    return () => window.clearInterval(handle)
+  }, [deposit])
 
   async function runAction(label: string, action: () => Promise<void>) {
     try {
@@ -107,6 +139,7 @@ function App() {
       setCustomer(created)
       setAccount(null)
       setDeposit(null)
+      setDepositStatusText('Customer created. Open an account to continue.')
     })
   }
 
@@ -135,6 +168,7 @@ function App() {
           currency: 'CNY',
         }),
       )
+      setDepositStatusText('Account opened. You can submit a deposit now.')
     })
   }
 
@@ -171,6 +205,7 @@ function App() {
           `web-corr-${Date.now()}`,
         ),
       )
+      setDepositStatusText('Deposit submitted. Waiting for asynchronous processing.')
     })
   }
 
@@ -181,25 +216,37 @@ function App() {
     }
 
     await runAction('Refresh deposit', async () => {
-      setDeposit(await getDeposit(deposit.transactionId))
+      const refreshed = await getDeposit(deposit.transactionId)
+      setDeposit(refreshed)
+      setDepositStatusText(`Deposit refreshed. Current status is ${refreshed.status}.`)
     })
   }
 
   async function handleSearchDeposits() {
     await runAction('Search deposits', async () => {
       const params = new URLSearchParams({
-        status: 'PendingReview',
         pageNumber: '1',
         pageSize: '20',
       })
 
-      if (deposit?.correlationId) {
+      if (reviewSearch.status) {
+        params.set('status', reviewSearch.status)
+      }
+
+      if (reviewSearch.correlationId) {
+        params.set('correlationId', reviewSearch.correlationId)
+      } else if (deposit?.correlationId) {
         params.set('correlationId', deposit.correlationId)
+      }
+
+      if (reviewSearch.failureCode) {
+        params.set('failureCode', reviewSearch.failureCode)
       }
 
       const response = await searchDeposits(params)
       const details = await Promise.all(response.items.map((item) => getDeposit(item.transactionId)))
       setDepositSearchResult(details)
+      setReviewStatusText(`Loaded ${details.length} matching deposits.`)
     })
   }
 
@@ -207,6 +254,7 @@ function App() {
     await runAction('Load pending review queue', async () => {
       const response = await getPendingReview(sortBy, descending)
       setPendingReviewItems(response.items)
+      setReviewStatusText(`Loaded ${response.items.length} pending review items.`)
     })
   }
 
@@ -215,6 +263,7 @@ function App() {
       setDeposit(
         await retryPendingReview(transactionId, 'frontend-ops', 'Retry requested from the React console.'),
       )
+      setReviewStatusText(`Retry requested for ${transactionId}.`)
       await handleLoadPendingReview()
     })
   }
@@ -231,6 +280,7 @@ function App() {
           resolution,
         ),
       )
+      setReviewStatusText(`Review item ${transactionId} resolved.`)
       await handleLoadPendingReview()
     })
   }
@@ -271,6 +321,7 @@ function App() {
         <DepositPanel
           deposit={deposit}
           form={depositForm}
+          statusText={depositStatusText}
           onFormChange={setDepositForm}
           onSubmit={() => void handleSubmitDeposit()}
           onRefresh={() => void handleRefreshDeposit()}
@@ -280,10 +331,13 @@ function App() {
       <PendingReviewPanel
         sortBy={sortBy}
         descending={descending}
+        statusText={reviewStatusText}
+        reviewSearch={reviewSearch}
         pendingReviewItems={pendingReviewItems}
         depositSearchResult={depositSearchResult}
         onSortByChange={setSortBy}
         onDescendingChange={setDescending}
+        onReviewSearchChange={setReviewSearch}
         onLoadQueue={() => void handleLoadPendingReview()}
         onSearchDeposits={() => void handleSearchDeposits()}
         onRetry={(transactionId) => void handleRetryPendingReview(transactionId)}
