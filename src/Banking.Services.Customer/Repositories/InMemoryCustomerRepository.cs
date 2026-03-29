@@ -36,6 +36,14 @@ public sealed class InMemoryCustomerRepository : ICustomerRepository
         return Task.FromResult(customer);
     }
 
+    public Task<Domain.Customer?> GetByCustomerNumberAsync(string customerNumber, CancellationToken cancellationToken)
+    {
+        var customer = _customers.Values.FirstOrDefault(item =>
+            string.Equals(item.CustomerNumber, customerNumber, StringComparison.OrdinalIgnoreCase));
+
+        return Task.FromResult(customer);
+    }
+
     public Task<IReadOnlyCollection<Domain.Customer>> GetAllAsync(CancellationToken cancellationToken)
     {
         return Task.FromResult<IReadOnlyCollection<Domain.Customer>>(

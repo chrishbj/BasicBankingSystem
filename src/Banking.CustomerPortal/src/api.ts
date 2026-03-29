@@ -32,6 +32,16 @@ export function getCustomers(pageNumber = 1, pageSize = 50) {
   return request<PagedResponse<CustomerResponse>>(`/customer-api/api/v1/customers?pageNumber=${pageNumber}&pageSize=${pageSize}`)
 }
 
+export function signInCustomer(customerNumber: string, identityLast4: string) {
+  return request<CustomerResponse>('/customer-api/api/v1/customers/portal-sign-in', {
+    method: 'POST',
+    body: JSON.stringify({
+      customerNumber,
+      identityLast4,
+    }),
+  })
+}
+
 export function getAccountsByCustomer(customerId: string, pageNumber = 1, pageSize = 50) {
   return request<PagedResponse<AccountSummaryResponse>>(
     `/account-api/api/v1/accounts?customerId=${encodeURIComponent(customerId)}&pageNumber=${pageNumber}&pageSize=${pageSize}`,

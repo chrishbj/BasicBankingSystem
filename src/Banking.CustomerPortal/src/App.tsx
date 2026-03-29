@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import './App.css'
-import { getAccount, getAccountActivities, getAccountsByCustomer, getCustomers, getDeposit, searchDeposits, submitDeposit, submitWithdrawal } from './api'
+import { getAccount, getAccountActivities, getAccountsByCustomer, getDeposit, searchDeposits, signInCustomer, submitDeposit, submitWithdrawal } from './api'
 import type {
   AccountActivityResponse,
   AccountResponse,
@@ -111,13 +111,8 @@ function groupActivitiesByDate(items: AccountActivityResponse[]) {
   return Array.from(grouped.entries())
 }
 
-function getIdentityLast4(identityNumber?: string) {
-  return (identityNumber ?? '').slice(-4)
-}
-
 function App() {
   const [activeTab, setActiveTab] = useState<PortalTab>('dashboard')
-  const [customers, setCustomers] = useState<CustomerResponse[]>([])
   const [currentCustomer, setCurrentCustomer] = useState<CustomerResponse | null>(null)
   const [accounts, setAccounts] = useState<AccountSummaryResponse[]>([])
   const [selectedAccount, setSelectedAccount] = useState<AccountResponse | null>(null)
@@ -135,10 +130,6 @@ function App() {
   })
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState('Enter your customer number and the last 4 digits of your identity number.')
-
-  useEffect(() => {
-    void loadCustomers()
-  }, [])
 
   useEffect(() => {
     if (!currentCustomer) {
@@ -163,19 +154,6 @@ function App() {
 
     return () => window.clearInterval(handle)
   }, [currentCustomer, selectedAccount, depositStatuses, latestDeposit])
-
-  async function loadCustomers() {
-    try {
-      setBusy(true)
-      const response = await getCustomers()
-      setCustomers(response.items)
-      setMessage('Customer directory loaded. Sign in to continue.')
-    } catch (error) {
-      setMessage(`Could not load customers: ${error instanceof Error ? error.message : String(error)}`)
-    } finally {
-      setBusy(false)
-    }
-  }
 
   async function loadCustomerWorkspace(customer: CustomerResponse) {
     try {
@@ -210,16 +188,15 @@ function App() {
       return
     }
 
-    const matched = customers.find((item) =>
-      item.customerNumber.trim().toUpperCase() === customerNumber.toUpperCase()
-      && getIdentityLast4(item.identityNumber) === identityLast4)
-
-    if (!matched) {
-      setMessage('Sign-in details did not match an existing customer.')
-      return
+    try {
+      setBusy(true)
+      const matched = await signInCustomer(customerNumber, identityLast4)
+      await loadCustomerWorkspace(matched)
+    } catch (error) {
+      setMessage(`Sign-in failed: ${error instanceof Error ? error.message : String(error)}`)
+    } finally {
+      setBusy(false)
     }
-
-    await loadCustomerWorkspace(matched)
   }
 
   function handleSignOut() {
@@ -398,11 +375,8 @@ function App() {
             </div>
 
             <div className="action-row">
-              <button type="button" onClick={() => void handleSignIn()} disabled={busy || customers.length === 0}>
+              <button type="button" onClick={() => void handleSignIn()} disabled={busy}>
                 {busy ? 'Signing in...' : 'Sign in'}
-              </button>
-              <button type="button" className="ghost-button" onClick={() => void loadCustomers()} disabled={busy}>
-                Refresh customer directory
               </button>
             </div>
 
@@ -413,7 +387,7 @@ function App() {
             <p className="eyebrow">Demo Access Notes</p>
             <ul className="bullet-list">
               <li>This local demo sign-in does not replace real authentication.</li>
-              <li>It matches an existing customer record by customer number and identity last 4 digits.</li>
+              <li>It validates your customer number and identity last 4 digits against the customer service.</li>
               <li>The next step after this demo is to replace it with customer-scoped authentication.</li>
             </ul>
           </article>
@@ -802,9 +776,9 @@ function App() {
                     <p className="eyebrow">Contact</p>
                     <dl className="detail-list">
                       <div><dt>Mobile</dt><dd>{currentCustomer.mobile}</dd></div>
-                      <div><dt>Email</dt><dd>{currentCustomer.email}</dd></div>
+                      <div><dt>Email</dt><dd>{currentCustomer.email ?? 'Not provided'}</dd></div>
                       <div><dt>Identity type</dt><dd>{currentCustomer.identityType}</dd></div>
-                      <div><dt>Identity number</dt><dd>{currentCustomer.identityNumber}</dd></div>
+                      <div><dt>Identity number</dt><dd>{currentCustomer.identityNumberMasked}</dd></div>
                     </dl>
                   </section>
                 </div>

@@ -2,6 +2,7 @@ using Banking.BuildingBlocks.Contracts;
 using Banking.Services.Customer.Contracts;
 using Banking.Services.Customer.Exceptions;
 using Banking.Services.Customer.Repositories;
+using System.Text;
 
 namespace Banking.Services.Customer.Services;
 
@@ -96,6 +97,22 @@ public sealed class CustomerService(ICustomerRepository repository) : ICustomerS
         return Map(customer);
     }
 
+    public async Task<CustomerResponse> SignInForPortalAsync(
+        CustomerPortalSignInRequest request,
+        CancellationToken cancellationToken)
+    {
+        var customerNumber = request.CustomerNumber.Trim();
+        var identityLast4 = request.IdentityLast4.Trim();
+
+        var customer = await repository.GetByCustomerNumberAsync(customerNumber, cancellationToken);
+        if (customer is null || identityLast4.Length != 4 || !string.Equals(GetIdentityLast4Digits(customer.IdentityNumber), identityLast4, StringComparison.Ordinal))
+        {
+            throw new InvalidCustomerPortalSignInException();
+        }
+
+        return Map(customer);
+    }
+
     private static bool IsTransitionAllowed(Domain.CustomerStatus currentStatus, Domain.CustomerStatus targetStatus)
     {
         return (currentStatus, targetStatus) switch
@@ -139,5 +156,31 @@ public sealed class CustomerService(ICustomerRepository repository) : ICustomerS
         }
 
         return $"{identityNumber[..6]}********{identityNumber[^4..]}";
+    }
+
+    private static string GetIdentityLast4Digits(string identityNumber)
+    {
+        var digits = new StringBuilder();
+
+        foreach (var character in identityNumber)
+        {
+            if (char.IsDigit(character))
+            {
+                digits.Append(character);
+            }
+        }
+
+        if (digits.Length == 0)
+        {
+            return "0000";
+        }
+
+        var digitString = digits.ToString();
+        if (digitString.Length >= 4)
+        {
+            return digitString[^4..];
+        }
+
+        return digitString.PadLeft(4, '0');
     }
 }

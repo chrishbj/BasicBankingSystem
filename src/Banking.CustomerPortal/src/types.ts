@@ -3,9 +3,9 @@ export type CustomerResponse = {
   customerNumber: string
   fullName: string
   identityType: string
-  identityNumber: string
+  identityNumberMasked: string
   mobile: string
-  email: string
+  email?: string | null
   status: number
   riskLevel: string
   createdAt: string

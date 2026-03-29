@@ -9,4 +9,5 @@ public interface ICustomerService
     Task<CustomerResponse> GetByIdAsync(string customerId, CancellationToken cancellationToken);
     Task<PagedResponse<CustomerSummaryResponse>> GetAllAsync(int pageNumber, int pageSize, CancellationToken cancellationToken);
     Task<CustomerResponse> ChangeStatusAsync(string customerId, ChangeCustomerStatusRequest request, CancellationToken cancellationToken);
+    Task<CustomerResponse> SignInForPortalAsync(CustomerPortalSignInRequest request, CancellationToken cancellationToken);
 }

@@ -30,6 +30,13 @@ public sealed class EfCustomerRepository(CustomerDbContext dbContext) : ICustome
         return dbContext.Customers.FirstOrDefaultAsync(customer => customer.CustomerId == customerId, cancellationToken);
     }
 
+    public Task<Domain.Customer?> GetByCustomerNumberAsync(string customerNumber, CancellationToken cancellationToken)
+    {
+        return dbContext.Customers.FirstOrDefaultAsync(
+            customer => customer.CustomerNumber == customerNumber,
+            cancellationToken);
+    }
+
     public async Task<IReadOnlyCollection<Domain.Customer>> GetAllAsync(CancellationToken cancellationToken)
     {
         return await dbContext.Customers

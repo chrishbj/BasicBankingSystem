@@ -55,4 +55,68 @@ public sealed class CustomerServiceTests
 
         await act.Should().ThrowAsync<DuplicateCustomerException>();
     }
+
+    [Fact]
+    public async Task PortalSignIn_Should_Succeed_When_CustomerNumberAndIdentityLast4Match()
+    {
+        var created = await _service.CreateAsync(
+            new CreateCustomerRequest(
+                "Portal User",
+                "NationalId",
+                "WEB-1774756880023",
+                "13800000009",
+                "portal@example.com",
+                new AddressRequest("US", "New York", "New York", "1 Demo Plaza", "10001"),
+                "Low"),
+            CancellationToken.None);
+
+        var signedIn = await _service.SignInForPortalAsync(
+            new CustomerPortalSignInRequest(created.CustomerNumber, "0023"),
+            CancellationToken.None);
+
+        signedIn.CustomerId.Should().Be(created.CustomerId);
+        signedIn.IdentityNumberMasked.Should().EndWith("0023");
+    }
+
+    [Fact]
+    public async Task PortalSignIn_Should_Fail_When_IdentityLast4DoesNotMatch()
+    {
+        var created = await _service.CreateAsync(
+            new CreateCustomerRequest(
+                "Portal User",
+                "NationalId",
+                "WEB-1774756880023",
+                "13800000010",
+                "portal@example.com",
+                new AddressRequest("US", "New York", "New York", "1 Demo Plaza", "10001"),
+                "Low"),
+            CancellationToken.None);
+
+        var act = () => _service.SignInForPortalAsync(
+            new CustomerPortalSignInRequest(created.CustomerNumber, "9999"),
+            CancellationToken.None);
+
+        await act.Should().ThrowAsync<InvalidCustomerPortalSignInException>();
+    }
+
+    [Fact]
+    public async Task PortalSignIn_Should_Normalize_NonStandardIdentityNumbers_To_Last4Digits()
+    {
+        var created = await _service.CreateAsync(
+            new CreateCustomerRequest(
+                "Portal User",
+                "NationalId",
+                "WITHDRAW-DEMO-001",
+                "13800000011",
+                "portal@example.com",
+                new AddressRequest("US", "New York", "New York", "1 Demo Plaza", "10001"),
+                "Low"),
+            CancellationToken.None);
+
+        var signedIn = await _service.SignInForPortalAsync(
+            new CustomerPortalSignInRequest(created.CustomerNumber, "0001"),
+            CancellationToken.None);
+
+        signedIn.CustomerId.Should().Be(created.CustomerId);
+    }
 }

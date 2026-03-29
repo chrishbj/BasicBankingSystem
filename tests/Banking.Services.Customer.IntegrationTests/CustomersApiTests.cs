@@ -62,4 +62,53 @@ public sealed class CustomersApiTests : IClassFixture<CustomerServiceWebApplicat
 
         response.StatusCode.Should().Be(HttpStatusCode.Conflict);
     }
+
+    [Fact]
+    public async Task PortalSignIn_Should_ReturnOk_When_CredentialsMatch()
+    {
+        var identityNumber = $"WEB-177475688{Random.Shared.Next(1000, 9999)}0023";
+        var createRequest = new CreateCustomerRequest(
+            "Portal Sign In",
+            "NationalId",
+            identityNumber,
+            $"138{Random.Shared.Next(10000000, 99999999)}",
+            "portal-sign-in@example.com",
+            new AddressRequest("US", "New York", "New York", "2 Demo Plaza", "10001"),
+            "Low");
+
+        var createResponse = await _client.PostAsJsonAsync("/api/v1/customers", createRequest);
+        var created = await createResponse.Content.ReadFromJsonAsync<CustomerResponse>();
+
+        var signInResponse = await _client.PostAsJsonAsync(
+            "/api/v1/customers/portal-sign-in",
+            new CustomerPortalSignInRequest(created!.CustomerNumber, "0023"));
+
+        signInResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var signedIn = await signInResponse.Content.ReadFromJsonAsync<CustomerResponse>();
+        signedIn.Should().NotBeNull();
+        signedIn!.CustomerNumber.Should().Be(created.CustomerNumber);
+    }
+
+    [Fact]
+    public async Task PortalSignIn_Should_ReturnUnauthorized_When_CredentialsDoNotMatch()
+    {
+        var identityNumber = $"WEB-177475688{Random.Shared.Next(1000, 9999)}0023";
+        var createRequest = new CreateCustomerRequest(
+            "Portal Sign In",
+            "NationalId",
+            identityNumber,
+            $"138{Random.Shared.Next(10000000, 99999999)}",
+            "portal-sign-in-2@example.com",
+            new AddressRequest("US", "New York", "New York", "3 Demo Plaza", "10001"),
+            "Low");
+
+        var createResponse = await _client.PostAsJsonAsync("/api/v1/customers", createRequest);
+        var created = await createResponse.Content.ReadFromJsonAsync<CustomerResponse>();
+
+        var signInResponse = await _client.PostAsJsonAsync(
+            "/api/v1/customers/portal-sign-in",
+            new CustomerPortalSignInRequest(created!.CustomerNumber, "9999"));
+
+        signInResponse.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
 }

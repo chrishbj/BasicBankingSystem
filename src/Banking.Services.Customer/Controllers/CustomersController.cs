@@ -50,6 +50,24 @@ public sealed class CustomersController(ICustomerService customerService) : Cont
         return Ok(await customerService.GetAllAsync(pageNumber, pageSize, cancellationToken));
     }
 
+    [HttpPost("portal-sign-in")]
+    public async Task<IActionResult> PortalSignIn([FromBody] CustomerPortalSignInRequest request, CancellationToken cancellationToken)
+    {
+        try
+        {
+            return Ok(await customerService.SignInForPortalAsync(request, cancellationToken));
+        }
+        catch (InvalidCustomerPortalSignInException)
+        {
+            return Unauthorized(new ProblemDetails
+            {
+                Title = "Invalid sign-in details",
+                Detail = "The supplied customer number and identity number last 4 digits do not match an existing customer.",
+                Status = StatusCodes.Status401Unauthorized
+            });
+        }
+    }
+
     [HttpPost("{customerId}/status")]
     public async Task<IActionResult> ChangeStatus(
         string customerId,
