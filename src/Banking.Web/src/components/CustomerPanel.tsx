@@ -136,8 +136,14 @@ export function CustomerPanel({
                   <strong>{item.fullName}</strong>
                   <StatusBadge label={getCustomerStatusLabel(item.status)} tone={getCustomerStatusTone(item.status)} />
                 </div>
-                <span>{item.customerNumber}</span>
-                <span>{item.mobile}</span>
+                <div className="card-metadata">
+                  <span className="card-label">Customer Number</span>
+                  <span className="card-value">{item.customerNumber}</span>
+                </div>
+                <div className="card-metadata">
+                  <span className="card-label">Mobile</span>
+                  <span className="card-value">{item.mobile}</span>
+                </div>
                 <span className="subtle-code">{item.customerId}</span>
               </button>
             ))}

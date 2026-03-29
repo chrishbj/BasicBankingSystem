@@ -80,7 +80,11 @@ export function WorkspaceContextPanel({
       <div className="context-summary-grid">
         <div>
           <dt>Customer</dt>
-          <dd>{customer ? `${customer.fullName} | ${customer.customerNumber}` : 'No customer selected'}</dd>
+          <dd>{customer ? customer.fullName : 'No customer selected'}</dd>
+        </div>
+        <div>
+          <dt>Customer number</dt>
+          <dd>{customer?.customerNumber ?? 'No customer selected'}</dd>
         </div>
         <div>
           <dt>Accounts</dt>
