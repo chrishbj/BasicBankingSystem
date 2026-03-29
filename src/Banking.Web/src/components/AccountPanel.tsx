@@ -1,12 +1,12 @@
-import type { AccountResponse, AccountSummaryResponse, DepositSummaryResponse } from '../types'
+import type { AccountActivityResponse, AccountResponse, AccountSummaryResponse } from '../types'
 import type { StatusTone } from './StatusBadge'
 import { SectionStatus } from './SectionStatus'
-import { StatusBadge, getDepositStatusLabel, getDepositStatusTone } from './StatusBadge'
+import { StatusBadge, getAccountActivityLabel, getAccountActivityTone } from './StatusBadge'
 
 type AccountHistoryFilterState = {
-  status: string
-  requestedFrom: string
-  requestedTo: string
+  activityType: string
+  from: string
+  to: string
 }
 
 type AccountPanelProps = {
@@ -16,8 +16,8 @@ type AccountPanelProps = {
   accountList: AccountSummaryResponse[]
   lookupAccountId: string
   historyStatusText: string
-  history: DepositSummaryResponse[]
-  selectedHistoryItem: DepositSummaryResponse | null
+  history: AccountActivityResponse[]
+  selectedHistoryItem: AccountActivityResponse | null
   historyFilters: AccountHistoryFilterState
   openDisabled: boolean
   lookupDisabled: boolean
@@ -29,7 +29,7 @@ type AccountPanelProps = {
   onRefresh: () => void
   onLookup: () => void
   onLoadHistory: () => void
-  onSelectHistoryItem: (transaction: DepositSummaryResponse) => void
+  onSelectHistoryItem: (transaction: AccountActivityResponse) => void
   onLoadCustomerAccounts: () => void
   onSelectAccount: (accountId: string) => void
 }
@@ -100,7 +100,7 @@ export function AccountPanel({
       <div className="info-card">
         <p className="eyebrow">How To Use</p>
         <p>
-          Select a customer first, load that customer's accounts, then click an account card to inspect balances and transaction history. New accounts are created directly in the Active state.
+          Select a customer first, load that customer&apos;s accounts, then click an account card to inspect balances and full activity history. New accounts are created directly in the Active state.
         </p>
       </div>
 
@@ -118,43 +118,39 @@ export function AccountPanel({
           {busy ? 'Working...' : 'Lookup account'}
         </button>
         <button className="ghost-button" onClick={onLoadHistory} disabled={loadHistoryDisabled}>
-          {busy ? 'Working...' : 'Load history'}
+          {busy ? 'Working...' : 'Load activity history'}
         </button>
       </div>
 
       <div className="search-grid account-filter-grid">
         <label className="field-label">
-          <span>History status</span>
+          <span>Activity type</span>
           <select
-            value={historyFilters.status}
-            onChange={(event) => onHistoryFiltersChange({ ...historyFilters, status: event.target.value })}
+            value={historyFilters.activityType}
+            onChange={(event) => onHistoryFiltersChange({ ...historyFilters, activityType: event.target.value })}
             disabled={busy}
           >
-            <option value="">Any deposit status</option>
-            <option value="Received">Received</option>
-            <option value="Processing">Processing</option>
-            <option value="Succeeded">Succeeded</option>
-            <option value="Rejected">Rejected</option>
-            <option value="Failed">Failed</option>
-            <option value="PendingReview">Pending Review</option>
-            <option value="Reversed">Reversed</option>
+            <option value="">Any activity type</option>
+            <option value="DepositCredit">Deposit</option>
+            <option value="WithdrawalDebit">Withdrawal</option>
+            <option value="DepositReversal">Deposit Reversal</option>
           </select>
         </label>
         <label className="field-label">
-          <span>Requested from</span>
+          <span>From</span>
           <input
             type="datetime-local"
-            value={historyFilters.requestedFrom}
-            onChange={(event) => onHistoryFiltersChange({ ...historyFilters, requestedFrom: event.target.value })}
+            value={historyFilters.from}
+            onChange={(event) => onHistoryFiltersChange({ ...historyFilters, from: event.target.value })}
             disabled={busy}
           />
         </label>
         <label className="field-label">
-          <span>Requested to</span>
+          <span>To</span>
           <input
             type="datetime-local"
-            value={historyFilters.requestedTo}
-            onChange={(event) => onHistoryFiltersChange({ ...historyFilters, requestedTo: event.target.value })}
+            value={historyFilters.to}
+            onChange={(event) => onHistoryFiltersChange({ ...historyFilters, to: event.target.value })}
             disabled={busy}
           />
         </label>
@@ -210,33 +206,32 @@ export function AccountPanel({
             <table>
               <thead>
                 <tr>
-                  <th>Transaction</th>
-                  <th>Status</th>
+                  <th>Reference</th>
+                  <th>Type</th>
                   <th>Amount</th>
-                  <th>Requested At</th>
-                  <th>Posted At</th>
+                  <th>When</th>
+                  <th>Correlation</th>
                 </tr>
               </thead>
               <tbody>
                 {history.map((item) => (
                   <tr
-                    key={item.transactionId}
-                    className={selectedHistoryItem?.transactionId === item.transactionId ? 'table-row-selected' : ''}
+                    key={item.postingReference}
+                    className={selectedHistoryItem?.postingReference === item.postingReference ? 'table-row-selected' : ''}
                     onClick={() => onSelectHistoryItem(item)}
                   >
                     <td>
-                      <strong>{item.transactionNumber}</strong>
-                      <span className="subtle-code">{item.transactionId}</span>
+                      <strong>{item.postingReference}</strong>
+                      {item.reversalOfPostingReference && <span>Of {item.reversalOfPostingReference}</span>}
                     </td>
                     <td>
-                      <StatusBadge label={getDepositStatusLabel(item.status)} tone={getDepositStatusTone(item.status)} />
+                      <StatusBadge label={getAccountActivityLabel(item.postingType)} tone={getAccountActivityTone(item.postingType)} />
                     </td>
                     <td>
                       <strong>{item.amount.toFixed(2)} {item.currency}</strong>
-                      <span>Channel {item.channel}</span>
                     </td>
-                    <td>{new Date(item.requestedAt).toLocaleString()}</td>
-                    <td>{item.postedAt ? new Date(item.postedAt).toLocaleString() : 'Pending'}</td>
+                    <td>{new Date(item.createdAt).toLocaleString()}</td>
+                    <td>{item.correlationId ?? 'N/A'}</td>
                   </tr>
                 ))}
               </tbody>
@@ -245,24 +240,23 @@ export function AccountPanel({
 
           {selectedHistoryItem && (
             <aside className="history-detail-card">
-              <p className="eyebrow">Transaction Detail</p>
-              <h3>{selectedHistoryItem.transactionNumber}</h3>
+              <p className="eyebrow">Activity Detail</p>
+              <h3>{selectedHistoryItem.postingReference}</h3>
               <dl className="detail-list">
-                <div><dt>Transaction Number</dt><dd>{selectedHistoryItem.transactionNumber}</dd></div>
+                <div><dt>Reference Number</dt><dd>{selectedHistoryItem.postingReference}</dd></div>
                 <div>
-                  <dt>Status</dt>
+                  <dt>Activity Type</dt>
                   <dd>
                     <StatusBadge
-                      label={getDepositStatusLabel(selectedHistoryItem.status)}
-                      tone={getDepositStatusTone(selectedHistoryItem.status)}
+                      label={getAccountActivityLabel(selectedHistoryItem.postingType)}
+                      tone={getAccountActivityTone(selectedHistoryItem.postingType)}
                     />
                   </dd>
                 </div>
                 <div><dt>Amount</dt><dd>{selectedHistoryItem.amount.toFixed(2)} {selectedHistoryItem.currency}</dd></div>
-                <div><dt>Channel</dt><dd>{selectedHistoryItem.channel}</dd></div>
-                <div><dt>Requested At</dt><dd>{new Date(selectedHistoryItem.requestedAt).toLocaleString()}</dd></div>
-                <div><dt>Posted At</dt><dd>{selectedHistoryItem.postedAt ? new Date(selectedHistoryItem.postedAt).toLocaleString() : 'Pending'}</dd></div>
-                <div><dt>Internal Reference</dt><dd className="subtle-code">{selectedHistoryItem.transactionId}</dd></div>
+                <div><dt>Occurred At</dt><dd>{new Date(selectedHistoryItem.createdAt).toLocaleString()}</dd></div>
+                <div><dt>Correlation ID</dt><dd className="subtle-code">{selectedHistoryItem.correlationId ?? 'N/A'}</dd></div>
+                {selectedHistoryItem.reversalOfPostingReference && <div><dt>Reversal Of</dt><dd className="subtle-code">{selectedHistoryItem.reversalOfPostingReference}</dd></div>}
               </dl>
             </aside>
           )}

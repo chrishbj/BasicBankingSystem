@@ -47,4 +47,25 @@ public sealed class AccountServiceTests
         updated.AvailableBalance.Should().Be(250m);
         updated.LedgerBalance.Should().Be(250m);
     }
+
+    [Fact]
+    public async Task Withdraw_Should_UpdateBalances_ForActiveAccount()
+    {
+        var repository = new InMemoryAccountRepository();
+        var service = new AccountService(repository, new InMemoryCustomerDirectory());
+
+        var opened = await service.OpenAsync(new OpenAccountRequest("cus_active_001", "Checking", "CNY"), CancellationToken.None);
+        await service.ApplyDepositAsync(
+            opened.AccountId,
+            new ApplyDepositRequest(250m, "CNY", "posting-unit-deposit-001", "corr-unit-001"),
+            CancellationToken.None);
+
+        var updated = await service.WithdrawAsync(
+            opened.AccountId,
+            new CreateWithdrawalRequest(100m, "CNY", "withdrawal-unit-001", "corr-unit-002", "cash withdrawal"),
+            CancellationToken.None);
+
+        updated.AvailableBalance.Should().Be(150m);
+        updated.LedgerBalance.Should().Be(150m);
+    }
 }

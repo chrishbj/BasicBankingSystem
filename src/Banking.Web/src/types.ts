@@ -78,6 +78,19 @@ export type DepositResponse = {
   lastProcessedAt?: string | null
 }
 
+export type AccountActivityType = 1 | 2 | 3
+
+export type AccountActivityResponse = {
+  postingReference: string
+  accountId: string
+  postingType: AccountActivityType
+  amount: number
+  currency: string
+  correlationId?: string | null
+  reversalOfPostingReference?: string | null
+  createdAt: string
+}
+
 export type DepositSummaryResponse = {
   transactionId: string
   transactionNumber: string

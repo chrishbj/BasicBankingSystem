@@ -34,6 +34,17 @@ public sealed class EfAccountRepository(AccountDbContext dbContext) : IAccountRe
             cancellationToken);
     }
 
+    public async Task<IReadOnlyCollection<Domain.AccountPosting>> GetPostingsByAccountIdAsync(string accountId, CancellationToken cancellationToken)
+    {
+        var items = await dbContext.AccountPostings
+            .Where(x => x.AccountId == accountId)
+            .ToListAsync(cancellationToken);
+
+        return items
+            .OrderByDescending(x => x.CreatedAt)
+            .ToArray();
+    }
+
     public async Task SavePostingAsync(Domain.Account account, Domain.AccountPosting posting, CancellationToken cancellationToken)
     {
         dbContext.Accounts.Update(account);

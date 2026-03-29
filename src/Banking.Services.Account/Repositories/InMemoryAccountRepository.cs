@@ -34,6 +34,15 @@ public sealed class InMemoryAccountRepository : IAccountRepository
         return Task.FromResult(posting);
     }
 
+    public Task<IReadOnlyCollection<Domain.AccountPosting>> GetPostingsByAccountIdAsync(string accountId, CancellationToken cancellationToken)
+    {
+        return Task.FromResult<IReadOnlyCollection<Domain.AccountPosting>>(
+            _postings.Values
+                .Where(posting => string.Equals(posting.AccountId, accountId, StringComparison.Ordinal))
+                .OrderByDescending(posting => posting.CreatedAt)
+                .ToArray());
+    }
+
     public Task SavePostingAsync(Domain.Account account, Domain.AccountPosting posting, CancellationToken cancellationToken)
     {
         _accounts[account.AccountId] = account;

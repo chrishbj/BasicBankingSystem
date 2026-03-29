@@ -18,9 +18,11 @@ type DepositPanelProps = {
   statusText: string
   errors: Record<string, string>
   submitDisabled: boolean
+  withdrawDisabled: boolean
   busy: boolean
   onFormChange: (next: DepositFormState) => void
   onSubmit: () => void
+  onWithdraw: () => void
   onRefresh: () => void
 }
 
@@ -34,9 +36,11 @@ export function DepositPanel({
   statusText,
   errors,
   submitDisabled,
+  withdrawDisabled,
   busy,
   onFormChange,
   onSubmit,
+  onWithdraw,
   onRefresh,
 }: DepositPanelProps) {
   const badge = deposit ? buildDepositBadge(deposit) : null
@@ -78,6 +82,9 @@ export function DepositPanel({
           />
         </label>
         {errors.referenceNumber && <p className="field-error">{errors.referenceNumber}</p>}
+        <p className="field-help">
+          Reference number is the business receipt number for this transaction, such as a teller slip, ATM receipt, transfer receipt, or operator ticket number.
+        </p>
         <label className="field-label">
           <span>Deposit note</span>
           <textarea
@@ -90,6 +97,7 @@ export function DepositPanel({
       </div>
       <div className="actions">
         <button onClick={onSubmit} disabled={submitDisabled}>{busy ? 'Working...' : 'Submit deposit'}</button>
+        <button className="ghost-button" onClick={onWithdraw} disabled={withdrawDisabled}>{busy ? 'Working...' : 'Submit withdrawal'}</button>
         <button className="ghost-button" onClick={onRefresh} disabled={!deposit || busy}>Refresh transaction</button>
       </div>
       {deposit && (

@@ -60,6 +60,7 @@ function App() {
     handleSelectAccount,
     handleLoadAccountHistory,
     handleSubmitDeposit,
+    handleSubmitWithdrawal,
     handleRefreshDeposit,
     handleSearchDeposits,
     handleLoadPendingReview,
@@ -186,9 +187,11 @@ function App() {
               statusText={depositStatusText}
               errors={depositFormErrors}
               submitDisabled={!canSubmitDeposit}
+              withdrawDisabled={!canSubmitDeposit}
               busy={!!busyAction}
               onFormChange={setDepositForm}
               onSubmit={() => void handleSubmitDeposit()}
+              onWithdraw={() => void handleSubmitWithdrawal()}
               onRefresh={() => void handleRefreshDeposit()}
             />
           )}

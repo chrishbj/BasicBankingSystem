@@ -1,4 +1,5 @@
 import type {
+  AccountActivityResponse,
   AccountResponse,
   AccountSummaryResponse,
   CustomerResponse,
@@ -76,6 +77,17 @@ export function getAccountsByCustomer(customerId: string, pageNumber = 1, pageSi
   return request<PagedResponse<AccountSummaryResponse>>(
     `/account-api/api/v1/accounts?customerId=${encodeURIComponent(customerId)}&pageNumber=${pageNumber}&pageSize=${pageSize}`,
   )
+}
+
+export function getAccountActivities(accountId: string, params: URLSearchParams) {
+  return request<PagedResponse<AccountActivityResponse>>(`/account-api/api/v1/accounts/${accountId}/activities?${params.toString()}`)
+}
+
+export function submitWithdrawal(accountId: string, payload: Record<string, unknown>) {
+  return request<AccountResponse>(`/account-api/api/v1/accounts/${accountId}/withdrawals`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
 }
 
 export function submitDeposit(payload: Record<string, unknown>, idempotencyKey: string, correlationId: string) {

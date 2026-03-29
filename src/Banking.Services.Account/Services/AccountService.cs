@@ -106,6 +106,71 @@ public sealed class AccountService(
         return Map(account);
     }
 
+    public async Task<AccountResponse> WithdrawAsync(string accountId, CreateWithdrawalRequest request, CancellationToken cancellationToken)
+    {
+        if (request.Amount <= 0)
+        {
+            throw new AccountNotEligibleForWithdrawalException(accountId, "Withdrawal amount must be greater than zero.");
+        }
+
+        if (string.IsNullOrWhiteSpace(request.ReferenceNumber))
+        {
+            throw new AccountNotEligibleForWithdrawalException(accountId, "Reference number is required.");
+        }
+
+        var account = await accountRepository.GetByIdAsync(accountId, cancellationToken)
+            ?? throw new AccountNotFoundException(accountId);
+
+        if (account.Status != AccountStatus.Active)
+        {
+            throw new AccountNotEligibleForWithdrawalException(accountId, $"Account status is '{account.Status}'.");
+        }
+
+        if (!string.Equals(account.Currency, request.Currency, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new AccountNotEligibleForWithdrawalException(accountId, "Currency does not match account currency.");
+        }
+
+        var postingReference = request.ReferenceNumber.Trim();
+        var existingPosting = await accountRepository.GetPostingByReferenceAsync(postingReference, cancellationToken);
+        if (existingPosting is not null)
+        {
+            if (existingPosting.AccountId != accountId ||
+                existingPosting.PostingType != AccountPostingType.WithdrawalDebit ||
+                existingPosting.Amount != request.Amount ||
+                !string.Equals(existingPosting.Currency, request.Currency, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new AccountNotEligibleForWithdrawalException(accountId, "Reference number was already used with different values.");
+            }
+
+            return Map(account);
+        }
+
+        if (account.AvailableBalance < request.Amount || account.LedgerBalance < request.Amount)
+        {
+            throw new AccountNotEligibleForWithdrawalException(accountId, "Insufficient balance.");
+        }
+
+        account.AvailableBalance -= request.Amount;
+        account.LedgerBalance -= request.Amount;
+
+        await accountRepository.SavePostingAsync(
+            account,
+            new AccountPosting
+            {
+                PostingReference = postingReference,
+                AccountId = accountId,
+                PostingType = AccountPostingType.WithdrawalDebit,
+                Amount = request.Amount,
+                Currency = request.Currency.Trim().ToUpperInvariant(),
+                CorrelationId = request.CorrelationId,
+                CreatedAt = DateTimeOffset.UtcNow
+            },
+            cancellationToken);
+
+        return Map(account);
+    }
+
     public async Task<AccountResponse> ReverseDepositAsync(string accountId, ReverseDepositRequest request, CancellationToken cancellationToken)
     {
         if (request.Amount <= 0)
@@ -195,6 +260,55 @@ public sealed class AccountService(
 
         var totalPages = totalCount == 0 ? 0 : (int)Math.Ceiling(totalCount / (double)pageSize);
         return new PagedResponse<AccountSummaryResponse>(items, pageNumber, pageSize, totalCount, totalPages);
+    }
+
+    public async Task<PagedResponse<AccountActivityResponse>> GetActivitiesAsync(
+        string accountId,
+        int pageNumber,
+        int pageSize,
+        string? activityType,
+        DateTimeOffset? from,
+        DateTimeOffset? to,
+        CancellationToken cancellationToken)
+    {
+        var account = await accountRepository.GetByIdAsync(accountId, cancellationToken)
+            ?? throw new AccountNotFoundException(accountId);
+
+        var activities = await accountRepository.GetPostingsByAccountIdAsync(account.AccountId, cancellationToken);
+
+        if (!string.IsNullOrWhiteSpace(activityType) &&
+            Enum.TryParse<AccountPostingType>(activityType.Trim(), true, out var parsedType))
+        {
+            activities = activities.Where(item => item.PostingType == parsedType).ToArray();
+        }
+
+        if (from is not null)
+        {
+            activities = activities.Where(item => item.CreatedAt >= from.Value).ToArray();
+        }
+
+        if (to is not null)
+        {
+            activities = activities.Where(item => item.CreatedAt <= to.Value).ToArray();
+        }
+
+        var totalCount = activities.Count;
+        var items = activities
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
+            .Select(item => new AccountActivityResponse(
+                item.PostingReference,
+                item.AccountId,
+                item.PostingType,
+                item.Amount,
+                item.Currency,
+                item.CorrelationId,
+                item.ReversalOfPostingReference,
+                item.CreatedAt))
+            .ToArray();
+
+        var totalPages = totalCount == 0 ? 0 : (int)Math.Ceiling(totalCount / (double)pageSize);
+        return new PagedResponse<AccountActivityResponse>(items, pageNumber, pageSize, totalCount, totalPages);
     }
 
     private static AccountResponse Map(Domain.Account account)

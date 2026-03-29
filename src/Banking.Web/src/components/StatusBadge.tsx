@@ -1,4 +1,4 @@
-import type { DepositResponse, DepositStatus, DepositReviewResolution, PendingReviewDepositSummaryResponse } from '../types'
+import type { AccountActivityResponse, DepositResponse, DepositStatus, DepositReviewResolution, PendingReviewDepositSummaryResponse } from '../types'
 
 type StatusBadgeProps = {
   label: string
@@ -65,6 +65,32 @@ export function getReviewResolutionLabel(resolution: DepositReviewResolution) {
       return 'Failed Externally'
     default:
       return `Resolution ${resolution}`
+  }
+}
+
+export function getAccountActivityLabel(activityType: AccountActivityResponse['postingType']) {
+  switch (activityType) {
+    case 1:
+      return 'Deposit'
+    case 2:
+      return 'Deposit Reversal'
+    case 3:
+      return 'Withdrawal'
+    default:
+      return `Activity ${activityType}`
+  }
+}
+
+export function getAccountActivityTone(activityType: AccountActivityResponse['postingType']): StatusTone {
+  switch (activityType) {
+    case 1:
+      return 'success'
+    case 3:
+      return 'warning'
+    case 2:
+      return 'danger'
+    default:
+      return 'neutral'
   }
 }
 

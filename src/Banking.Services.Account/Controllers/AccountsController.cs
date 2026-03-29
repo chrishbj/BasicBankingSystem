@@ -70,6 +70,31 @@ public sealed class AccountsController(IAccountService accountService) : Control
         }
     }
 
+    [HttpPost("{accountId}/withdrawals")]
+    public async Task<IActionResult> Withdraw(
+        string accountId,
+        [FromBody] CreateWithdrawalRequest request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            return Ok(await accountService.WithdrawAsync(accountId, request, cancellationToken));
+        }
+        catch (AccountNotFoundException)
+        {
+            return NotFound();
+        }
+        catch (AccountNotEligibleForWithdrawalException exception)
+        {
+            return Conflict(new ProblemDetails
+            {
+                Title = "Account is not eligible for withdrawal",
+                Detail = exception.Message,
+                Status = StatusCodes.Status409Conflict
+            });
+        }
+    }
+
     [HttpPost("{accountId}/deposit-reversals")]
     [Authorize(Policy = BankingPolicies.InternalServiceOnly)]
     public async Task<IActionResult> ReverseDeposit(
@@ -104,5 +129,25 @@ public sealed class AccountsController(IAccountService accountService) : Control
         CancellationToken cancellationToken = default)
     {
         return Ok(await accountService.GetByCustomerIdAsync(customerId, pageNumber, pageSize, cancellationToken));
+    }
+
+    [HttpGet("{accountId}/activities")]
+    public async Task<IActionResult> GetActivities(
+        string accountId,
+        [FromQuery] string? activityType = null,
+        [FromQuery] DateTimeOffset? from = null,
+        [FromQuery] DateTimeOffset? to = null,
+        [FromQuery] int pageNumber = 1,
+        [FromQuery] int pageSize = 20,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            return Ok(await accountService.GetActivitiesAsync(accountId, pageNumber, pageSize, activityType, from, to, cancellationToken));
+        }
+        catch (AccountNotFoundException)
+        {
+            return NotFound();
+        }
     }
 }
