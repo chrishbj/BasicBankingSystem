@@ -38,24 +38,33 @@ export function DepositPanel({
       <h2>Deposit</h2>
       <SectionStatus text={statusText} />
       <div className="form-grid">
-        <input
-          value={form.amount}
-          onChange={(event) => onFormChange({ ...form, amount: event.target.value })}
-          placeholder="Amount"
-        />
+        <label className="field-label">
+          <span>Deposit amount</span>
+          <input
+            value={form.amount}
+            onChange={(event) => onFormChange({ ...form, amount: event.target.value })}
+            placeholder="Amount in account currency"
+          />
+        </label>
         {errors.amount && <p className="field-error">{errors.amount}</p>}
-        <input
-          value={form.referenceNumber}
-          onChange={(event) => onFormChange({ ...form, referenceNumber: event.target.value })}
-          placeholder="Reference number"
-        />
+        <label className="field-label">
+          <span>Reference number</span>
+          <input
+            value={form.referenceNumber}
+            onChange={(event) => onFormChange({ ...form, referenceNumber: event.target.value })}
+            placeholder="Cash slip or teller reference"
+          />
+        </label>
         {errors.referenceNumber && <p className="field-error">{errors.referenceNumber}</p>}
-        <textarea
-          value={form.note}
-          onChange={(event) => onFormChange({ ...form, note: event.target.value })}
-          placeholder="Deposit note"
-          rows={3}
-        />
+        <label className="field-label">
+          <span>Deposit note</span>
+          <textarea
+            value={form.note}
+            onChange={(event) => onFormChange({ ...form, note: event.target.value })}
+            placeholder="Operator note for this deposit"
+            rows={3}
+          />
+        </label>
       </div>
       <div className="actions">
         <button onClick={onSubmit} disabled={submitDisabled}>{busy ? 'Working...' : 'Submit deposit'}</button>

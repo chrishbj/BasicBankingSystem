@@ -17,10 +17,12 @@ function App() {
     message,
     toast,
     busyAction,
+    customerStatusText,
     depositStatusText,
     accountHistoryStatusText,
     reviewStatusText,
     customer,
+    customers,
     account,
     accountList,
     deposit,
@@ -47,6 +49,8 @@ function App() {
     setCustomerForm,
     setDepositForm,
     loadHealth,
+    handleLoadCustomers,
+    handleSelectCustomer,
     handleCreateCustomer,
     handleActivateCustomer,
     handleOpenAccount,
@@ -113,6 +117,8 @@ function App() {
           {activeTab === 'customer' && (
             <CustomerPanel
               customer={customer}
+              customers={customers}
+              statusText={customerStatusText}
               form={customerForm}
               errors={customerFormErrors}
               createDisabled={!canCreateCustomer}
@@ -120,6 +126,8 @@ function App() {
               onFormChange={setCustomerForm}
               onCreate={() => void handleCreateCustomer()}
               onActivate={() => void handleActivateCustomer()}
+              onLoadCustomers={() => void handleLoadCustomers()}
+              onSelectCustomer={(selectedCustomer) => void handleSelectCustomer(selectedCustomer)}
             />
           )}
 

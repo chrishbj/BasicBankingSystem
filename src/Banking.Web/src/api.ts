@@ -55,6 +55,12 @@ export function activateCustomer(customerId: string, reason: string) {
   })
 }
 
+export function getCustomers(pageNumber = 1, pageSize = 20) {
+  return request<PagedResponse<CustomerResponse>>(
+    `/customer-api/api/v1/customers?pageNumber=${pageNumber}&pageSize=${pageSize}`,
+  )
+}
+
 export function openAccount(payload: Record<string, unknown>) {
   return request<AccountResponse>('/account-api/api/v1/accounts', {
     method: 'POST',

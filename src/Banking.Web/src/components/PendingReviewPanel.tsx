@@ -50,11 +50,14 @@ export function PendingReviewPanel({
           <SectionStatus text={statusText} />
         </div>
         <div className="toolbar">
-          <select value={sortBy} onChange={(event) => onSortByChange(event.target.value as PendingReviewSortBy)}>
-            <option value="ReviewRequiredAt">Review required</option>
-            <option value="LastCompensationAttemptAt">Last compensation attempt</option>
-            <option value="RequestedAt">Requested at</option>
-          </select>
+          <label className="field-label compact-field">
+            <span>Sort queue by</span>
+            <select value={sortBy} onChange={(event) => onSortByChange(event.target.value as PendingReviewSortBy)}>
+              <option value="ReviewRequiredAt">Review required</option>
+              <option value="LastCompensationAttemptAt">Last compensation attempt</option>
+              <option value="RequestedAt">Requested at</option>
+            </select>
+          </label>
           <label className="toggle">
             <input
               type="checkbox"
@@ -62,7 +65,7 @@ export function PendingReviewPanel({
               onChange={(event) => onDescendingChange(event.target.checked)}
               disabled={busy}
             />
-            Desc
+            Descending order
           </label>
           <button onClick={onLoadQueue} disabled={busy}>{busy ? 'Working...' : 'Load queue'}</button>
           <button className="ghost-button" onClick={onSearchDeposits} disabled={busy}>Search matching deposits</button>
@@ -70,29 +73,38 @@ export function PendingReviewPanel({
       </div>
 
       <div className="search-grid">
-        <input
-          value={reviewSearch.correlationId}
-          onChange={(event) => onReviewSearchChange({ ...reviewSearch, correlationId: event.target.value })}
-          placeholder="Correlation ID"
-          disabled={busy}
-        />
-        <input
-          value={reviewSearch.failureCode}
-          onChange={(event) => onReviewSearchChange({ ...reviewSearch, failureCode: event.target.value })}
-          placeholder="Failure code"
-          disabled={busy}
-        />
-        <select
-          value={reviewSearch.status}
-          onChange={(event) => onReviewSearchChange({ ...reviewSearch, status: event.target.value })}
-          disabled={busy}
-        >
-          <option value="">Any status</option>
-          <option value="PendingReview">Pending Review</option>
-          <option value="Failed">Failed</option>
-          <option value="Succeeded">Succeeded</option>
-          <option value="Reversed">Reversed</option>
-        </select>
+        <label className="field-label">
+          <span>Correlation ID</span>
+          <input
+            value={reviewSearch.correlationId}
+            onChange={(event) => onReviewSearchChange({ ...reviewSearch, correlationId: event.target.value })}
+            placeholder="Correlation ID"
+            disabled={busy}
+          />
+        </label>
+        <label className="field-label">
+          <span>Failure code</span>
+          <input
+            value={reviewSearch.failureCode}
+            onChange={(event) => onReviewSearchChange({ ...reviewSearch, failureCode: event.target.value })}
+            placeholder="Failure code"
+            disabled={busy}
+          />
+        </label>
+        <label className="field-label">
+          <span>Deposit status</span>
+          <select
+            value={reviewSearch.status}
+            onChange={(event) => onReviewSearchChange({ ...reviewSearch, status: event.target.value })}
+            disabled={busy}
+          >
+            <option value="">Any status</option>
+            <option value="PendingReview">Pending Review</option>
+            <option value="Failed">Failed</option>
+            <option value="Succeeded">Succeeded</option>
+            <option value="Reversed">Reversed</option>
+          </select>
+        </label>
       </div>
 
       <div className="table-scroll">

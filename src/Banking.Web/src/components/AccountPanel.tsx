@@ -98,12 +98,15 @@ export function AccountPanel({
       </div>
 
       <div className="search-grid account-search-grid">
-        <input
-          value={lookupAccountId}
-          onChange={(event) => onLookupAccountIdChange(event.target.value)}
-          placeholder="Account ID"
-          disabled={busy}
-        />
+        <label className="field-label">
+          <span>Lookup account ID</span>
+          <input
+            value={lookupAccountId}
+            onChange={(event) => onLookupAccountIdChange(event.target.value)}
+            placeholder="Account ID"
+            disabled={busy}
+          />
+        </label>
         <button className="ghost-button" onClick={onLookup} disabled={lookupDisabled}>
           {busy ? 'Working...' : 'Lookup account'}
         </button>
@@ -113,32 +116,41 @@ export function AccountPanel({
       </div>
 
       <div className="search-grid account-filter-grid">
-        <select
-          value={historyFilters.status}
-          onChange={(event) => onHistoryFiltersChange({ ...historyFilters, status: event.target.value })}
-          disabled={busy}
-        >
-          <option value="">Any deposit status</option>
-          <option value="Received">Received</option>
-          <option value="Processing">Processing</option>
-          <option value="Succeeded">Succeeded</option>
-          <option value="Rejected">Rejected</option>
-          <option value="Failed">Failed</option>
-          <option value="PendingReview">Pending Review</option>
-          <option value="Reversed">Reversed</option>
-        </select>
-        <input
-          type="datetime-local"
-          value={historyFilters.requestedFrom}
-          onChange={(event) => onHistoryFiltersChange({ ...historyFilters, requestedFrom: event.target.value })}
-          disabled={busy}
-        />
-        <input
-          type="datetime-local"
-          value={historyFilters.requestedTo}
-          onChange={(event) => onHistoryFiltersChange({ ...historyFilters, requestedTo: event.target.value })}
-          disabled={busy}
-        />
+        <label className="field-label">
+          <span>History status</span>
+          <select
+            value={historyFilters.status}
+            onChange={(event) => onHistoryFiltersChange({ ...historyFilters, status: event.target.value })}
+            disabled={busy}
+          >
+            <option value="">Any deposit status</option>
+            <option value="Received">Received</option>
+            <option value="Processing">Processing</option>
+            <option value="Succeeded">Succeeded</option>
+            <option value="Rejected">Rejected</option>
+            <option value="Failed">Failed</option>
+            <option value="PendingReview">Pending Review</option>
+            <option value="Reversed">Reversed</option>
+          </select>
+        </label>
+        <label className="field-label">
+          <span>Requested from</span>
+          <input
+            type="datetime-local"
+            value={historyFilters.requestedFrom}
+            onChange={(event) => onHistoryFiltersChange({ ...historyFilters, requestedFrom: event.target.value })}
+            disabled={busy}
+          />
+        </label>
+        <label className="field-label">
+          <span>Requested to</span>
+          <input
+            type="datetime-local"
+            value={historyFilters.requestedTo}
+            onChange={(event) => onHistoryFiltersChange({ ...historyFilters, requestedTo: event.target.value })}
+            disabled={busy}
+          />
+        </label>
       </div>
 
       <div className="actions">

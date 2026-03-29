@@ -4,6 +4,7 @@ import {
   createCustomer,
   getAccount,
   getAccountsByCustomer,
+  getCustomers,
   getDeposit,
   getHealth,
   getPendingReview,
@@ -57,10 +58,12 @@ export function useOperationsConsole() {
   const [message, setMessage] = useState('Ready.')
   const [toast, setToast] = useState('')
   const [busyAction, setBusyAction] = useState('')
+  const [customerStatusText, setCustomerStatusText] = useState('Create or browse customers, then select one to inspect accounts and activity.')
   const [depositStatusText, setDepositStatusText] = useState('No deposit submitted yet.')
   const [accountHistoryStatusText, setAccountHistoryStatusText] = useState('Look up an account to inspect balances and history.')
   const [reviewStatusText, setReviewStatusText] = useState('Load the queue to inspect pending review items.')
   const [customer, setCustomer] = useState<CustomerResponse | null>(null)
+  const [customers, setCustomers] = useState<CustomerResponse[]>([])
   const [account, setAccount] = useState<AccountResponse | null>(null)
   const [accountList, setAccountList] = useState<AccountSummaryResponse[]>([])
   const [deposit, setDeposit] = useState<DepositResponse | null>(null)
@@ -106,6 +109,7 @@ export function useOperationsConsole() {
 
   useEffect(() => {
     void loadHealth()
+    void loadCustomers()
   }, [])
 
   useEffect(() => {
@@ -219,12 +223,14 @@ export function useOperationsConsole() {
       })
 
       setCustomer(created)
+      await loadCustomers(created.customerId)
       setAccount(null)
       setAccountList([])
       setAccountHistory([])
       setSelectedAccountHistoryItem(null)
       setAccountQuery({ accountId: '' })
       setDeposit(null)
+      setCustomerStatusText(`Customer ${created.fullName} created and selected.`)
       setDepositStatusText('Customer created. Open an account to continue.')
       setAccountHistoryStatusText('Customer created. Open or look up an account to inspect history.')
     })
@@ -237,7 +243,10 @@ export function useOperationsConsole() {
     }
 
     await runAction('Activate customer', async () => {
-      setCustomer(await activateCustomer(customer.customerId, 'React console activation'))
+      const updated = await activateCustomer(customer.customerId, 'React console activation')
+      setCustomer(updated)
+      await loadCustomers(updated.customerId)
+      setCustomerStatusText(`Customer ${updated.fullName} activated.`)
     })
   }
 
@@ -295,6 +304,55 @@ export function useOperationsConsole() {
   async function loadCustomerAccountsCore(customerId: string) {
     const response = await getAccountsByCustomer(customerId)
     setAccountList(response.items)
+    return response.items
+  }
+
+  async function loadCustomers(selectedCustomerId?: string) {
+    const response = await getCustomers()
+    setCustomers(response.items)
+
+    if (selectedCustomerId) {
+      const selected = response.items.find((item) => item.customerId === selectedCustomerId)
+      if (selected) {
+        setCustomer(selected)
+      }
+    }
+  }
+
+  async function handleLoadCustomers() {
+    await runAction('Load customers', async () => {
+      await loadCustomers(customer?.customerId)
+      setCustomerStatusText('Loaded current customer directory.')
+    })
+  }
+
+  async function handleSelectCustomer(nextCustomer: CustomerResponse) {
+    await runAction('Load customer workspace', async () => {
+      setCustomer(nextCustomer)
+      setDeposit(null)
+      setSelectedAccountHistoryItem(null)
+
+      const items = await loadCustomerAccountsCore(nextCustomer.customerId)
+
+      if (items.length > 0) {
+        const primaryAccountId = items[0].accountId
+        const fetched = await getAccount(primaryAccountId)
+        setAccount(fetched)
+        setAccountQuery({ accountId: primaryAccountId })
+        await loadAccountHistoryCore(primaryAccountId, nextCustomer.customerId)
+        setAccountHistoryStatusText(`Loaded ${items.length} accounts and recent activity for ${nextCustomer.fullName}.`)
+      }
+      else
+      {
+        setAccount(null)
+        setAccountQuery({ accountId: '' })
+        setAccountHistory([])
+        setSelectedAccountHistoryItem(null)
+        setAccountHistoryStatusText(`Customer ${nextCustomer.fullName} does not have any accounts yet.`)
+      }
+
+      setCustomerStatusText(`Selected ${nextCustomer.fullName} and loaded related data.`)
+    })
   }
 
   async function handleLoadCustomerAccounts() {
@@ -470,10 +528,12 @@ export function useOperationsConsole() {
     message,
     toast,
     busyAction,
+    customerStatusText,
     depositStatusText,
     accountHistoryStatusText,
     reviewStatusText,
     customer,
+    customers,
     account,
     accountList,
     deposit,
@@ -500,6 +560,8 @@ export function useOperationsConsole() {
     setCustomerForm,
     setDepositForm,
     loadHealth,
+    handleLoadCustomers,
+    handleSelectCustomer,
     handleCreateCustomer,
     handleActivateCustomer,
     handleOpenAccount,
