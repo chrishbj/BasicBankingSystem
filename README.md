@@ -225,6 +225,9 @@ The current implementation is still a local development skeleton using in-memory
 - [OpenAPI And API Contracts](docs/23-openapi-and-api-contracts.md)
 - [One-Page Showcase Summary](docs/24-showcase-one-page-summary.md)
 - [Showcase Talk Track](docs/25-showcase-talk-track.md)
+- [Resume Project Bullets](docs/26-resume-project-bullets.md)
+- [GitHub About Snippets](docs/27-github-about-snippets.md)
+- [Interview Q And A](docs/28-interview-q-and-a.md)
 
 ### Chinese Docs
 
