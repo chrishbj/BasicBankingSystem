@@ -94,7 +94,7 @@ export function AccountPanel({
           <SectionStatus text={historyStatusText} />
         </div>
         <div className="actions">
-          <button onClick={onOpen} disabled={openDisabled}>{busy ? 'Working...' : 'Open checking account'}</button>
+          <button onClick={onOpen} disabled={openDisabled}>{busy ? 'Working...' : 'Open active checking account'}</button>
           <button className="ghost-button" onClick={onRefresh} disabled={!account || busy}>Refresh current</button>
         </div>
       </div>
@@ -102,7 +102,7 @@ export function AccountPanel({
       <div className="info-card">
         <p className="eyebrow">How To Use</p>
         <p>
-          Select a customer first, load that customer's accounts, then click an account card to inspect balances and transaction history.
+          Select a customer first, load that customer's accounts, then click an account card to inspect balances and transaction history. New accounts are created directly in the Active state.
         </p>
       </div>
 

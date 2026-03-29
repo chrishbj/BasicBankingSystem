@@ -163,6 +163,15 @@
   text-align: left;
 }
 
+.compact-panel {
+  padding: 16px 18px;
+}
+
+.compact-panel-head {
+  margin-bottom: 10px;
+  align-items: center;
+}
+
 .wide-panel {
   padding-bottom: 28px;
 }
@@ -305,6 +314,51 @@
   display: grid;
   grid-template-columns: 1fr;
   gap: 12px;
+}
+
+.service-health-list {
+  display: grid;
+  gap: 8px;
+}
+
+.service-health-item {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 10px;
+  border-radius: 14px;
+  background: var(--panel-accent);
+  border: 1px solid var(--border);
+}
+
+.service-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  display: inline-block;
+}
+
+.service-dot-up {
+  background: #2f9d4d;
+  box-shadow: 0 0 0 3px rgba(47, 157, 77, 0.16);
+}
+
+.service-dot-down {
+  background: #c74444;
+  box-shadow: 0 0 0 3px rgba(199, 68, 68, 0.16);
+}
+
+.service-health-name {
+  color: var(--text-h);
+  text-transform: capitalize;
+}
+
+.service-health-link {
+  color: var(--accent);
+  text-decoration: none;
+  font-weight: 700;
+  letter-spacing: 0.08em;
 }
 
 .health-card,

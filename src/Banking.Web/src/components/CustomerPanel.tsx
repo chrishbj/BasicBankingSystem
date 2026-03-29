@@ -10,7 +10,7 @@ type CustomerFormState = {
 }
 
 type CustomerPanelProps = {
-  customer: CustomerResponse | null
+  selectedCustomerId?: string
   customers: CustomerResponse[]
   statusText: string
   form: CustomerFormState
@@ -19,7 +19,6 @@ type CustomerPanelProps = {
   busy: boolean
   onFormChange: (next: CustomerFormState) => void
   onCreate: () => void
-  onActivate: () => void
   onLoadCustomers: () => void
   onSelectCustomer: (customer: CustomerResponse) => void
 }
@@ -49,7 +48,7 @@ function getCustomerStatusTone(status: number) {
 }
 
 export function CustomerPanel({
-  customer,
+  selectedCustomerId,
   customers,
   statusText,
   form,
@@ -58,7 +57,6 @@ export function CustomerPanel({
   busy,
   onFormChange,
   onCreate,
-  onActivate,
   onLoadCustomers,
   onSelectCustomer,
 }: CustomerPanelProps) {
@@ -72,15 +70,18 @@ export function CustomerPanel({
         </div>
         <div className="actions">
           <button onClick={onCreate} disabled={createDisabled}>{busy ? 'Working...' : 'Create customer'}</button>
-          <button className="ghost-button" onClick={onActivate} disabled={!customer || busy}>Activate</button>
           <button className="ghost-button" onClick={onLoadCustomers} disabled={busy}>Browse customers</button>
         </div>
       </div>
       <div className="info-card">
         <p className="eyebrow">How To Use</p>
         <p>
-          Browse the customer directory, select one customer card, then switch to the Account tab to load that customer's accounts and activity history.
+          Browse the customer directory and select one customer card from the list below. The shared workspace selector at the top tracks the current customer and related account context.
         </p>
+      </div>
+      <div className="info-card">
+        <p className="eyebrow">New Customer</p>
+        <p>Create a new customer profile here. After creation, the new customer is automatically selected in the workspace.</p>
       </div>
       <div className="form-grid">
         <label className="field-label">
@@ -120,16 +121,6 @@ export function CustomerPanel({
         </label>
         {errors.email && <p className="field-error">{errors.email}</p>}
       </div>
-      {customer && (
-        <dl className="detail-list">
-          <div><dt>Customer Name</dt><dd>{customer.fullName}</dd></div>
-          <div><dt>Customer Number</dt><dd>{customer.customerNumber}</dd></div>
-          <div><dt>Status</dt><dd>{getCustomerStatusLabel(customer.status)}</dd></div>
-          <div><dt>Mobile</dt><dd>{customer.mobile}</dd></div>
-          <div><dt>Email</dt><dd>{customer.email}</dd></div>
-          <div><dt>Internal Reference</dt><dd className="subtle-code">{customer.customerId}</dd></div>
-        </dl>
-      )}
       {customers.length > 0 && (
         <div className="customer-directory">
           <h3>Existing Customers</h3>
@@ -138,7 +129,7 @@ export function CustomerPanel({
               <button
                 key={item.customerId}
                 type="button"
-                className={item.customerId === customer?.customerId ? 'customer-card customer-card-active' : 'customer-card'}
+                className={item.customerId === selectedCustomerId ? 'customer-card customer-card-active' : 'customer-card'}
                 onClick={() => onSelectCustomer(item)}
               >
                 <div className="customer-card-head">

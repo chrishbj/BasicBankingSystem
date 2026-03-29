@@ -53,7 +53,6 @@ function App() {
     handleLoadCustomers,
     handleSelectCustomer,
     handleCreateCustomer,
-    handleActivateCustomer,
     handleOpenAccount,
     handleRefreshAccount,
     handleLookupAccount,
@@ -135,7 +134,7 @@ function App() {
 
           {activeTab === 'customer' && (
             <CustomerPanel
-              customer={customer}
+              selectedCustomerId={customer?.customerId}
               customers={customers}
               statusText={customerStatusText}
               form={customerForm}
@@ -144,7 +143,6 @@ function App() {
               busy={!!busyAction}
               onFormChange={setCustomerForm}
               onCreate={() => void handleCreateCustomer()}
-              onActivate={() => void handleActivateCustomer()}
               onLoadCustomers={() => void handleLoadCustomers()}
               onSelectCustomer={(selectedCustomer) => void handleSelectCustomer(selectedCustomer)}
             />
