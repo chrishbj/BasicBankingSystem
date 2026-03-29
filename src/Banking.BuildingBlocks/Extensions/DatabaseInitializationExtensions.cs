@@ -1,4 +1,5 @@
 using System.Data.Common;
+using System.Reflection;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.Extensions.DependencyInjection;
@@ -43,23 +44,76 @@ public static class DatabaseInitializationExtensions
             await connection.OpenAsync(cancellationToken);
         }
 
-        var missingTableExists = false;
-        foreach (var table in tables)
-        {
-            if (!await TableExistsAsync(connection, table, cancellationToken))
-            {
-                missingTableExists = true;
-                break;
-            }
-        }
-
-        if (!missingTableExists)
+        if (!await HasMissingTablesAsync(connection, tables, cancellationToken))
         {
             return;
         }
 
         var createScript = dbContext.Database.GenerateCreateScript();
-        await dbContext.Database.ExecuteSqlRawAsync(createScript, cancellationToken);
+        try
+        {
+            foreach (var statement in SplitSqlStatements(createScript))
+            {
+                try
+                {
+                    await dbContext.Database.ExecuteSqlRawAsync(statement, cancellationToken);
+                }
+                catch (DbException exception) when (IsAlreadyExistsException(exception))
+                {
+                    // Shared local databases may already contain some objects from prior runs
+                    // or another service instance may have created them first.
+                    continue;
+                }
+            }
+        }
+        catch (DbException)
+        {
+            if (!await HasMissingTablesAsync(connection, tables, cancellationToken))
+            {
+                // Another instance may have created the objects after our pre-check.
+                // If every required table now exists, startup can continue safely.
+                return;
+            }
+
+            throw;
+        }
+    }
+
+    private static async Task<bool> HasMissingTablesAsync(
+        DbConnection connection,
+        IReadOnlyCollection<TableIdentifier> tables,
+        CancellationToken cancellationToken)
+    {
+        foreach (var table in tables)
+        {
+            if (!await TableExistsAsync(connection, table, cancellationToken))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static IReadOnlyCollection<string> SplitSqlStatements(string script)
+    {
+        return script
+            .Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Where(statement => !string.IsNullOrWhiteSpace(statement))
+            .Select(statement => $"{statement};")
+            .ToArray();
+    }
+
+    private static bool IsAlreadyExistsException(DbException exception)
+    {
+        var sqlState = exception.GetType()
+            .GetProperty("SqlState", BindingFlags.Public | BindingFlags.Instance)?
+            .GetValue(exception)?
+            .ToString();
+
+        return string.Equals(sqlState, "42P07", StringComparison.Ordinal) ||
+               string.Equals(sqlState, "42710", StringComparison.Ordinal) ||
+               exception.Message.Contains("already exists", StringComparison.OrdinalIgnoreCase);
     }
 
     private static async Task<bool> TableExistsAsync(DbConnection connection, TableIdentifier table, CancellationToken cancellationToken)
