@@ -87,6 +87,14 @@ export function WorkspaceContextPanel({
           <dd>{customer?.customerNumber ?? 'No customer selected'}</dd>
         </div>
         <div>
+          <dt>Identity number</dt>
+          <dd>{customer?.identityNumberMasked ?? 'No customer selected'}</dd>
+        </div>
+        <div>
+          <dt>Portal sign-in last 4 digits</dt>
+          <dd>{customer?.portalIdentityLast4 ?? 'No customer selected'}</dd>
+        </div>
+        <div>
           <dt>Accounts</dt>
           <dd>{accountList.length > 0 ? `${accountList.length} loaded` : 'No accounts loaded'}</dd>
         </div>

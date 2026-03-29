@@ -141,6 +141,14 @@ export function CustomerPanel({
                   <span className="card-value">{item.customerNumber}</span>
                 </div>
                 <div className="card-metadata">
+                  <span className="card-label">Identity Number</span>
+                  <span className="card-value">{item.identityNumberMasked}</span>
+                </div>
+                <div className="card-metadata">
+                  <span className="card-label">Portal Sign-In Last 4 Digits</span>
+                  <span className="card-value">{item.portalIdentityLast4}</span>
+                </div>
+                <div className="card-metadata">
                   <span className="card-label">Mobile</span>
                   <span className="card-value">{item.mobile}</span>
                 </div>

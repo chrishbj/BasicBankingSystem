@@ -8,6 +8,7 @@ public sealed record CustomerResponse(
     string FullName,
     string IdentityType,
     string IdentityNumberMasked,
+    string PortalIdentityLast4,
     string Mobile,
     string? Email,
     AddressResponse Address,
@@ -27,6 +28,8 @@ public sealed record CustomerSummaryResponse(
     string CustomerId,
     string CustomerNumber,
     string FullName,
+    string IdentityNumberMasked,
+    string PortalIdentityLast4,
     string Mobile,
     CustomerStatus Status,
     DateTimeOffset CreatedAt);

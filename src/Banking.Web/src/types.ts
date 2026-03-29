@@ -19,7 +19,8 @@ export type CustomerResponse = {
   customerNumber: string
   fullName: string
   identityType: string
-  identityNumber: string
+  identityNumberMasked: string
+  portalIdentityLast4: string
   mobile: string
   email: string
   status: CustomerStatus

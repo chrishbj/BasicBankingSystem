@@ -68,6 +68,8 @@ public sealed class CustomerService(ICustomerRepository repository) : ICustomerS
                 customer.CustomerId,
                 customer.CustomerNumber,
                 customer.FullName,
+                MaskIdentity(customer.IdentityNumber),
+                GetIdentityLast4Digits(customer.IdentityNumber),
                 customer.Mobile,
                 customer.Status,
                 customer.CreatedAt))
@@ -134,6 +136,7 @@ public sealed class CustomerService(ICustomerRepository repository) : ICustomerS
             customer.FullName,
             customer.IdentityType,
             MaskIdentity(customer.IdentityNumber),
+            GetIdentityLast4Digits(customer.IdentityNumber),
             customer.Mobile,
             customer.Email,
             new AddressResponse(
