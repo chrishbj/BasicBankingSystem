@@ -31,7 +31,7 @@ Run the collection in this order:
 7. `Accounts / Open Account`
 8. `Deposits / Submit Deposit`
 9. `Deposits / Wait For Deposit Completion`
-10. `Accounts / Get Account By Id`
+10. `Accounts / Get Account By Number`
 11. `Audits / List Audits By Correlation`
 
 When `Wait For Deposit Completion` runs in Runner or Newman:

@@ -69,6 +69,7 @@ BasicBankingSystem/
 
 - `POST /api/v1/accounts`
 - `GET /api/v1/accounts/{accountId}`
+- `GET /api/v1/accounts/by-number/{accountNumber}`
 - `GET /api/v1/accounts`
 
 ### Deposit Service

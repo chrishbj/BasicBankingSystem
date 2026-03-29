@@ -44,6 +44,19 @@ public sealed class AccountsController(IAccountService accountService) : Control
         }
     }
 
+    [HttpGet("by-number/{accountNumber}")]
+    public async Task<IActionResult> GetByAccountNumber(string accountNumber, CancellationToken cancellationToken)
+    {
+        try
+        {
+            return Ok(await accountService.GetByAccountNumberAsync(accountNumber, cancellationToken));
+        }
+        catch (AccountNotFoundException)
+        {
+            return NotFound();
+        }
+    }
+
     [HttpPost("{accountId}/deposit-postings")]
     [Authorize(Policy = BankingPolicies.InternalServiceOnly)]
     public async Task<IActionResult> ApplyDeposit(

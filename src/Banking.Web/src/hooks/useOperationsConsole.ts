@@ -4,6 +4,7 @@ import {
   createCustomer,
   createPendingReviewDemo,
   getAccount,
+  getAccountByNumber,
   getAccountActivities,
   getAccountsByCustomer,
   getCustomers,
@@ -47,7 +48,7 @@ type ReviewSearchState = {
 }
 
 type AccountQueryState = {
-  accountId: string
+  accountNumber: string
 }
 
 type AccountHistoryFilterState = {
@@ -82,7 +83,7 @@ export function useOperationsConsole() {
     status: 'PendingReview',
   })
   const [accountQuery, setAccountQuery] = useState<AccountQueryState>({
-    accountId: '',
+    accountNumber: '',
   })
   const [accountHistoryFilters, setAccountHistoryFilters] = useState<AccountHistoryFilterState>({
     activityType: '',
@@ -145,7 +146,7 @@ export function useOperationsConsole() {
       return
     }
 
-    setAccountQuery({ accountId: account.accountId })
+    setAccountQuery({ accountNumber: account.accountNumber })
   }, [account])
 
   async function runAction(label: string, action: () => Promise<void>) {
@@ -231,7 +232,7 @@ export function useOperationsConsole() {
       setAccountList([])
       setAccountHistory([])
       setSelectedAccountHistoryItem(null)
-      setAccountQuery({ accountId: '' })
+      setAccountQuery({ accountNumber: '' })
       setDeposit(null)
       setCustomerStatusText(`Customer ${created.fullName} created and selected.`)
       setDepositStatusText('Customer created. Open an account to continue.')
@@ -284,23 +285,23 @@ export function useOperationsConsole() {
     await runAction('Refresh account', async () => {
       const refreshed = await getAccount(account.accountId)
       setAccount(refreshed)
-      setAccountHistoryStatusText(`Refreshed account ${refreshed.accountId}.`)
+      setAccountHistoryStatusText(`Refreshed account ${refreshed.accountNumber}.`)
     })
   }
 
   async function handleLookupAccount() {
-    const accountId = accountQuery.accountId.trim()
-    if (!accountId) {
-      setMessage('Enter an account ID first.')
+    const accountNumber = accountQuery.accountNumber.trim()
+    if (!accountNumber) {
+      setMessage('Enter an account number first.')
       return
     }
 
     await runAction('Lookup account', async () => {
-      const fetched = await getAccount(accountId)
+      const fetched = await getAccountByNumber(accountNumber)
       setAccount(fetched)
       await loadCustomerAccountsCore(fetched.customerId)
       setSelectedAccountHistoryItem(null)
-      setAccountHistoryStatusText(`Loaded account ${fetched.accountId}.`)
+      setAccountHistoryStatusText(`Loaded account ${fetched.accountNumber}.`)
     })
   }
 
@@ -341,14 +342,14 @@ export function useOperationsConsole() {
         const primaryAccountId = items[0].accountId
         const fetched = await getAccount(primaryAccountId)
         setAccount(fetched)
-        setAccountQuery({ accountId: primaryAccountId })
+        setAccountQuery({ accountNumber: fetched.accountNumber })
         await loadAccountHistoryCore(primaryAccountId)
         setAccountHistoryStatusText(`Loaded ${items.length} accounts and recent activity for ${nextCustomer.fullName}.`)
       }
       else
       {
         setAccount(null)
-        setAccountQuery({ accountId: '' })
+        setAccountQuery({ accountNumber: '' })
         setAccountHistory([])
         setSelectedAccountHistoryItem(null)
         setAccountHistoryStatusText(`Customer ${nextCustomer.fullName} does not have any accounts yet.`)
@@ -367,7 +368,7 @@ export function useOperationsConsole() {
 
     await runAction('Load customer accounts', async () => {
       await loadCustomerAccountsCore(targetCustomerId)
-      setAccountHistoryStatusText(`Loaded accounts for customer ${targetCustomerId}.`)
+      setAccountHistoryStatusText(`Loaded accounts for customer ${customer?.fullName ?? targetCustomerId}.`)
     })
   }
 
@@ -375,9 +376,9 @@ export function useOperationsConsole() {
     await runAction('Switch account', async () => {
       const fetched = await getAccount(accountId)
       setAccount(fetched)
-      setAccountQuery({ accountId })
+      setAccountQuery({ accountNumber: fetched.accountNumber })
       await loadAccountHistoryCore(accountId)
-      setAccountHistoryStatusText(`Loaded account ${accountId} and its history.`)
+      setAccountHistoryStatusText(`Loaded account ${fetched.accountNumber} and its history.`)
     })
   }
 
@@ -402,13 +403,13 @@ export function useOperationsConsole() {
     const response = await getAccountActivities(accountId, params)
     setAccountHistory(response.items)
     setSelectedAccountHistoryItem(response.items[0] ?? null)
-    setAccountHistoryStatusText(`Loaded ${response.items.length} activities for account ${accountId}.`)
+    setAccountHistoryStatusText(`Loaded ${response.items.length} activities for account ${account?.accountNumber ?? accountId}.`)
   }
 
   async function handleLoadAccountHistory() {
-    const accountId = accountQuery.accountId.trim() || account?.accountId
+    const accountId = account?.accountId
     if (!accountId) {
-      setMessage('Provide an account ID first.')
+      setMessage('Select or look up an account first.')
       return
     }
 

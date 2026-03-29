@@ -197,6 +197,7 @@
                   "});",
                   "const json = pm.response.json();",
                   "pm.collectionVariables.set('accountId', json.accountId);",
+                  "pm.collectionVariables.set('accountNumber', json.accountNumber);",
                   "if (pm.collectionVariables.get('runnerMode') === 'true') {",
                   "    pm.execution.setNextRequest('Submit Deposit');",
                   "}"
@@ -224,7 +225,7 @@
           }
         },
         {
-          "name": "Get Account By Id",
+          "name": "Get Account By Number",
           "event": [
             {
               "listen": "test",
@@ -249,7 +250,7 @@
                 "value": "{{apiKey}}"
               }
             ],
-            "url": "{{accountBaseUrl}}/api/v1/accounts/{{accountId}}"
+            "url": "{{accountBaseUrl}}/api/v1/accounts/by-number/{{accountNumber}}"
           }
         }
       ]
@@ -340,7 +341,7 @@
                   "    pm.test('Deposit reaches succeeded status', function () {",
                   "        pm.expect(status).to.equal(3);",
                   "    });",
-                  "    pm.execution.setNextRequest('Get Account By Id');",
+                  "    pm.execution.setNextRequest('Get Account By Number');",
                   "} else if (status === 5) {",
                   "    pm.execution.setNextRequest(null);",
                   "} else if (attempt >= maxAttempts) {",
@@ -473,6 +474,10 @@
     },
     {
       "key": "accountId",
+      "value": ""
+    },
+    {
+      "key": "accountNumber",
       "value": ""
     },
     {

@@ -101,7 +101,7 @@ Content-Type: application/json
 {
   "customerId": "cus_active_001",
   "accountType": "Checking",
-  "currency": "CNY"
+  "currency": "USD"
 }
 ```
 
@@ -118,7 +118,7 @@ Idempotency-Key: dep-local-001
   "customerId": "cus_active_001",
   "accountId": "acc_active_001",
   "amount": 500.00,
-  "currency": "CNY",
+  "currency": "USD",
   "channel": 1,
   "referenceNumber": "LOCAL-REF-001",
   "note": "Local deposit test"
@@ -162,4 +162,5 @@ dotnet publish src/Banking.Services.Audit/Banking.Services.Audit.csproj -c Relea
 
 - Current implementation uses in-memory storage for fast local development
 - The seeded ids `cus_active_001`, `cus_frozen_001`, `acc_active_001`, and `acc_frozen_001` are for local verification only
+- Frontend and operator lookup flows should use `accountNumber` rather than the internal `accountId`
 - The next evolution step is replacing in-memory stores with local infrastructure such as PostgreSQL and a message bus

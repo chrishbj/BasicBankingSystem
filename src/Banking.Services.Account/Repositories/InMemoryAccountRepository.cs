@@ -19,6 +19,13 @@ public sealed class InMemoryAccountRepository : IAccountRepository
         return Task.FromResult(account);
     }
 
+    public Task<Domain.Account?> GetByAccountNumberAsync(string accountNumber, CancellationToken cancellationToken)
+    {
+        var account = _accounts.Values.FirstOrDefault(item =>
+            string.Equals(item.AccountNumber, accountNumber, StringComparison.OrdinalIgnoreCase));
+        return Task.FromResult(account);
+    }
+
     public Task<IReadOnlyCollection<Domain.Account>> GetByCustomerIdAsync(string customerId, CancellationToken cancellationToken)
     {
         return Task.FromResult<IReadOnlyCollection<Domain.Account>>(

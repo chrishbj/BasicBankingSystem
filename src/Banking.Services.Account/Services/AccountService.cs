@@ -52,6 +52,15 @@ public sealed class AccountService(
         return Map(account);
     }
 
+    public async Task<AccountResponse> GetByAccountNumberAsync(string accountNumber, CancellationToken cancellationToken)
+    {
+        var trimmedNumber = accountNumber.Trim();
+        var account = await accountRepository.GetByAccountNumberAsync(trimmedNumber, cancellationToken)
+            ?? throw new AccountNotFoundException(trimmedNumber);
+
+        return Map(account);
+    }
+
     public async Task<AccountResponse> ApplyDepositAsync(string accountId, ApplyDepositRequest request, CancellationToken cancellationToken)
     {
         if (request.Amount <= 0)

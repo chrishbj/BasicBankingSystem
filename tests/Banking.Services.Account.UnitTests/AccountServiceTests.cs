@@ -49,6 +49,20 @@ public sealed class AccountServiceTests
     }
 
     [Fact]
+    public async Task GetByAccountNumber_Should_ReturnAccount_When_NumberExists()
+    {
+        var repository = new InMemoryAccountRepository();
+        var service = new AccountService(repository, new InMemoryCustomerDirectory());
+
+        var opened = await service.OpenAsync(new OpenAccountRequest("cus_active_001", "Checking", "USD"), CancellationToken.None);
+
+        var fetched = await service.GetByAccountNumberAsync(opened.AccountNumber, CancellationToken.None);
+
+        fetched.AccountId.Should().Be(opened.AccountId);
+        fetched.AccountNumber.Should().Be(opened.AccountNumber);
+    }
+
+    [Fact]
     public async Task Withdraw_Should_UpdateBalances_ForActiveAccount()
     {
         var repository = new InMemoryAccountRepository();

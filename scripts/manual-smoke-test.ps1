@@ -5,7 +5,7 @@ param(
     [string]$AuditBaseUrl = "http://localhost:5104",
     [string]$ApiKey = "local-dev-api-key",
     [decimal]$DepositAmount = 1000,
-    [string]$Currency = "CNY",
+    [string]$Currency = "USD",
     [int]$PollAttempts = 30,
     [int]$PollDelaySeconds = 2
 )
@@ -151,6 +151,7 @@ $account = Invoke-JsonRequest -Method Post -Uri "$AccountBaseUrl/api/v1/accounts
     currency    = $Currency
 } -Headers $externalHeaders
 Write-Host "AccountId: $($account.accountId)"
+Write-Host "AccountNumber: $($account.accountNumber)"
 
 Write-Step "Submitting a deposit"
 $deposit = Invoke-JsonRequest -Method Post -Uri "$DepositBaseUrl/api/v1/deposits" -Body @{
@@ -178,7 +179,7 @@ if ($completedDeposit.status -ne 3) {
 }
 
 Write-Step "Verifying account balance"
-$updatedAccount = Invoke-RestMethod -Method Get -Uri "$AccountBaseUrl/api/v1/accounts/$($account.accountId)" -Headers $externalHeaders
+$updatedAccount = Invoke-RestMethod -Method Get -Uri "$AccountBaseUrl/api/v1/accounts/by-number/$($account.accountNumber)" -Headers $externalHeaders
 Write-Host "Available balance: $($updatedAccount.availableBalance)"
 Write-Host "Ledger balance: $($updatedAccount.ledgerBalance)"
 
@@ -197,6 +198,7 @@ Write-Host "Audit records found: $($auditRecords.Count)"
 $summary = [PSCustomObject]@{
     CustomerId       = $customer.customerId
     AccountId        = $account.accountId
+    AccountNumber    = $account.accountNumber
     TransactionId    = $completedDeposit.transactionId
     DepositStatus    = $completedDeposit.status
     AvailableBalance = $updatedAccount.availableBalance

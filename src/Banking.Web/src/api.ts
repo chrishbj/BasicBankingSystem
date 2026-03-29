@@ -73,6 +73,10 @@ export function getAccount(accountId: string) {
   return request<AccountResponse>(`/account-api/api/v1/accounts/${accountId}`)
 }
 
+export function getAccountByNumber(accountNumber: string) {
+  return request<AccountResponse>(`/account-api/api/v1/accounts/by-number/${encodeURIComponent(accountNumber)}`)
+}
+
 export function getAccountsByCustomer(customerId: string, pageNumber = 1, pageSize = 20) {
   return request<PagedResponse<AccountSummaryResponse>>(
     `/account-api/api/v1/accounts?customerId=${encodeURIComponent(customerId)}&pageNumber=${pageNumber}&pageSize=${pageSize}`,

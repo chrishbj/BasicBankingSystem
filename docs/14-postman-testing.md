@@ -27,7 +27,7 @@ The collection contains a full Phase 1 local test flow:
 7. Open account
 8. Submit deposit
 9. Get deposit by transaction id
-10. Get account by account id
+10. Get account by account number
 11. List audits by correlation id
 
 For automated execution, also use:
@@ -50,6 +50,7 @@ Collection variables populated during execution:
 
 - `customerId`
 - `accountId`
+- `accountNumber`
 - `transactionId`
 - `correlationId`
 - `idempotencyKey`
@@ -71,7 +72,7 @@ Run requests in this order:
 7. `Accounts / Open Account`
 8. `Deposits / Submit Deposit`
 9. `Deposits / Get Deposit By Id`
-10. `Accounts / Get Account By Id`
+10. `Accounts / Get Account By Number`
 11. `Audits / List Audits By Correlation`
 
 ## Notes

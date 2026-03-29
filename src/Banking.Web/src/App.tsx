@@ -156,16 +156,16 @@ function App() {
               customerNumber={customer?.customerNumber}
               account={account}
               accountList={accountList}
-              lookupAccountId={accountQuery.accountId}
+              lookupAccountNumber={accountQuery.accountNumber}
               historyStatusText={accountHistoryStatusText}
               history={accountHistory}
               selectedHistoryItem={selectedAccountHistoryItem}
               historyFilters={accountHistoryFilters}
               openDisabled={!customer || !!busyAction}
-              lookupDisabled={!accountQuery.accountId.trim() || !!busyAction}
-              loadHistoryDisabled={!(accountQuery.accountId.trim() || account?.accountId) || !!busyAction}
+              lookupDisabled={!accountQuery.accountNumber.trim() || !!busyAction}
+              loadHistoryDisabled={!account?.accountId || !!busyAction}
               busy={!!busyAction}
-              onLookupAccountIdChange={(accountId) => setAccountQuery({ accountId })}
+              onLookupAccountNumberChange={(accountNumber) => setAccountQuery({ accountNumber })}
               onHistoryFiltersChange={setAccountHistoryFilters}
               onOpen={() => void handleOpenAccount()}
               onRefresh={() => void handleRefreshAccount()}

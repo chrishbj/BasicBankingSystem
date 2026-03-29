@@ -98,11 +98,11 @@ Open `http://localhost:5102/swagger` and call `POST /api/v1/accounts` with:
 {
   "customerId": "<customerId>",
   "accountType": "Checking",
-  "currency": "CNY"
+  "currency": "USD"
 }
 ```
 
-Capture the returned `accountId`.
+Capture the returned `accountId` and `accountNumber`.
 
 ### 4. Submit a Deposit
 
@@ -121,7 +121,7 @@ Request body:
   "customerId": "<customerId>",
   "accountId": "<accountId>",
   "amount": 1000,
-  "currency": "CNY",
+  "currency": "USD",
   "channel": 1,
   "referenceNumber": "MANUAL-REF-001",
   "note": "Manual Swagger test"
@@ -143,7 +143,7 @@ In Deposit Swagger, call `GET /api/v1/deposits/{transactionId}` until:
 
 ### 6. Verify Account Balance
 
-In Account Swagger, call `GET /api/v1/accounts/{accountId}`.
+In Account Swagger, call `GET /api/v1/accounts/by-number/{accountNumber}`.
 
 Expected result after a successful deposit:
 
@@ -235,7 +235,7 @@ Common causes:
 Use:
 
 - `GET /api/v1/deposits/{transactionId}`
-- `GET /api/v1/accounts/{accountId}`
+- `GET /api/v1/accounts/by-number/{accountNumber}`
 - `GET /api/v1/audits`
 
 to inspect the failure context.

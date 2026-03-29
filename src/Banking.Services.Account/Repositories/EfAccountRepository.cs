@@ -16,6 +16,11 @@ public sealed class EfAccountRepository(AccountDbContext dbContext) : IAccountRe
         return dbContext.Accounts.FirstOrDefaultAsync(x => x.AccountId == accountId, cancellationToken);
     }
 
+    public Task<Domain.Account?> GetByAccountNumberAsync(string accountNumber, CancellationToken cancellationToken)
+    {
+        return dbContext.Accounts.FirstOrDefaultAsync(x => x.AccountNumber == accountNumber, cancellationToken);
+    }
+
     public async Task<IReadOnlyCollection<Domain.Account>> GetByCustomerIdAsync(string customerId, CancellationToken cancellationToken)
     {
         var items = await dbContext.Accounts

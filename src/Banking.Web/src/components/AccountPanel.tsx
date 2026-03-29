@@ -15,7 +15,7 @@ type AccountPanelProps = {
   customerNumber?: string
   account: AccountResponse | null
   accountList: AccountSummaryResponse[]
-  lookupAccountId: string
+  lookupAccountNumber: string
   historyStatusText: string
   history: AccountActivityResponse[]
   selectedHistoryItem: AccountActivityResponse | null
@@ -24,7 +24,7 @@ type AccountPanelProps = {
   lookupDisabled: boolean
   loadHistoryDisabled: boolean
   busy: boolean
-  onLookupAccountIdChange: (accountId: string) => void
+  onLookupAccountNumberChange: (accountNumber: string) => void
   onHistoryFiltersChange: (next: AccountHistoryFilterState) => void
   onOpen: () => void
   onRefresh: () => void
@@ -65,7 +65,7 @@ export function AccountPanel({
   customerNumber,
   account,
   accountList,
-  lookupAccountId,
+  lookupAccountNumber,
   historyStatusText,
   history,
   selectedHistoryItem,
@@ -74,7 +74,7 @@ export function AccountPanel({
   lookupDisabled,
   loadHistoryDisabled,
   busy,
-  onLookupAccountIdChange,
+  onLookupAccountNumberChange,
   onHistoryFiltersChange,
   onOpen,
   onRefresh,
@@ -107,11 +107,11 @@ export function AccountPanel({
 
       <div className="search-grid account-search-grid">
         <label className="field-label">
-          <span>Lookup internal account reference</span>
+          <span>Lookup account number</span>
           <input
-            value={lookupAccountId}
-            onChange={(event) => onLookupAccountIdChange(event.target.value)}
-            placeholder="Internal account reference"
+            value={lookupAccountNumber}
+            onChange={(event) => onLookupAccountNumberChange(event.target.value)}
+            placeholder="Account number"
             disabled={busy}
           />
         </label>

@@ -55,6 +55,20 @@ public sealed class AccountsApiTests : IClassFixture<AccountServiceWebApplicatio
     }
 
     [Fact]
+    public async Task GetByAccountNumber_Should_ReturnAccount_When_NumberExists()
+    {
+        var openResponse = await _client.PostAsJsonAsync("/api/v1/accounts", new OpenAccountRequest("cus_active_001", "Checking", "USD"));
+        var account = await openResponse.Content.ReadFromJsonAsync<AccountResponse>();
+
+        var response = await _client.GetAsync($"/api/v1/accounts/by-number/{account!.AccountNumber}");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var fetched = await response.Content.ReadFromJsonAsync<AccountResponse>();
+        fetched.Should().NotBeNull();
+        fetched!.AccountId.Should().Be(account.AccountId);
+    }
+
+    [Fact]
     public async Task PostDepositReversal_Should_RollbackBalances_When_OriginalPostingExists()
     {
         var openResponse = await _client.PostAsJsonAsync("/api/v1/accounts", new OpenAccountRequest("cus_active_001", "Checking", "USD"));
