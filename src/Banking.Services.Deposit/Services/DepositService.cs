@@ -112,6 +112,20 @@ public sealed class DepositService(
             deposits = deposits.Where(item => item.Status == request.Status.Value).ToArray();
         }
 
+        if (!string.IsNullOrWhiteSpace(request.CustomerId))
+        {
+            deposits = deposits
+                .Where(item => string.Equals(item.CustomerId, request.CustomerId.Trim(), StringComparison.Ordinal))
+                .ToArray();
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.AccountId))
+        {
+            deposits = deposits
+                .Where(item => string.Equals(item.AccountId, request.AccountId.Trim(), StringComparison.Ordinal))
+                .ToArray();
+        }
+
         if (!string.IsNullOrWhiteSpace(request.CorrelationId))
         {
             deposits = deposits

@@ -16,6 +16,7 @@ import type {
   AccountResponse,
   CustomerResponse,
   DepositResponse,
+  DepositSummaryResponse,
   PendingReviewDepositSummaryResponse,
   PendingReviewSortBy,
 } from '../types'
@@ -39,16 +40,22 @@ type ReviewSearchState = {
   status: string
 }
 
+type AccountQueryState = {
+  accountId: string
+}
+
 export function useOperationsConsole() {
   const [health, setHealth] = useState<Record<string, string>>({})
   const [message, setMessage] = useState('Ready.')
   const [toast, setToast] = useState('')
   const [busyAction, setBusyAction] = useState('')
   const [depositStatusText, setDepositStatusText] = useState('No deposit submitted yet.')
+  const [accountHistoryStatusText, setAccountHistoryStatusText] = useState('Look up an account to inspect balances and history.')
   const [reviewStatusText, setReviewStatusText] = useState('Load the queue to inspect pending review items.')
   const [customer, setCustomer] = useState<CustomerResponse | null>(null)
   const [account, setAccount] = useState<AccountResponse | null>(null)
   const [deposit, setDeposit] = useState<DepositResponse | null>(null)
+  const [accountHistory, setAccountHistory] = useState<DepositSummaryResponse[]>([])
   const [depositSearchResult, setDepositSearchResult] = useState<DepositResponse[]>([])
   const [pendingReviewItems, setPendingReviewItems] = useState<PendingReviewDepositSummaryResponse[]>([])
   const [sortBy, setSortBy] = useState<PendingReviewSortBy>('ReviewRequiredAt')
@@ -57,6 +64,9 @@ export function useOperationsConsole() {
     correlationId: '',
     failureCode: '',
     status: 'PendingReview',
+  })
+  const [accountQuery, setAccountQuery] = useState<AccountQueryState>({
+    accountId: '',
   })
   const [customerForm, setCustomerForm] = useState<CustomerFormState>({
     fullName: 'Frontend Demo Customer',
@@ -107,6 +117,14 @@ export function useOperationsConsole() {
 
     return () => window.clearInterval(handle)
   }, [deposit])
+
+  useEffect(() => {
+    if (!account) {
+      return
+    }
+
+    setAccountQuery({ accountId: account.accountId })
+  }, [account])
 
   async function runAction(label: string, action: () => Promise<void>) {
     try {
@@ -187,8 +205,11 @@ export function useOperationsConsole() {
 
       setCustomer(created)
       setAccount(null)
+      setAccountHistory([])
+      setAccountQuery({ accountId: '' })
       setDeposit(null)
       setDepositStatusText('Customer created. Open an account to continue.')
+      setAccountHistoryStatusText('Customer created. Open or look up an account to inspect history.')
     })
   }
 
@@ -217,6 +238,8 @@ export function useOperationsConsole() {
           currency: 'CNY',
         }),
       )
+      setAccountHistory([])
+      setAccountHistoryStatusText('Account opened. Load history to inspect transactions on this account.')
       setDepositStatusText('Account opened. You can submit a deposit now.')
     })
   }
@@ -228,7 +251,52 @@ export function useOperationsConsole() {
     }
 
     await runAction('Refresh account', async () => {
-      setAccount(await getAccount(account.accountId))
+      const refreshed = await getAccount(account.accountId)
+      setAccount(refreshed)
+      setAccountHistoryStatusText(`Refreshed account ${refreshed.accountId}.`)
+    })
+  }
+
+  async function handleLookupAccount() {
+    const accountId = accountQuery.accountId.trim()
+    if (!accountId) {
+      setMessage('Enter an account ID first.')
+      return
+    }
+
+    await runAction('Lookup account', async () => {
+      const fetched = await getAccount(accountId)
+      setAccount(fetched)
+      setAccountHistoryStatusText(`Loaded account ${fetched.accountId}.`)
+    })
+  }
+
+  async function loadAccountHistoryCore(accountId: string, customerId?: string) {
+    const params = new URLSearchParams({
+      pageNumber: '1',
+      pageSize: '20',
+      accountId,
+    })
+
+    if (customerId) {
+      params.set('customerId', customerId)
+    }
+
+    const response = await searchDeposits(params)
+    setAccountHistory(response.items)
+    setAccountHistoryStatusText(`Loaded ${response.items.length} deposits for account ${accountId}.`)
+  }
+
+  async function handleLoadAccountHistory() {
+    const accountId = accountQuery.accountId.trim() || account?.accountId
+    if (!accountId) {
+      setMessage('Provide an account ID first.')
+      return
+    }
+
+    await runAction('Load account history', async () => {
+      const customerId = account?.customerId ?? customer?.customerId
+      await loadAccountHistoryCore(accountId, customerId)
     })
   }
 
@@ -254,6 +322,7 @@ export function useOperationsConsole() {
           `web-corr-${Date.now()}`,
         ),
       )
+      await loadAccountHistoryCore(account.accountId, customer.customerId)
       setDepositStatusText('Deposit submitted. Waiting for asynchronous processing.')
     })
   }
@@ -340,15 +409,18 @@ export function useOperationsConsole() {
     toast,
     busyAction,
     depositStatusText,
+    accountHistoryStatusText,
     reviewStatusText,
     customer,
     account,
     deposit,
+    accountHistory,
     depositSearchResult,
     pendingReviewItems,
     sortBy,
     descending,
     reviewSearch,
+    accountQuery,
     customerForm,
     depositForm,
     customerFormErrors,
@@ -358,6 +430,7 @@ export function useOperationsConsole() {
     setSortBy,
     setDescending,
     setReviewSearch,
+    setAccountQuery,
     setCustomerForm,
     setDepositForm,
     loadHealth,
@@ -365,6 +438,8 @@ export function useOperationsConsole() {
     handleActivateCustomer,
     handleOpenAccount,
     handleRefreshAccount,
+    handleLookupAccount,
+    handleLoadAccountHistory,
     handleSubmitDeposit,
     handleRefreshDeposit,
     handleSearchDeposits,

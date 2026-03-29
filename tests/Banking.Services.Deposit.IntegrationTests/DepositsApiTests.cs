@@ -147,6 +147,19 @@ public sealed class DepositsApiTests : IClassFixture<DepositServiceWebApplicatio
         response!.Items.Should().ContainSingle(item => item.TransactionId == first.TransactionId);
     }
 
+    [Fact]
+    public async Task GetAll_Should_FilterByCustomerId_And_AccountId_When_QueryStringProvided()
+    {
+        var created = await CreateAndCompleteDepositAsync("dep-integration-filter-201", "corr-filter-api-201");
+
+        var response = await _client.GetFromJsonAsync<Banking.BuildingBlocks.Contracts.PagedResponse<DepositSummaryResponse>>(
+            $"/api/v1/deposits?customerId={created.CustomerId}&accountId={created.AccountId}&pageNumber=1&pageSize=20");
+
+        response.Should().NotBeNull();
+        response!.Items.Should().Contain(item => item.TransactionId == created.TransactionId);
+        response.Items.Should().OnlyContain(item => item.CustomerId == created.CustomerId && item.AccountId == created.AccountId);
+    }
+
     private async Task<DepositResponse> WaitForDepositAsync(string transactionId, DepositStatus expectedStatus)
     {
         for (var attempt = 0; attempt < 20; attempt++)

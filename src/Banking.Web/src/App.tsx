@@ -18,15 +18,18 @@ function App() {
     toast,
     busyAction,
     depositStatusText,
+    accountHistoryStatusText,
     reviewStatusText,
     customer,
     account,
     deposit,
+    accountHistory,
     depositSearchResult,
     pendingReviewItems,
     sortBy,
     descending,
     reviewSearch,
+    accountQuery,
     customerForm,
     depositForm,
     customerFormErrors,
@@ -36,6 +39,7 @@ function App() {
     setSortBy,
     setDescending,
     setReviewSearch,
+    setAccountQuery,
     setCustomerForm,
     setDepositForm,
     loadHealth,
@@ -43,6 +47,8 @@ function App() {
     handleActivateCustomer,
     handleOpenAccount,
     handleRefreshAccount,
+    handleLookupAccount,
+    handleLoadAccountHistory,
     handleSubmitDeposit,
     handleRefreshDeposit,
     handleSearchDeposits,
@@ -112,11 +118,19 @@ function App() {
 
           {activeTab === 'account' && (
             <AccountPanel
+              customerId={customer?.customerId}
               account={account}
+              lookupAccountId={accountQuery.accountId}
+              historyStatusText={accountHistoryStatusText}
+              history={accountHistory}
               openDisabled={!customer || !!busyAction}
+              lookupDisabled={!accountQuery.accountId.trim() || !!busyAction}
               busy={!!busyAction}
+              onLookupAccountIdChange={(accountId) => setAccountQuery({ accountId })}
               onOpen={() => void handleOpenAccount()}
               onRefresh={() => void handleRefreshAccount()}
+              onLookup={() => void handleLookupAccount()}
+              onLoadHistory={() => void handleLoadAccountHistory()}
             />
           )}
 

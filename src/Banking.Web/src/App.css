@@ -153,6 +153,10 @@
   margin-bottom: 16px;
 }
 
+.account-search-grid {
+  grid-template-columns: minmax(0, 1.5fr) auto auto;
+}
+
 .health-grid {
   display: grid;
   grid-template-columns: 1fr;
@@ -297,6 +301,21 @@ td span,
   align-items: center;
   gap: 8px;
   padding: 0 8px;
+}
+
+.helper-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: var(--panel-accent);
+  border: 1px solid var(--border);
+  color: var(--text-h);
+  font-size: 13px;
+}
+
+.account-history-table {
+  margin-top: 18px;
 }
 
 .status-badge {

@@ -154,7 +154,7 @@ public sealed class DepositServiceTests
         await SeedDepositAsync("dep-filter-succeeded-001", DepositStatus.Succeeded);
 
         var result = await _service.GetAllAsync(
-            new DepositSearchRequest(DepositStatus.PendingReview, null, null, null, null),
+            new DepositSearchRequest(DepositStatus.PendingReview, null, null, null, null, null, null),
             1,
             20,
             CancellationToken.None);
@@ -168,12 +168,14 @@ public sealed class DepositServiceTests
     public async Task GetAll_Should_FilterByCorrelationId_And_FailureCode_When_Provided()
     {
         var matchingRequestedAt = DateTimeOffset.UtcNow.AddMinutes(-15);
-        await SeedDepositAsync("dep-filter-ops-001", DepositStatus.PendingReview, "corr-ops-001", "DEPOSIT_COMPENSATION_REVIEW_REQUIRED", matchingRequestedAt);
-        await SeedDepositAsync("dep-filter-ops-002", DepositStatus.PendingReview, "corr-ops-002", "DEPOSIT_COMPENSATION_REVIEW_REQUIRED", matchingRequestedAt);
-        await SeedDepositAsync("dep-filter-ops-003", DepositStatus.Failed, "corr-ops-001", "DEPOSIT_PROCESSING_FAILED", matchingRequestedAt);
+        await SeedDepositAsync("dep-filter-ops-001", DepositStatus.PendingReview, correlationId: "corr-ops-001", failureCode: "DEPOSIT_COMPENSATION_REVIEW_REQUIRED", requestedAt: matchingRequestedAt);
+        await SeedDepositAsync("dep-filter-ops-002", DepositStatus.PendingReview, correlationId: "corr-ops-002", failureCode: "DEPOSIT_COMPENSATION_REVIEW_REQUIRED", requestedAt: matchingRequestedAt);
+        await SeedDepositAsync("dep-filter-ops-003", DepositStatus.Failed, correlationId: "corr-ops-001", failureCode: "DEPOSIT_PROCESSING_FAILED", requestedAt: matchingRequestedAt);
 
         var result = await _service.GetAllAsync(
             new DepositSearchRequest(
+                null,
+                null,
                 null,
                 "corr-ops-001",
                 "DEPOSIT_COMPENSATION_REVIEW_REQUIRED",
@@ -187,9 +189,35 @@ public sealed class DepositServiceTests
         result.Items.Should().ContainSingle(item => item.TransactionId == "dep-filter-ops-001");
     }
 
+    [Fact]
+    public async Task GetAll_Should_FilterByCustomerId_And_AccountId_When_Provided()
+    {
+        await SeedDepositAsync("dep-filter-account-001", DepositStatus.Succeeded, customerId: "cus_active_001", accountId: "acc_active_001");
+        await SeedDepositAsync("dep-filter-account-002", DepositStatus.Succeeded, customerId: "cus_active_001", accountId: "acc_other_001");
+        await SeedDepositAsync("dep-filter-account-003", DepositStatus.Succeeded, customerId: "cus_other_001", accountId: "acc_active_001");
+
+        var result = await _service.GetAllAsync(
+            new DepositSearchRequest(
+                DepositStatus.Succeeded,
+                "cus_active_001",
+                "acc_active_001",
+                null,
+                null,
+                null,
+                null),
+            1,
+            20,
+            CancellationToken.None);
+
+        result.TotalCount.Should().Be(1);
+        result.Items.Should().ContainSingle(item => item.TransactionId == "dep-filter-account-001");
+    }
+
     private async Task SeedDepositAsync(
         string transactionId,
         DepositStatus status,
+        string customerId = "cus_active_001",
+        string accountId = "acc_active_001",
         string? correlationId = null,
         string? failureCode = null,
         DateTimeOffset? requestedAt = null)
@@ -200,8 +228,8 @@ public sealed class DepositServiceTests
             {
                 TransactionId = transactionId,
                 TransactionNumber = $"D{now:yyyyMMddHHmmssfff}{Random.Shared.Next(10, 99)}",
-                CustomerId = "cus_active_001",
-                AccountId = "acc_active_001",
+                CustomerId = customerId,
+                AccountId = accountId,
                 Amount = 100m,
                 Currency = "CNY",
                 Channel = DepositChannel.Counter,
@@ -218,8 +246,8 @@ public sealed class DepositServiceTests
             Banking.Services.Deposit.Messaging.DepositOutboxMessage.CreateRequestedMessage(
                 new Banking.Services.Deposit.Messaging.DepositRequestedMessage(
                     transactionId,
-                    "cus_active_001",
-                    "acc_active_001",
+                    customerId,
+                    accountId,
                     100m,
                     "CNY",
                     DepositChannel.Counter,
