@@ -76,6 +76,12 @@ export function CustomerPanel({
           <button className="ghost-button" onClick={onLoadCustomers} disabled={busy}>Browse customers</button>
         </div>
       </div>
+      <div className="info-card">
+        <p className="eyebrow">How To Use</p>
+        <p>
+          Browse the customer directory, select one customer card, then switch to the Account tab to load that customer's accounts and activity history.
+        </p>
+      </div>
       <div className="form-grid">
         <label className="field-label">
           <span>Full name</span>

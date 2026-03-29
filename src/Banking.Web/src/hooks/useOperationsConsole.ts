@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import {
   activateCustomer,
   createCustomer,
+  createPendingReviewDemo,
   getAccount,
   getAccountsByCustomer,
   getCustomers,
@@ -488,11 +489,36 @@ export function useOperationsConsole() {
     })
   }
 
+  async function loadPendingReviewCore() {
+    const response = await getPendingReview(sortBy, descending)
+    setPendingReviewItems(response.items)
+    setReviewStatusText(`Loaded ${response.items.length} pending review items.`)
+  }
+
   async function handleLoadPendingReview() {
     await runAction('Load pending review queue', async () => {
-      const response = await getPendingReview(sortBy, descending)
-      setPendingReviewItems(response.items)
-      setReviewStatusText(`Loaded ${response.items.length} pending review items.`)
+      await loadPendingReviewCore()
+    })
+  }
+
+  async function handleCreatePendingReviewDemo() {
+    if (!customer || !account) {
+      setMessage('Select a customer and one of its accounts first.')
+      return
+    }
+
+    await runAction('Create pending review demo item', async () => {
+      const demoDeposit = await createPendingReviewDemo({
+        customerId: customer.customerId,
+        accountId: account.accountId,
+        amount: Math.max(10, depositAmount || 25),
+        note: `Demo pending-review item created for ${customer.fullName}.`,
+      })
+
+      setDeposit(demoDeposit)
+      await loadAccountHistoryCore(account.accountId, customer.customerId)
+      await loadPendingReviewCore()
+      setDepositStatusText('Demo pending-review item created for the selected customer and account.')
     })
   }
 
@@ -501,8 +527,8 @@ export function useOperationsConsole() {
       setDeposit(
         await retryPendingReview(transactionId, 'frontend-ops', 'Retry requested from the React console.'),
       )
+      await loadPendingReviewCore()
       setReviewStatusText(`Retry requested for ${transactionId}.`)
-      await handleLoadPendingReview()
     })
   }
 
@@ -518,8 +544,8 @@ export function useOperationsConsole() {
           resolution,
         ),
       )
+      await loadPendingReviewCore()
       setReviewStatusText(`Review item ${transactionId} resolved.`)
-      await handleLoadPendingReview()
     })
   }
 
@@ -574,6 +600,7 @@ export function useOperationsConsole() {
     handleRefreshDeposit,
     handleSearchDeposits,
     handleLoadPendingReview,
+    handleCreatePendingReviewDemo,
     handleRetryPendingReview,
     handleResolvePendingReview,
     setSelectedAccountHistoryItem,

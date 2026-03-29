@@ -16,10 +16,14 @@ type PendingReviewPanelProps = {
   busy: boolean
   pendingReviewItems: PendingReviewDepositSummaryResponse[]
   depositSearchResult: DepositResponse[]
+  selectedCustomerName?: string
+  selectedCustomerId?: string
+  selectedAccountId?: string
   onSortByChange: (sortBy: PendingReviewSortBy) => void
   onDescendingChange: (descending: boolean) => void
   onReviewSearchChange: (next: ReviewSearchState) => void
   onLoadQueue: () => void
+  onCreateDemo: () => void
   onSearchDeposits: () => void
   onRetry: (transactionId: string) => void
   onResolve: (transactionId: string, resolution: 3 | 4) => void
@@ -33,10 +37,14 @@ export function PendingReviewPanel({
   busy,
   pendingReviewItems,
   depositSearchResult,
+  selectedCustomerName,
+  selectedCustomerId,
+  selectedAccountId,
   onSortByChange,
   onDescendingChange,
   onReviewSearchChange,
   onLoadQueue,
+  onCreateDemo,
   onSearchDeposits,
   onRetry,
   onResolve,
@@ -68,7 +76,22 @@ export function PendingReviewPanel({
             Descending order
           </label>
           <button onClick={onLoadQueue} disabled={busy}>{busy ? 'Working...' : 'Load queue'}</button>
+          <button className="ghost-button" onClick={onCreateDemo} disabled={!selectedCustomerId || !selectedAccountId || busy}>
+            Create demo review item
+          </button>
           <button className="ghost-button" onClick={onSearchDeposits} disabled={busy}>Search matching deposits</button>
+        </div>
+      </div>
+
+      <div className="info-card">
+        <p className="eyebrow">How Pending Review Works</p>
+        <p>
+          Pending review items appear when a deposit partly succeeds but the compensation step cannot finish automatically.
+          In this local environment, you can create a safe demo item for the selected customer and account, then retry or resolve it here.
+        </p>
+        <div className="actions">
+          {selectedCustomerId && <span className="helper-chip">Customer: {selectedCustomerName ?? selectedCustomerId}</span>}
+          {selectedAccountId && <span className="helper-chip">Account: {selectedAccountId}</span>}
         </div>
       </div>
 

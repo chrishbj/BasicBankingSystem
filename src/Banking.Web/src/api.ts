@@ -103,6 +103,13 @@ export function getPendingReview(sortBy: PendingReviewSortBy, descending: boolea
   )
 }
 
+export function createPendingReviewDemo(payload: Record<string, unknown>) {
+  return request<DepositResponse>('/deposit-api/api/v1/deposits/review/demo', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
 export function retryPendingReview(transactionId: string, operatorId: string, note: string) {
   return request<DepositResponse>(`/deposit-api/api/v1/deposits/${transactionId}/review/retry-compensation`, {
     method: 'POST',

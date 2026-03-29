@@ -48,6 +48,53 @@
 
 .workspace-content {
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.context-panel {
+  padding-bottom: 22px;
+}
+
+.context-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.context-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.context-summary-grid div,
+.info-card {
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 14px 16px;
+  background: var(--panel-accent);
+}
+
+.context-summary-grid dt {
+  font-size: 12px;
+  text-transform: uppercase;
+  color: var(--text);
+}
+
+.context-summary-grid dd {
+  margin: 8px 0 0;
+  color: var(--text-h);
+}
+
+.info-card {
+  margin-bottom: 16px;
+}
+
+.info-card p:last-of-type {
+  margin-bottom: 0;
 }
 
 .workspace-nav {
@@ -485,6 +532,11 @@ tbody tr {
   }
 
   .search-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .context-grid,
+  .context-summary-grid {
     grid-template-columns: 1fr;
   }
 

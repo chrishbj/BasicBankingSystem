@@ -12,7 +12,7 @@ namespace Banking.Services.Deposit.Controllers;
 [ApiController]
 [Route("api/v1/deposits")]
 [Authorize(Policy = BankingPolicies.ExternalOrInternal)]
-public sealed class DepositsController(IDepositService depositService) : ControllerBase
+public sealed class DepositsController(IDepositService depositService, IHostEnvironment environment) : ControllerBase
 {
     [HttpPost]
     public async Task<IActionResult> Create(
@@ -96,6 +96,34 @@ public sealed class DepositsController(IDepositService depositService) : Control
         CancellationToken cancellationToken = default)
     {
         return Ok(await depositService.GetPendingReviewAsync(sortBy, descending, pageNumber, pageSize, cancellationToken));
+    }
+
+    [HttpPost("review/demo")]
+    public async Task<IActionResult> CreatePendingReviewDemo(
+        [FromBody] CreatePendingReviewDemoRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (!(environment.IsDevelopment() || environment.IsEnvironment("Docker")))
+        {
+            return NotFound();
+        }
+
+        var correlationId = HttpContext.Items[CorrelationIdMiddleware.HeaderName]?.ToString()
+            ?? Guid.NewGuid().ToString("D");
+
+        try
+        {
+            return Ok(await depositService.CreatePendingReviewDemoAsync(request, correlationId, cancellationToken));
+        }
+        catch (InvalidDepositRequestException exception)
+        {
+            return Conflict(new ProblemDetails
+            {
+                Title = "Invalid demo review request",
+                Detail = exception.Message,
+                Status = StatusCodes.Status409Conflict
+            });
+        }
     }
 
     [HttpPost("{transactionId}/review/retry-compensation")]

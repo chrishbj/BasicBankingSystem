@@ -9,6 +9,11 @@ type DepositFormState = {
 }
 
 type DepositPanelProps = {
+  customerId?: string
+  customerName?: string
+  accountId?: string
+  accountNumber?: string
+  accountCurrency?: string
   deposit: DepositResponse | null
   form: DepositFormState
   statusText: string
@@ -21,6 +26,11 @@ type DepositPanelProps = {
 }
 
 export function DepositPanel({
+  customerId,
+  customerName,
+  accountId,
+  accountNumber,
+  accountCurrency,
   deposit,
   form,
   statusText,
@@ -37,6 +47,19 @@ export function DepositPanel({
     <article className="panel">
       <h2>Deposit</h2>
       <SectionStatus text={statusText} />
+      <div className="info-card">
+        <p className="eyebrow">Deposit Target</p>
+        <p>
+          {customerId && accountId
+            ? `This deposit will be submitted for ${customerName ?? customerId}, account ${accountNumber ?? accountId}.`
+            : 'Select a customer and one of its accounts before submitting a deposit.'}
+        </p>
+        <div className="actions">
+          {customerId && <span className="helper-chip">Customer: {customerId}</span>}
+          {accountId && <span className="helper-chip">Account: {accountId}</span>}
+          {accountCurrency && <span className="helper-chip">Currency: {accountCurrency}</span>}
+        </div>
+      </div>
       <div className="form-grid">
         <label className="field-label">
           <span>Deposit amount</span>

@@ -5,6 +5,7 @@ import { DepositPanel } from './components/DepositPanel'
 import { EnvironmentPanel } from './components/EnvironmentPanel'
 import { PendingReviewPanel } from './components/PendingReviewPanel'
 import { ToastBar } from './components/ToastBar'
+import { WorkspaceContextPanel } from './components/WorkspaceContextPanel'
 import { useOperationsConsole } from './hooks/useOperationsConsole'
 import { useState } from 'react'
 
@@ -63,6 +64,7 @@ function App() {
     handleRefreshDeposit,
     handleSearchDeposits,
     handleLoadPendingReview,
+    handleCreatePendingReviewDemo,
     handleRetryPendingReview,
     handleResolvePendingReview,
     setSelectedAccountHistoryItem,
@@ -114,6 +116,23 @@ function App() {
         </aside>
 
         <section className="workspace-content">
+          <WorkspaceContextPanel
+            customers={customers}
+            customer={customer}
+            accountList={accountList}
+            account={account}
+            deposit={deposit}
+            busy={!!busyAction}
+            onSelectCustomer={(customerId) => {
+              const selected = customers.find((item) => item.customerId === customerId)
+              if (selected) {
+                void handleSelectCustomer(selected)
+              }
+            }}
+            onSelectAccount={(accountId) => void handleSelectAccount(accountId)}
+            onNavigate={setActiveTab}
+          />
+
           {activeTab === 'customer' && (
             <CustomerPanel
               customer={customer}
@@ -159,6 +178,11 @@ function App() {
 
           {activeTab === 'deposit' && (
             <DepositPanel
+              customerId={customer?.customerId}
+              customerName={customer?.fullName}
+              accountId={account?.accountId}
+              accountNumber={account?.accountNumber}
+              accountCurrency={account?.currency}
               deposit={deposit}
               form={depositForm}
               statusText={depositStatusText}
@@ -180,10 +204,14 @@ function App() {
               busy={!!busyAction}
               pendingReviewItems={pendingReviewItems}
               depositSearchResult={depositSearchResult}
+              selectedCustomerName={customer?.fullName}
+              selectedCustomerId={customer?.customerId}
+              selectedAccountId={account?.accountId}
               onSortByChange={setSortBy}
               onDescendingChange={setDescending}
               onReviewSearchChange={setReviewSearch}
               onLoadQueue={() => void handleLoadPendingReview()}
+              onCreateDemo={() => void handleCreatePendingReviewDemo()}
               onSearchDeposits={() => void handleSearchDeposits()}
               onRetry={(transactionId) => void handleRetryPendingReview(transactionId)}
               onResolve={(transactionId, resolution) => void handleResolvePendingReview(transactionId, resolution)}

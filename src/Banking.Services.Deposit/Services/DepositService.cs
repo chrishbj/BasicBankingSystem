@@ -91,6 +91,91 @@ public sealed class DepositService(
         return Map(transaction);
     }
 
+    public async Task<DepositResponse> CreatePendingReviewDemoAsync(
+        CreatePendingReviewDemoRequest request,
+        string correlationId,
+        CancellationToken cancellationToken)
+    {
+        if (request.Amount <= 0)
+        {
+            throw new InvalidDepositRequestException("Demo deposit amount must be greater than zero.");
+        }
+
+        if (string.IsNullOrWhiteSpace(request.CustomerId) || string.IsNullOrWhiteSpace(request.AccountId))
+        {
+            throw new InvalidDepositRequestException("CustomerId and AccountId are required.");
+        }
+
+        var account = await accountDirectory.GetByIdAsync(request.AccountId.Trim(), cancellationToken);
+        if (account is null)
+        {
+            throw new InvalidDepositRequestException("Account was not found.");
+        }
+
+        if (!string.Equals(account.CustomerId, request.CustomerId.Trim(), StringComparison.Ordinal))
+        {
+            throw new InvalidDepositRequestException("Customer and account do not match.");
+        }
+
+        if (account.Status != DepositAccountStatus.Active)
+        {
+            throw new InvalidDepositRequestException($"Account status is '{account.Status}'.");
+        }
+
+        var now = DateTimeOffset.UtcNow;
+        var transaction = new DepositTransaction
+        {
+            TransactionId = $"dep_{Guid.NewGuid():N}",
+            TransactionNumber = $"D{now:yyyyMMddHHmmssfff}{Random.Shared.Next(10, 99)}",
+            CustomerId = request.CustomerId.Trim(),
+            AccountId = request.AccountId.Trim(),
+            Amount = request.Amount,
+            Currency = account.Currency,
+            Channel = DepositChannel.Counter,
+            Status = DepositStatus.PendingReview,
+            AccountPostingStatus = DepositSagaStepStatus.Succeeded,
+            AuditStatus = DepositSagaStepStatus.NotStarted,
+            CompensationStatus = DepositSagaStepStatus.Failed,
+            ReviewResolution = DepositReviewResolution.None,
+            IdempotencyKey = $"demo-review-{Guid.NewGuid():N}",
+            CorrelationId = correlationId,
+            FailureCode = "DEPOSIT_COMPENSATION_REVIEW_REQUIRED",
+            FailureReason = string.IsNullOrWhiteSpace(request.Note)
+                ? "Demo pending-review item created from the local operations console."
+                : request.Note.Trim(),
+            CompensationRetryCount = 1,
+            RequestedAt = now,
+            PostedAt = now,
+            ReviewRequiredAt = now,
+            LastCompensationAttemptAt = now,
+            LastProcessedAt = now
+        };
+
+        await accountDirectory.PostDepositAsync(
+            transaction.AccountId,
+            transaction.Amount,
+            transaction.Currency,
+            transaction.TransactionId,
+            transaction.CorrelationId,
+            cancellationToken);
+
+        await depositRepository.AddAsync(
+            transaction,
+            new DepositOutboxMessage
+            {
+                MessageId = $"out_{Guid.NewGuid():N}",
+                TransactionId = transaction.TransactionId,
+                MessageType = "PendingReviewDemoCreated",
+                Payload = "{}",
+                OccurredAt = now,
+                ProcessedAt = now
+            },
+            cancellationToken);
+
+        await TryRecordReviewAuditAsync(transaction, cancellationToken);
+        return Map(transaction);
+    }
+
     public async Task<DepositResponse> GetByIdAsync(string transactionId, CancellationToken cancellationToken)
     {
         var transaction = await depositRepository.GetByIdAsync(transactionId, cancellationToken)

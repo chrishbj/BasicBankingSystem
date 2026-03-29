@@ -97,6 +97,13 @@ export function AccountPanel({
         </div>
       </div>
 
+      <div className="info-card">
+        <p className="eyebrow">How To Use</p>
+        <p>
+          Select a customer first, load that customer's accounts, then click an account card to inspect balances and transaction history.
+        </p>
+      </div>
+
       <div className="search-grid account-search-grid">
         <label className="field-label">
           <span>Lookup account ID</span>
