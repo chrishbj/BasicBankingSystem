@@ -40,6 +40,16 @@ export type AccountResponse = {
   closedAt?: string | null
 }
 
+export type AccountSummaryResponse = {
+  accountId: string
+  accountNumber: string
+  accountType: string
+  currency: string
+  status: number
+  availableBalance: number
+  ledgerBalance: number
+}
+
 export type DepositResponse = {
   transactionId: string
   transactionNumber: string

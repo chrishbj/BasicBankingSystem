@@ -1,4 +1,5 @@
-import type { AccountResponse, DepositSummaryResponse } from '../types'
+import type { AccountResponse, AccountSummaryResponse, DepositSummaryResponse } from '../types'
+import type { StatusTone } from './StatusBadge'
 import { SectionStatus } from './SectionStatus'
 import { StatusBadge, getDepositStatusLabel, getDepositStatusTone } from './StatusBadge'
 
@@ -11,6 +12,7 @@ type AccountHistoryFilterState = {
 type AccountPanelProps = {
   customerId?: string
   account: AccountResponse | null
+  accountList: AccountSummaryResponse[]
   lookupAccountId: string
   historyStatusText: string
   history: DepositSummaryResponse[]
@@ -27,6 +29,8 @@ type AccountPanelProps = {
   onLookup: () => void
   onLoadHistory: () => void
   onSelectHistoryItem: (transaction: DepositSummaryResponse) => void
+  onLoadCustomerAccounts: () => void
+  onSelectAccount: (accountId: string) => void
 }
 
 function getAccountStatusLabel(status: number) {
@@ -44,9 +48,22 @@ function getAccountStatusLabel(status: number) {
   }
 }
 
+function getAccountStatusTone(status: number): StatusTone {
+  switch (status) {
+    case 2:
+      return 'success'
+    case 3:
+    case 4:
+      return 'danger'
+    default:
+      return 'neutral'
+  }
+}
+
 export function AccountPanel({
   customerId,
   account,
+  accountList,
   lookupAccountId,
   historyStatusText,
   history,
@@ -63,6 +80,8 @@ export function AccountPanel({
   onLookup,
   onLoadHistory,
   onSelectHistoryItem,
+  onLoadCustomerAccounts,
+  onSelectAccount,
 }: AccountPanelProps) {
   return (
     <article className="panel wide-panel">
@@ -125,7 +144,31 @@ export function AccountPanel({
       <div className="actions">
         {customerId && <span className="helper-chip">Active customer: {customerId}</span>}
         {account && <span className="helper-chip">Selected account: {account.accountId}</span>}
+        <button className="ghost-button" onClick={onLoadCustomerAccounts} disabled={!customerId || busy}>
+          {busy ? 'Working...' : 'Load customer accounts'}
+        </button>
       </div>
+
+      {accountList.length > 0 && (
+        <div className="account-summary-grid">
+          {accountList.map((item) => (
+            <button
+              key={item.accountId}
+              type="button"
+              className={item.accountId === account?.accountId ? 'account-summary-card account-summary-card-active' : 'account-summary-card'}
+              onClick={() => onSelectAccount(item.accountId)}
+            >
+              <div className="account-summary-card-head">
+                <strong>{item.accountType}</strong>
+                <StatusBadge label={getAccountStatusLabel(item.status)} tone={getAccountStatusTone(item.status)} />
+              </div>
+              <span>{item.accountNumber}</span>
+              <span>{item.accountId}</span>
+              <span>{item.availableBalance.toFixed(2)} / {item.ledgerBalance.toFixed(2)} {item.currency}</span>
+            </button>
+          ))}
+        </div>
+      )}
 
       {account && (
         <dl className="detail-list">

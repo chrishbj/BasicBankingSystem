@@ -22,6 +22,7 @@ function App() {
     reviewStatusText,
     customer,
     account,
+    accountList,
     deposit,
     accountHistory,
     selectedAccountHistoryItem,
@@ -51,6 +52,8 @@ function App() {
     handleOpenAccount,
     handleRefreshAccount,
     handleLookupAccount,
+    handleLoadCustomerAccounts,
+    handleSelectAccount,
     handleLoadAccountHistory,
     handleSubmitDeposit,
     handleRefreshDeposit,
@@ -124,6 +127,7 @@ function App() {
             <AccountPanel
               customerId={customer?.customerId}
               account={account}
+              accountList={accountList}
               lookupAccountId={accountQuery.accountId}
               historyStatusText={accountHistoryStatusText}
               history={accountHistory}
@@ -138,6 +142,8 @@ function App() {
               onOpen={() => void handleOpenAccount()}
               onRefresh={() => void handleRefreshAccount()}
               onLookup={() => void handleLookupAccount()}
+              onLoadCustomerAccounts={() => void handleLoadCustomerAccounts()}
+              onSelectAccount={(accountId) => void handleSelectAccount(accountId)}
               onLoadHistory={() => void handleLoadAccountHistory()}
               onSelectHistoryItem={setSelectedAccountHistoryItem}
             />

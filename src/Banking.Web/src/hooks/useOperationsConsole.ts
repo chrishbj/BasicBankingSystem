@@ -3,6 +3,7 @@ import {
   activateCustomer,
   createCustomer,
   getAccount,
+  getAccountsByCustomer,
   getDeposit,
   getHealth,
   getPendingReview,
@@ -14,6 +15,7 @@ import {
 } from '../api'
 import type {
   AccountResponse,
+  AccountSummaryResponse,
   CustomerResponse,
   DepositResponse,
   DepositSummaryResponse,
@@ -60,6 +62,7 @@ export function useOperationsConsole() {
   const [reviewStatusText, setReviewStatusText] = useState('Load the queue to inspect pending review items.')
   const [customer, setCustomer] = useState<CustomerResponse | null>(null)
   const [account, setAccount] = useState<AccountResponse | null>(null)
+  const [accountList, setAccountList] = useState<AccountSummaryResponse[]>([])
   const [deposit, setDeposit] = useState<DepositResponse | null>(null)
   const [accountHistory, setAccountHistory] = useState<DepositSummaryResponse[]>([])
   const [selectedAccountHistoryItem, setSelectedAccountHistoryItem] = useState<DepositSummaryResponse | null>(null)
@@ -217,6 +220,7 @@ export function useOperationsConsole() {
 
       setCustomer(created)
       setAccount(null)
+      setAccountList([])
       setAccountHistory([])
       setSelectedAccountHistoryItem(null)
       setAccountQuery({ accountId: '' })
@@ -251,6 +255,7 @@ export function useOperationsConsole() {
           currency: 'CNY',
         }),
       )
+      await loadCustomerAccountsCore(customer.customerId)
       setAccountHistory([])
       setSelectedAccountHistoryItem(null)
       setAccountHistoryStatusText('Account opened. Load history to inspect transactions on this account.')
@@ -281,8 +286,37 @@ export function useOperationsConsole() {
     await runAction('Lookup account', async () => {
       const fetched = await getAccount(accountId)
       setAccount(fetched)
+      await loadCustomerAccountsCore(fetched.customerId)
       setSelectedAccountHistoryItem(null)
       setAccountHistoryStatusText(`Loaded account ${fetched.accountId}.`)
+    })
+  }
+
+  async function loadCustomerAccountsCore(customerId: string) {
+    const response = await getAccountsByCustomer(customerId)
+    setAccountList(response.items)
+  }
+
+  async function handleLoadCustomerAccounts() {
+    const targetCustomerId = customer?.customerId ?? account?.customerId
+    if (!targetCustomerId) {
+      setMessage('Create or load a customer first.')
+      return
+    }
+
+    await runAction('Load customer accounts', async () => {
+      await loadCustomerAccountsCore(targetCustomerId)
+      setAccountHistoryStatusText(`Loaded accounts for customer ${targetCustomerId}.`)
+    })
+  }
+
+  async function handleSelectAccount(accountId: string) {
+    await runAction('Switch account', async () => {
+      const fetched = await getAccount(accountId)
+      setAccount(fetched)
+      setAccountQuery({ accountId })
+      await loadAccountHistoryCore(accountId, fetched.customerId)
+      setAccountHistoryStatusText(`Loaded account ${accountId} and its history.`)
     })
   }
 
@@ -441,6 +475,7 @@ export function useOperationsConsole() {
     reviewStatusText,
     customer,
     account,
+    accountList,
     deposit,
     accountHistory,
     selectedAccountHistoryItem,
@@ -470,6 +505,8 @@ export function useOperationsConsole() {
     handleOpenAccount,
     handleRefreshAccount,
     handleLookupAccount,
+    handleLoadCustomerAccounts,
+    handleSelectAccount,
     handleLoadAccountHistory,
     handleSubmitDeposit,
     handleRefreshDeposit,
