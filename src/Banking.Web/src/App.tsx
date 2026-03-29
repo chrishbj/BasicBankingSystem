@@ -24,12 +24,14 @@ function App() {
     account,
     deposit,
     accountHistory,
+    selectedAccountHistoryItem,
     depositSearchResult,
     pendingReviewItems,
     sortBy,
     descending,
     reviewSearch,
     accountQuery,
+    accountHistoryFilters,
     customerForm,
     depositForm,
     customerFormErrors,
@@ -40,6 +42,7 @@ function App() {
     setDescending,
     setReviewSearch,
     setAccountQuery,
+    setAccountHistoryFilters,
     setCustomerForm,
     setDepositForm,
     loadHealth,
@@ -55,6 +58,7 @@ function App() {
     handleLoadPendingReview,
     handleRetryPendingReview,
     handleResolvePendingReview,
+    setSelectedAccountHistoryItem,
   } = useOperationsConsole()
 
   const tabs: Array<{ id: WorkspaceTab; label: string; hint: string }> = [
@@ -123,14 +127,19 @@ function App() {
               lookupAccountId={accountQuery.accountId}
               historyStatusText={accountHistoryStatusText}
               history={accountHistory}
+              selectedHistoryItem={selectedAccountHistoryItem}
+              historyFilters={accountHistoryFilters}
               openDisabled={!customer || !!busyAction}
               lookupDisabled={!accountQuery.accountId.trim() || !!busyAction}
+              loadHistoryDisabled={!(accountQuery.accountId.trim() || account?.accountId) || !!busyAction}
               busy={!!busyAction}
               onLookupAccountIdChange={(accountId) => setAccountQuery({ accountId })}
+              onHistoryFiltersChange={setAccountHistoryFilters}
               onOpen={() => void handleOpenAccount()}
               onRefresh={() => void handleRefreshAccount()}
               onLookup={() => void handleLookupAccount()}
               onLoadHistory={() => void handleLoadAccountHistory()}
+              onSelectHistoryItem={setSelectedAccountHistoryItem}
             />
           )}
 

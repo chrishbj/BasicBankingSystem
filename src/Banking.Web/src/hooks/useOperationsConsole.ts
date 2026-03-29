@@ -44,6 +44,12 @@ type AccountQueryState = {
   accountId: string
 }
 
+type AccountHistoryFilterState = {
+  status: string
+  requestedFrom: string
+  requestedTo: string
+}
+
 export function useOperationsConsole() {
   const [health, setHealth] = useState<Record<string, string>>({})
   const [message, setMessage] = useState('Ready.')
@@ -56,6 +62,7 @@ export function useOperationsConsole() {
   const [account, setAccount] = useState<AccountResponse | null>(null)
   const [deposit, setDeposit] = useState<DepositResponse | null>(null)
   const [accountHistory, setAccountHistory] = useState<DepositSummaryResponse[]>([])
+  const [selectedAccountHistoryItem, setSelectedAccountHistoryItem] = useState<DepositSummaryResponse | null>(null)
   const [depositSearchResult, setDepositSearchResult] = useState<DepositResponse[]>([])
   const [pendingReviewItems, setPendingReviewItems] = useState<PendingReviewDepositSummaryResponse[]>([])
   const [sortBy, setSortBy] = useState<PendingReviewSortBy>('ReviewRequiredAt')
@@ -67,6 +74,11 @@ export function useOperationsConsole() {
   })
   const [accountQuery, setAccountQuery] = useState<AccountQueryState>({
     accountId: '',
+  })
+  const [accountHistoryFilters, setAccountHistoryFilters] = useState<AccountHistoryFilterState>({
+    status: '',
+    requestedFrom: '',
+    requestedTo: '',
   })
   const [customerForm, setCustomerForm] = useState<CustomerFormState>({
     fullName: 'Frontend Demo Customer',
@@ -206,6 +218,7 @@ export function useOperationsConsole() {
       setCustomer(created)
       setAccount(null)
       setAccountHistory([])
+      setSelectedAccountHistoryItem(null)
       setAccountQuery({ accountId: '' })
       setDeposit(null)
       setDepositStatusText('Customer created. Open an account to continue.')
@@ -239,6 +252,7 @@ export function useOperationsConsole() {
         }),
       )
       setAccountHistory([])
+      setSelectedAccountHistoryItem(null)
       setAccountHistoryStatusText('Account opened. Load history to inspect transactions on this account.')
       setDepositStatusText('Account opened. You can submit a deposit now.')
     })
@@ -267,6 +281,7 @@ export function useOperationsConsole() {
     await runAction('Lookup account', async () => {
       const fetched = await getAccount(accountId)
       setAccount(fetched)
+      setSelectedAccountHistoryItem(null)
       setAccountHistoryStatusText(`Loaded account ${fetched.accountId}.`)
     })
   }
@@ -282,8 +297,21 @@ export function useOperationsConsole() {
       params.set('customerId', customerId)
     }
 
+    if (accountHistoryFilters.status) {
+      params.set('status', accountHistoryFilters.status)
+    }
+
+    if (accountHistoryFilters.requestedFrom) {
+      params.set('requestedFrom', new Date(accountHistoryFilters.requestedFrom).toISOString())
+    }
+
+    if (accountHistoryFilters.requestedTo) {
+      params.set('requestedTo', new Date(accountHistoryFilters.requestedTo).toISOString())
+    }
+
     const response = await searchDeposits(params)
     setAccountHistory(response.items)
+    setSelectedAccountHistoryItem(response.items[0] ?? null)
     setAccountHistoryStatusText(`Loaded ${response.items.length} deposits for account ${accountId}.`)
   }
 
@@ -415,12 +443,14 @@ export function useOperationsConsole() {
     account,
     deposit,
     accountHistory,
+    selectedAccountHistoryItem,
     depositSearchResult,
     pendingReviewItems,
     sortBy,
     descending,
     reviewSearch,
     accountQuery,
+    accountHistoryFilters,
     customerForm,
     depositForm,
     customerFormErrors,
@@ -431,6 +461,7 @@ export function useOperationsConsole() {
     setDescending,
     setReviewSearch,
     setAccountQuery,
+    setAccountHistoryFilters,
     setCustomerForm,
     setDepositForm,
     loadHealth,
@@ -446,5 +477,6 @@ export function useOperationsConsole() {
     handleLoadPendingReview,
     handleRetryPendingReview,
     handleResolvePendingReview,
+    setSelectedAccountHistoryItem,
   }
 }
