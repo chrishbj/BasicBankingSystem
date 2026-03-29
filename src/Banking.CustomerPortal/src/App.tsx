@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import './App.css'
-import { getAccount, getAccountActivities, getAccountsByCustomer, getCustomers, submitDeposit, submitWithdrawal } from './api'
+import { getAccount, getAccountActivities, getAccountsByCustomer, getCustomers, getDeposit, searchDeposits, submitDeposit, submitWithdrawal } from './api'
 import type {
   AccountActivityResponse,
   AccountResponse,
@@ -10,7 +10,7 @@ import type {
 } from './types'
 import { formatCurrency } from './utils/currency'
 
-type PortalTab = 'dashboard' | 'accounts' | 'activity' | 'cash' | 'profile'
+type PortalTab = 'dashboard' | 'accounts' | 'activity' | 'cash' | 'transactions' | 'profile'
 
 function getActivityLabel(postingType: AccountActivityResponse['postingType']) {
   switch (postingType) {
@@ -80,6 +80,24 @@ function getDepositStatusLabel(status: number) {
   }
 }
 
+function getDepositStatusTone(status: number) {
+  switch (status) {
+    case 3:
+      return 'success'
+    case 1:
+    case 2:
+      return 'info'
+    case 6:
+      return 'warning'
+    case 4:
+    case 5:
+    case 7:
+      return 'danger'
+    default:
+      return 'neutral'
+  }
+}
+
 function groupActivitiesByDate(items: AccountActivityResponse[]) {
   const grouped = new Map<string, AccountActivityResponse[]>()
 
@@ -101,6 +119,7 @@ function App() {
   const [selectedAccount, setSelectedAccount] = useState<AccountResponse | null>(null)
   const [activities, setActivities] = useState<AccountActivityResponse[]>([])
   const [latestDeposit, setLatestDeposit] = useState<DepositResponse | null>(null)
+  const [depositStatuses, setDepositStatuses] = useState<DepositResponse[]>([])
   const [transactionForm, setTransactionForm] = useState({
     amount: '100',
     referenceNumber: `PORTAL-REF-${Date.now()}`,
@@ -112,6 +131,30 @@ function App() {
   useEffect(() => {
     void loadCustomers()
   }, [])
+
+  useEffect(() => {
+    if (!currentCustomer) {
+      setDepositStatuses([])
+      return
+    }
+
+    void loadDepositStatuses(currentCustomer.customerId, selectedAccount?.accountId)
+  }, [currentCustomer?.customerId, selectedAccount?.accountId])
+
+  useEffect(() => {
+    const pending = depositStatuses.some((item) => item.status === 1 || item.status === 2)
+      || (latestDeposit !== null && (latestDeposit.status === 1 || latestDeposit.status === 2))
+
+    if (!pending || !currentCustomer) {
+      return
+    }
+
+    const handle = window.setInterval(() => {
+      void loadDepositStatuses(currentCustomer.customerId, selectedAccount?.accountId, true)
+    }, 2000)
+
+    return () => window.clearInterval(handle)
+  }, [currentCustomer, selectedAccount, depositStatuses, latestDeposit])
 
   async function loadCustomers() {
     try {
@@ -143,6 +186,8 @@ function App() {
       } else {
         setSelectedAccount(null)
         setActivities([])
+        setLatestDeposit(null)
+        setDepositStatuses([])
       }
 
       setMessage(`Signed in as ${customer.fullName}.`)
@@ -180,6 +225,32 @@ function App() {
     await loadAccountWorkspace(selectedAccount.accountId)
   }
 
+  async function loadDepositStatuses(customerId: string, accountId?: string, silent = false) {
+    try {
+      const response = await searchDeposits(customerId, accountId)
+      const details = await Promise.all(response.items.map((item) => getDeposit(item.transactionId)))
+      const ordered = details.sort((left, right) => new Date(right.requestedAt).getTime() - new Date(left.requestedAt).getTime())
+      setDepositStatuses(ordered)
+
+      if (latestDeposit) {
+        const refreshedLatest = ordered.find((item) => item.transactionId === latestDeposit.transactionId)
+        if (refreshedLatest) {
+          setLatestDeposit(refreshedLatest)
+        }
+      } else if (ordered.length > 0) {
+        setLatestDeposit(ordered[0])
+      }
+
+      if (!silent) {
+        setMessage(`Loaded ${ordered.length} deposit transaction${ordered.length === 1 ? '' : 's'}.`)
+      }
+    } catch (error) {
+      if (!silent) {
+        setMessage(`Could not load deposit status: ${error instanceof Error ? error.message : String(error)}`)
+      }
+    }
+  }
+
   async function handleSubmitDeposit() {
     if (!currentCustomer || !selectedAccount) {
       setMessage('Choose a customer and account first.')
@@ -204,6 +275,8 @@ function App() {
 
       setLatestDeposit(result)
       await refreshCurrentAccount()
+      await loadDepositStatuses(currentCustomer.customerId, selectedAccount.accountId, true)
+      setActiveTab('transactions')
       setMessage(`Deposit submitted. Current status: ${getDepositStatusLabel(result.status)}.`)
     } catch (error) {
       setMessage(`Could not submit deposit: ${error instanceof Error ? error.message : String(error)}`)
@@ -230,6 +303,9 @@ function App() {
 
       setSelectedAccount(updated)
       await refreshCurrentAccount()
+      if (currentCustomer) {
+        await loadDepositStatuses(currentCustomer.customerId, updated.accountId, true)
+      }
       setMessage('Withdrawal submitted successfully.')
     } catch (error) {
       setMessage(`Could not submit withdrawal: ${error instanceof Error ? error.message : String(error)}`)
@@ -284,6 +360,7 @@ function App() {
                 ['accounts', 'Accounts', 'Your account list and balances'],
                 ['activity', 'Activity', 'Deposits and withdrawals history'],
                 ['cash', 'Cash', 'Submit deposits and withdrawals'],
+                ['transactions', 'Transactions', 'Track deposit processing status'],
                 ['profile', 'Profile', 'Customer details and contact info'],
               ].map(([id, label, hint]) => (
                 <button
@@ -534,6 +611,78 @@ function App() {
                   )}
                 </section>
               </div>
+            </article>
+          )}
+
+          {activeTab === 'transactions' && (
+            <article className="panel">
+              <div className="panel-head">
+                <div>
+                  <p className="eyebrow">Transaction Status</p>
+                  <h2>Deposit Progress</h2>
+                  <p className="status-note">
+                    Deposits update automatically while they are still being received or processed.
+                  </p>
+                </div>
+                <div className="action-row">
+                  <button
+                    type="button"
+                    className="ghost-button"
+                    onClick={() => currentCustomer && void loadDepositStatuses(currentCustomer.customerId, selectedAccount?.accountId)}
+                    disabled={!currentCustomer || busy}
+                  >
+                    Refresh statuses
+                  </button>
+                </div>
+              </div>
+
+              {depositStatuses.length === 0 ? (
+                <p>No deposit transactions found for the current customer context yet.</p>
+              ) : (
+                <div className="transaction-status-list">
+                  {depositStatuses.map((item) => (
+                    <section key={item.transactionId} className="transaction-card">
+                      <div className="transaction-card-head">
+                        <div>
+                          <p className="eyebrow">Transaction</p>
+                          <h3>{item.transactionNumber}</h3>
+                        </div>
+                        <span className={`status-pill status-pill-${getDepositStatusTone(item.status)}`}>
+                          {getDepositStatusLabel(item.status)}
+                        </span>
+                      </div>
+
+                      <dl className="detail-list">
+                        <div><dt>Account</dt><dd>{selectedAccount?.accountNumber ?? 'Selected account'}</dd></div>
+                        <div><dt>Amount</dt><dd>{formatCurrency(item.amount, item.currency)}</dd></div>
+                        <div><dt>Reference number</dt><dd>{item.referenceNumber ?? 'Not provided'}</dd></div>
+                        <div><dt>Requested at</dt><dd>{new Date(item.requestedAt).toLocaleString()}</dd></div>
+                        <div><dt>Posted at</dt><dd>{item.postedAt ? new Date(item.postedAt).toLocaleString() : 'Still pending'}</dd></div>
+                        <div><dt>Failure reason</dt><dd>{item.failureReason ?? item.failureCode ?? 'No failure reported'}</dd></div>
+                      </dl>
+
+                      <div className="progress-strip">
+                        <div className={item.status >= 1 ? 'progress-step progress-step-done' : 'progress-step'}>
+                          <strong>Received</strong>
+                          <span>The request reached the banking platform.</span>
+                        </div>
+                        <div className={item.status >= 2 ? 'progress-step progress-step-done' : 'progress-step'}>
+                          <strong>Processing</strong>
+                          <span>The platform is applying the deposit.</span>
+                        </div>
+                        <div className={item.status === 3 ? 'progress-step progress-step-done' : 'progress-step'}>
+                          <strong>Succeeded</strong>
+                          <span>Funds were posted successfully.</span>
+                        </div>
+                        <div className={item.status === 5 || item.status === 4 || item.status === 6 ? 'progress-step progress-step-alert' : 'progress-step'}>
+                          <strong>Attention</strong>
+                          <span>Failed, rejected, or pending review items appear here.</span>
+                        </div>
+                      </div>
+                    </section>
+                  ))}
+                </div>
+              )}
             </article>
           )}
 

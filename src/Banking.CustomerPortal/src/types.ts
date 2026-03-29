@@ -55,10 +55,23 @@ export type DepositResponse = {
   referenceNumber?: string | null
   status: number
   correlationId: string
-  requestedAt: string
-  postedAt?: string | null
   failureCode?: string | null
   failureReason?: string | null
+  requestedAt: string
+  postedAt?: string | null
+}
+
+export type DepositSummaryResponse = {
+  transactionId: string
+  transactionNumber: string
+  customerId: string
+  accountId: string
+  amount: number
+  currency: string
+  referenceNumber?: string | null
+  status: number
+  requestedAt: string
+  postedAt?: string | null
 }
 
 export type PagedResponse<T> = {

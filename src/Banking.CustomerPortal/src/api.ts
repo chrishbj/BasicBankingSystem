@@ -4,6 +4,7 @@ import type {
   AccountSummaryResponse,
   CustomerResponse,
   DepositResponse,
+  DepositSummaryResponse,
   PagedResponse,
 } from './types'
 
@@ -63,4 +64,22 @@ export function submitWithdrawal(accountId: string, payload: Record<string, unkn
     method: 'POST',
     body: JSON.stringify(payload),
   })
+}
+
+export function getDeposit(transactionId: string) {
+  return request<DepositResponse>(`/deposit-api/api/v1/deposits/${transactionId}`)
+}
+
+export function searchDeposits(customerId: string, accountId?: string, pageNumber = 1, pageSize = 20) {
+  const query = new URLSearchParams({
+    customerId,
+    pageNumber: String(pageNumber),
+    pageSize: String(pageSize),
+  })
+
+  if (accountId) {
+    query.set('accountId', accountId)
+  }
+
+  return request<PagedResponse<DepositSummaryResponse>>(`/deposit-api/api/v1/deposits?${query.toString()}`)
 }

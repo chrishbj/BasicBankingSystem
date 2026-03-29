@@ -320,6 +320,99 @@ textarea {
   text-align: right;
 }
 
+.transaction-status-list {
+  display: grid;
+  gap: 16px;
+}
+
+.transaction-card {
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  background: var(--panel-accent);
+  padding: 18px;
+}
+
+.transaction-card-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+  margin-bottom: 14px;
+}
+
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.status-pill-neutral {
+  background: #eceff1;
+  color: #53616f;
+}
+
+.status-pill-success {
+  background: #dff5e6;
+  color: #186034;
+}
+
+.status-pill-info {
+  background: #dcecf8;
+  color: #1b587f;
+}
+
+.status-pill-warning {
+  background: #fff1d8;
+  color: #8f5e00;
+}
+
+.status-pill-danger {
+  background: #fbe0de;
+  color: #9a2e2e;
+}
+
+.progress-strip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.progress-step {
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.6);
+  padding: 12px 14px;
+}
+
+.progress-step strong,
+.progress-step span {
+  display: block;
+}
+
+.progress-step strong {
+  color: var(--text-h);
+  margin-bottom: 6px;
+}
+
+.progress-step span {
+  font-size: 13px;
+  color: var(--text);
+}
+
+.progress-step-done {
+  border-color: rgba(15, 109, 98, 0.32);
+  background: rgba(15, 109, 98, 0.12);
+}
+
+.progress-step-alert {
+  border-color: rgba(154, 46, 46, 0.28);
+  background: rgba(154, 46, 46, 0.08);
+}
+
 @media (max-width: 980px) {
   .portal-shell {
     padding: 16px;
@@ -340,7 +433,8 @@ textarea {
 
   .summary-grid,
   .content-grid,
-  .profile-grid {
+  .profile-grid,
+  .progress-strip {
     grid-template-columns: 1fr;
   }
 
@@ -350,5 +444,10 @@ textarea {
 
   .activity-amount {
     text-align: left;
+  }
+
+  .transaction-card-head {
+    flex-direction: column;
+    align-items: stretch;
   }
 }
