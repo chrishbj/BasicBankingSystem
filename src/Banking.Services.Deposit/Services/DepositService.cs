@@ -143,7 +143,9 @@ public sealed class DepositService(
             FailureReason = string.IsNullOrWhiteSpace(request.Note)
                 ? "Demo pending-review item created from the local operations console."
                 : request.Note.Trim(),
-            CompensationRetryCount = 1,
+            // Keep demo items in PendingReview so the UI can exercise retry/resolve actions
+            // without the automatic retry worker immediately consuming them.
+            CompensationRetryCount = 3,
             RequestedAt = now,
             PostedAt = now,
             ReviewRequiredAt = now,

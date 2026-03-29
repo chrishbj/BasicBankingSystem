@@ -37,12 +37,10 @@ type AccountPanelProps = {
 function getAccountStatusLabel(status: number) {
   switch (status) {
     case 1:
-      return 'Pending Activation'
-    case 2:
       return 'Active'
-    case 3:
+    case 2:
       return 'Frozen'
-    case 4:
+    case 3:
       return 'Closed'
     default:
       return `Status ${status}`
@@ -51,10 +49,10 @@ function getAccountStatusLabel(status: number) {
 
 function getAccountStatusTone(status: number): StatusTone {
   switch (status) {
-    case 2:
+    case 1:
       return 'success'
+    case 2:
     case 3:
-    case 4:
       return 'danger'
     default:
       return 'neutral'
