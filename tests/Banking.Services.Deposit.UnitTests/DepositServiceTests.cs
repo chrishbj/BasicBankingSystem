@@ -29,7 +29,7 @@ public sealed class DepositServiceTests
     [Fact]
     public async Task CreateDeposit_Should_Fail_When_AmountIsLessThanOrEqualToZero()
     {
-        var request = new CreateDepositRequest("cus_active_001", "acc_active_001", 0m, "CNY", DepositChannel.Counter, null, null);
+        var request = new CreateDepositRequest("cus_active_001", "acc_active_001", 0m, "USD", DepositChannel.Counter, null, null);
 
         var act = () => _service.CreateAsync(request, "idem-001", "corr-001", CancellationToken.None);
 
@@ -39,7 +39,7 @@ public sealed class DepositServiceTests
     [Fact]
     public async Task CreateDeposit_Should_CreateReceivedTransaction_When_RequestIsValid()
     {
-        var request = new CreateDepositRequest("cus_active_001", "acc_active_001", 200m, "CNY", DepositChannel.Counter, null, null);
+        var request = new CreateDepositRequest("cus_active_001", "acc_active_001", 200m, "USD", DepositChannel.Counter, null, null);
 
         var result = await _service.CreateAsync(request, "idem-002", "corr-002", CancellationToken.None);
 
@@ -56,7 +56,7 @@ public sealed class DepositServiceTests
     [Fact]
     public async Task CreateDeposit_Should_ReturnExistingResult_When_IdempotencyKeyRepeated()
     {
-        var request = new CreateDepositRequest("cus_active_001", "acc_active_001", 300m, "CNY", DepositChannel.Counter, null, null);
+        var request = new CreateDepositRequest("cus_active_001", "acc_active_001", 300m, "USD", DepositChannel.Counter, null, null);
 
         var first = await _service.CreateAsync(request, "idem-003", "corr-003", CancellationToken.None);
         var second = await _service.CreateAsync(request, "idem-003", "corr-004", CancellationToken.None);
@@ -76,7 +76,7 @@ public sealed class DepositServiceTests
             CustomerId = "cus_active_001",
             AccountId = "acc_active_001",
             Amount = 100m,
-            Currency = "CNY",
+            Currency = "USD",
             Channel = DepositChannel.Counter,
             Status = DepositStatus.PendingReview,
             AccountPostingStatus = DepositSagaStepStatus.Succeeded,
@@ -231,7 +231,7 @@ public sealed class DepositServiceTests
                 CustomerId = customerId,
                 AccountId = accountId,
                 Amount = 100m,
-                Currency = "CNY",
+                Currency = "USD",
                 Channel = DepositChannel.Counter,
                 Status = status,
                 AccountPostingStatus = status == DepositStatus.PendingReview ? DepositSagaStepStatus.Succeeded : DepositSagaStepStatus.Succeeded,
@@ -249,7 +249,7 @@ public sealed class DepositServiceTests
                     customerId,
                     accountId,
                     100m,
-                    "CNY",
+                    "USD",
                     DepositChannel.Counter,
                     correlationId ?? $"corr-{transactionId}"),
                 now),
@@ -269,7 +269,7 @@ public sealed class DepositServiceTests
                 CustomerId = "cus_active_001",
                 AccountId = "acc_active_001",
                 Amount = 100m,
-                Currency = "CNY",
+                Currency = "USD",
                 Channel = DepositChannel.Counter,
                 Status = DepositStatus.PendingReview,
                 AccountPostingStatus = DepositSagaStepStatus.Succeeded,
@@ -287,7 +287,7 @@ public sealed class DepositServiceTests
                     "cus_active_001",
                     "acc_active_001",
                     100m,
-                    "CNY",
+                    "USD",
                     DepositChannel.Counter,
                     $"corr-{transactionId}"),
                 reviewRequiredAt.AddMinutes(-10)),

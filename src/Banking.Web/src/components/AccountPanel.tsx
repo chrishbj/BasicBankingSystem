@@ -2,6 +2,7 @@ import type { AccountActivityResponse, AccountResponse, AccountSummaryResponse }
 import type { StatusTone } from './StatusBadge'
 import { SectionStatus } from './SectionStatus'
 import { StatusBadge, getAccountActivityLabel, getAccountActivityTone } from './StatusBadge'
+import { formatCurrency, formatCurrencyWithCode } from '../utils/currency'
 
 type AccountHistoryFilterState = {
   activityType: string
@@ -178,7 +179,7 @@ export function AccountPanel({
                 <StatusBadge label={getAccountStatusLabel(item.status)} tone={getAccountStatusTone(item.status)} />
               </div>
               <span>{item.accountNumber}</span>
-              <span>{item.availableBalance.toFixed(2)} / {item.ledgerBalance.toFixed(2)} {item.currency}</span>
+              <span>{formatCurrency(item.availableBalance, item.currency)} / {formatCurrency(item.ledgerBalance, item.currency)}</span>
               <span className="subtle-code">{item.accountId}</span>
             </button>
           ))}
@@ -192,9 +193,9 @@ export function AccountPanel({
           <div><dt>Account Number</dt><dd>{account.accountNumber}</dd></div>
           <div><dt>Status</dt><dd>{getAccountStatusLabel(account.status)}</dd></div>
           <div><dt>Type</dt><dd>{account.accountType}</dd></div>
-          <div><dt>Currency</dt><dd>{account.currency}</dd></div>
-          <div><dt>Available</dt><dd>{account.availableBalance.toFixed(2)}</dd></div>
-          <div><dt>Ledger</dt><dd>{account.ledgerBalance.toFixed(2)}</dd></div>
+          <div><dt>Currency</dt><dd>{account.currency} ($)</dd></div>
+          <div><dt>Available</dt><dd>{formatCurrency(account.availableBalance, account.currency)}</dd></div>
+          <div><dt>Ledger</dt><dd>{formatCurrency(account.ledgerBalance, account.currency)}</dd></div>
           <div><dt>Opened At</dt><dd>{new Date(account.openedAt).toLocaleString()}</dd></div>
           <div><dt>Internal Reference</dt><dd className="subtle-code">{account.accountId}</dd></div>
         </dl>
@@ -228,7 +229,7 @@ export function AccountPanel({
                       <StatusBadge label={getAccountActivityLabel(item.postingType)} tone={getAccountActivityTone(item.postingType)} />
                     </td>
                     <td>
-                      <strong>{item.amount.toFixed(2)} {item.currency}</strong>
+                      <strong>{formatCurrencyWithCode(item.amount, item.currency)}</strong>
                     </td>
                     <td>{new Date(item.createdAt).toLocaleString()}</td>
                     <td>{item.correlationId ?? 'N/A'}</td>
@@ -253,7 +254,7 @@ export function AccountPanel({
                     />
                   </dd>
                 </div>
-                <div><dt>Amount</dt><dd>{selectedHistoryItem.amount.toFixed(2)} {selectedHistoryItem.currency}</dd></div>
+                <div><dt>Amount</dt><dd>{formatCurrencyWithCode(selectedHistoryItem.amount, selectedHistoryItem.currency)}</dd></div>
                 <div><dt>Occurred At</dt><dd>{new Date(selectedHistoryItem.createdAt).toLocaleString()}</dd></div>
                 <div><dt>Correlation ID</dt><dd className="subtle-code">{selectedHistoryItem.correlationId ?? 'N/A'}</dd></div>
                 {selectedHistoryItem.reversalOfPostingReference && <div><dt>Reversal Of</dt><dd className="subtle-code">{selectedHistoryItem.reversalOfPostingReference}</dd></div>}

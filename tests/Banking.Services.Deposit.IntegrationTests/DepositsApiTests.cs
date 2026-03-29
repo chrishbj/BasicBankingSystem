@@ -23,7 +23,7 @@ public sealed class DepositsApiTests : IClassFixture<DepositServiceWebApplicatio
     [Fact]
     public async Task PostDeposits_Should_ReturnAccepted_When_RequestIsValid()
     {
-        var request = new CreateDepositRequest("cus_active_001", "acc_active_001", 500m, "CNY", DepositChannel.Counter, null, null);
+        var request = new CreateDepositRequest("cus_active_001", "acc_active_001", 500m, "USD", DepositChannel.Counter, null, null);
         var message = new HttpRequestMessage(HttpMethod.Post, "/api/v1/deposits")
         {
             Content = JsonContent.Create(request)
@@ -47,7 +47,7 @@ public sealed class DepositsApiTests : IClassFixture<DepositServiceWebApplicatio
     [Fact]
     public async Task PostDeposits_Should_ReturnConflict_When_AccountIsFrozen()
     {
-        var request = new CreateDepositRequest("cus_active_001", "acc_frozen_001", 500m, "CNY", DepositChannel.Counter, null, null);
+        var request = new CreateDepositRequest("cus_active_001", "acc_frozen_001", 500m, "USD", DepositChannel.Counter, null, null);
         var message = new HttpRequestMessage(HttpMethod.Post, "/api/v1/deposits")
         {
             Content = JsonContent.Create(request)
@@ -109,7 +109,7 @@ public sealed class DepositsApiTests : IClassFixture<DepositServiceWebApplicatio
     [Fact]
     public async Task GetAll_Should_FilterByStatus_When_QueryStringProvided()
     {
-        var request = new CreateDepositRequest("cus_active_001", "acc_active_001", 320m, "CNY", DepositChannel.Counter, null, null);
+        var request = new CreateDepositRequest("cus_active_001", "acc_active_001", 320m, "USD", DepositChannel.Counter, null, null);
         var message = new HttpRequestMessage(HttpMethod.Post, "/api/v1/deposits")
         {
             Content = JsonContent.Create(request)
@@ -178,7 +178,7 @@ public sealed class DepositsApiTests : IClassFixture<DepositServiceWebApplicatio
 
     private async Task<DepositResponse> CreateAndCompleteDepositAsync(string idempotencyKey, string? correlationId)
     {
-        var request = new CreateDepositRequest("cus_active_001", "acc_active_001", 210m, "CNY", DepositChannel.Counter, null, null);
+        var request = new CreateDepositRequest("cus_active_001", "acc_active_001", 210m, "USD", DepositChannel.Counter, null, null);
         var message = new HttpRequestMessage(HttpMethod.Post, "/api/v1/deposits")
         {
             Content = JsonContent.Create(request)
@@ -211,7 +211,7 @@ public sealed class DepositsApiTests : IClassFixture<DepositServiceWebApplicatio
             CustomerId = "cus_active_001",
             AccountId = "acc_active_001",
             Amount = 100m,
-            Currency = "CNY",
+            Currency = "USD",
             Channel = DepositChannel.Counter,
             Status = DepositStatus.PendingReview,
             AccountPostingStatus = DepositSagaStepStatus.Succeeded,

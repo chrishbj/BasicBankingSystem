@@ -1,6 +1,7 @@
 import type { DepositResponse, PendingReviewDepositSummaryResponse, PendingReviewSortBy } from '../types'
 import { SectionStatus } from './SectionStatus'
 import { StatusBadge, buildDepositBadge, getDepositStatusLabel, getReviewResolutionLabel } from './StatusBadge'
+import { formatCurrencyWithCode } from '../utils/currency'
 
 type ReviewSearchState = {
   correlationId: string
@@ -149,7 +150,7 @@ export function PendingReviewPanel({
                 <tr key={item.transactionId}>
                   <td>
                     <strong>{item.transactionNumber}</strong>
-                    <span>{item.amount.toFixed(2)} {item.currency}</span>
+                    <span>{formatCurrencyWithCode(item.amount, item.currency)}</span>
                     <span className="subtle-code">{item.transactionId}</span>
                   </td>
                   <td>

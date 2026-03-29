@@ -14,7 +14,7 @@ public sealed class InMemoryDepositAccountDirectory : IDepositAccountDirectory
                 {
                     AccountId = "acc_active_001",
                     CustomerId = "cus_active_001",
-                    Currency = "CNY",
+                    Currency = "USD",
                     Status = DepositAccountStatus.Active,
                     AvailableBalance = 0m,
                     LedgerBalance = 0m
@@ -25,7 +25,7 @@ public sealed class InMemoryDepositAccountDirectory : IDepositAccountDirectory
                 {
                     AccountId = "acc_frozen_001",
                     CustomerId = "cus_active_001",
-                    Currency = "CNY",
+                    Currency = "USD",
                     Status = DepositAccountStatus.Frozen,
                     AvailableBalance = 0m,
                     LedgerBalance = 0m

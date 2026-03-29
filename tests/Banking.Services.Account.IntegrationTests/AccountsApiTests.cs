@@ -17,7 +17,7 @@ public sealed class AccountsApiTests : IClassFixture<AccountServiceWebApplicatio
     [Fact]
     public async Task PostAccounts_Should_ReturnCreated_When_CustomerIsActive()
     {
-        var request = new OpenAccountRequest("cus_active_001", "Checking", "CNY");
+        var request = new OpenAccountRequest("cus_active_001", "Checking", "USD");
 
         var response = await _client.PostAsJsonAsync("/api/v1/accounts", request);
 
@@ -30,7 +30,7 @@ public sealed class AccountsApiTests : IClassFixture<AccountServiceWebApplicatio
     [Fact]
     public async Task PostAccounts_Should_ReturnConflict_When_CustomerIsFrozen()
     {
-        var request = new OpenAccountRequest("cus_frozen_001", "Checking", "CNY");
+        var request = new OpenAccountRequest("cus_frozen_001", "Checking", "USD");
 
         var response = await _client.PostAsJsonAsync("/api/v1/accounts", request);
 
@@ -40,12 +40,12 @@ public sealed class AccountsApiTests : IClassFixture<AccountServiceWebApplicatio
     [Fact]
     public async Task PostDepositPosting_Should_UpdateBalances_When_AccountIsActive()
     {
-        var openResponse = await _client.PostAsJsonAsync("/api/v1/accounts", new OpenAccountRequest("cus_active_001", "Checking", "CNY"));
+        var openResponse = await _client.PostAsJsonAsync("/api/v1/accounts", new OpenAccountRequest("cus_active_001", "Checking", "USD"));
         var account = await openResponse.Content.ReadFromJsonAsync<AccountResponse>();
 
         var response = await _client.PostAsJsonAsync(
             $"/api/v1/accounts/{account!.AccountId}/deposit-postings",
-            new ApplyDepositRequest(125m, "CNY", "posting-001", "corr-001"));
+            new ApplyDepositRequest(125m, "USD", "posting-001", "corr-001"));
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var updated = await response.Content.ReadFromJsonAsync<AccountResponse>();
@@ -57,16 +57,16 @@ public sealed class AccountsApiTests : IClassFixture<AccountServiceWebApplicatio
     [Fact]
     public async Task PostDepositReversal_Should_RollbackBalances_When_OriginalPostingExists()
     {
-        var openResponse = await _client.PostAsJsonAsync("/api/v1/accounts", new OpenAccountRequest("cus_active_001", "Checking", "CNY"));
+        var openResponse = await _client.PostAsJsonAsync("/api/v1/accounts", new OpenAccountRequest("cus_active_001", "Checking", "USD"));
         var account = await openResponse.Content.ReadFromJsonAsync<AccountResponse>();
 
         await _client.PostAsJsonAsync(
             $"/api/v1/accounts/{account!.AccountId}/deposit-postings",
-            new ApplyDepositRequest(125m, "CNY", "posting-002", "corr-002"));
+            new ApplyDepositRequest(125m, "USD", "posting-002", "corr-002"));
 
         var response = await _client.PostAsJsonAsync(
             $"/api/v1/accounts/{account.AccountId}/deposit-reversals",
-            new ReverseDepositRequest("reversal-002", "posting-002", 125m, "CNY", "corr-002", "test compensation"));
+            new ReverseDepositRequest("reversal-002", "posting-002", 125m, "USD", "corr-002", "test compensation"));
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var updated = await response.Content.ReadFromJsonAsync<AccountResponse>();
@@ -78,16 +78,16 @@ public sealed class AccountsApiTests : IClassFixture<AccountServiceWebApplicatio
     [Fact]
     public async Task PostWithdrawal_Should_UpdateBalances_When_AccountHasSufficientFunds()
     {
-        var openResponse = await _client.PostAsJsonAsync("/api/v1/accounts", new OpenAccountRequest("cus_active_001", "Checking", "CNY"));
+        var openResponse = await _client.PostAsJsonAsync("/api/v1/accounts", new OpenAccountRequest("cus_active_001", "Checking", "USD"));
         var account = await openResponse.Content.ReadFromJsonAsync<AccountResponse>();
 
         await _client.PostAsJsonAsync(
             $"/api/v1/accounts/{account!.AccountId}/deposit-postings",
-            new ApplyDepositRequest(200m, "CNY", "posting-003", "corr-003"));
+            new ApplyDepositRequest(200m, "USD", "posting-003", "corr-003"));
 
         var response = await _client.PostAsJsonAsync(
             $"/api/v1/accounts/{account.AccountId}/withdrawals",
-            new CreateWithdrawalRequest(50m, "CNY", "withdrawal-003", "corr-004", "atm withdrawal"));
+            new CreateWithdrawalRequest(50m, "USD", "withdrawal-003", "corr-004", "atm withdrawal"));
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var updated = await response.Content.ReadFromJsonAsync<AccountResponse>();
@@ -99,16 +99,16 @@ public sealed class AccountsApiTests : IClassFixture<AccountServiceWebApplicatio
     [Fact]
     public async Task GetActivities_Should_ReturnDepositAndWithdrawalHistory()
     {
-        var openResponse = await _client.PostAsJsonAsync("/api/v1/accounts", new OpenAccountRequest("cus_active_001", "Checking", "CNY"));
+        var openResponse = await _client.PostAsJsonAsync("/api/v1/accounts", new OpenAccountRequest("cus_active_001", "Checking", "USD"));
         var account = await openResponse.Content.ReadFromJsonAsync<AccountResponse>();
 
         await _client.PostAsJsonAsync(
             $"/api/v1/accounts/{account!.AccountId}/deposit-postings",
-            new ApplyDepositRequest(200m, "CNY", "posting-activity-001", "corr-activity-001"));
+            new ApplyDepositRequest(200m, "USD", "posting-activity-001", "corr-activity-001"));
 
         await _client.PostAsJsonAsync(
             $"/api/v1/accounts/{account.AccountId}/withdrawals",
-            new CreateWithdrawalRequest(60m, "CNY", "withdrawal-activity-001", "corr-activity-002", "branch withdrawal"));
+            new CreateWithdrawalRequest(60m, "USD", "withdrawal-activity-001", "corr-activity-002", "branch withdrawal"));
 
         var response = await _client.GetAsync($"/api/v1/accounts/{account.AccountId}/activities?pageNumber=1&pageSize=20");
 

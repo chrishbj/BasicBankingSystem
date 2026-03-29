@@ -15,7 +15,7 @@ public sealed class AccountServiceTests
     {
         var service = new AccountService(new InMemoryAccountRepository(), new InMemoryCustomerDirectory());
 
-        var account = await service.OpenAsync(new OpenAccountRequest("cus_active_001", "Checking", "CNY"), CancellationToken.None);
+        var account = await service.OpenAsync(new OpenAccountRequest("cus_active_001", "Checking", "USD"), CancellationToken.None);
 
         account.CustomerId.Should().Be("cus_active_001");
         account.Status.Should().Be(AccountStatus.Active);
@@ -27,7 +27,7 @@ public sealed class AccountServiceTests
     {
         var service = new AccountService(new InMemoryAccountRepository(), new InMemoryCustomerDirectory());
 
-        var act = () => service.OpenAsync(new OpenAccountRequest("cus_frozen_001", "Checking", "CNY"), CancellationToken.None);
+        var act = () => service.OpenAsync(new OpenAccountRequest("cus_frozen_001", "Checking", "USD"), CancellationToken.None);
 
         await act.Should().ThrowAsync<CustomerNotEligibleForAccountOpeningException>();
     }
@@ -38,10 +38,10 @@ public sealed class AccountServiceTests
         var repository = new InMemoryAccountRepository();
         var service = new AccountService(repository, new InMemoryCustomerDirectory());
 
-        var opened = await service.OpenAsync(new OpenAccountRequest("cus_active_001", "Checking", "CNY"), CancellationToken.None);
+        var opened = await service.OpenAsync(new OpenAccountRequest("cus_active_001", "Checking", "USD"), CancellationToken.None);
         var updated = await service.ApplyDepositAsync(
             opened.AccountId,
-            new ApplyDepositRequest(250m, "CNY", "posting-unit-001", "corr-unit-001"),
+            new ApplyDepositRequest(250m, "USD", "posting-unit-001", "corr-unit-001"),
             CancellationToken.None);
 
         updated.AvailableBalance.Should().Be(250m);
@@ -54,15 +54,15 @@ public sealed class AccountServiceTests
         var repository = new InMemoryAccountRepository();
         var service = new AccountService(repository, new InMemoryCustomerDirectory());
 
-        var opened = await service.OpenAsync(new OpenAccountRequest("cus_active_001", "Checking", "CNY"), CancellationToken.None);
+        var opened = await service.OpenAsync(new OpenAccountRequest("cus_active_001", "Checking", "USD"), CancellationToken.None);
         await service.ApplyDepositAsync(
             opened.AccountId,
-            new ApplyDepositRequest(250m, "CNY", "posting-unit-deposit-001", "corr-unit-001"),
+            new ApplyDepositRequest(250m, "USD", "posting-unit-deposit-001", "corr-unit-001"),
             CancellationToken.None);
 
         var updated = await service.WithdrawAsync(
             opened.AccountId,
-            new CreateWithdrawalRequest(100m, "CNY", "withdrawal-unit-001", "corr-unit-002", "cash withdrawal"),
+            new CreateWithdrawalRequest(100m, "USD", "withdrawal-unit-001", "corr-unit-002", "cash withdrawal"),
             CancellationToken.None);
 
         updated.AvailableBalance.Should().Be(150m);

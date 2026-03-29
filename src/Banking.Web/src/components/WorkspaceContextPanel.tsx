@@ -1,6 +1,7 @@
 import type { AccountResponse, AccountSummaryResponse, CustomerResponse, DepositResponse } from '../types'
+import { formatCurrency } from '../utils/currency'
 
-type WorkspaceTab = 'customer' | 'account' | 'deposit' | 'review'
+type WorkspaceTab = 'customer' | 'account' | 'deposit' | 'withdraw' | 'review'
 
 type WorkspaceContextPanelProps = {
   customers: CustomerResponse[]
@@ -36,6 +37,7 @@ export function WorkspaceContextPanel({
           <button className="ghost-button" type="button" onClick={() => onNavigate('customer')}>Go to customers</button>
           <button className="ghost-button" type="button" onClick={() => onNavigate('account')}>Go to accounts</button>
           <button className="ghost-button" type="button" onClick={() => onNavigate('deposit')}>Go to deposits</button>
+          <button className="ghost-button" type="button" onClick={() => onNavigate('withdraw')}>Go to withdrawals</button>
           <button className="ghost-button" type="button" onClick={() => onNavigate('review')}>Go to review</button>
         </div>
       </div>
@@ -85,7 +87,7 @@ export function WorkspaceContextPanel({
         </div>
         <div>
           <dt>Current account</dt>
-          <dd>{account ? `${account.accountNumber} | ${account.availableBalance.toFixed(2)} ${account.currency}` : 'No account selected'}</dd>
+          <dd>{account ? `${account.accountNumber} | ${formatCurrency(account.availableBalance, account.currency)}` : 'No account selected'}</dd>
         </div>
         <div>
           <dt>Latest deposit</dt>

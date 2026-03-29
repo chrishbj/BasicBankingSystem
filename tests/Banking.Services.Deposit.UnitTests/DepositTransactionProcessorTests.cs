@@ -159,7 +159,7 @@ public sealed class DepositTransactionProcessorTests
             CustomerId = "cus_active_001",
             AccountId = "acc_active_001",
             Amount = 100m,
-            Currency = "CNY",
+            Currency = "USD",
             Channel = DepositChannel.Counter,
             Status = DepositStatus.Received,
             IdempotencyKey = $"idem-{transactionId}",

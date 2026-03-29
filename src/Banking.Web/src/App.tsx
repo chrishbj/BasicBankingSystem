@@ -9,7 +9,7 @@ import { WorkspaceContextPanel } from './components/WorkspaceContextPanel'
 import { useOperationsConsole } from './hooks/useOperationsConsole'
 import { useState } from 'react'
 
-type WorkspaceTab = 'customer' | 'account' | 'deposit' | 'review'
+type WorkspaceTab = 'customer' | 'account' | 'deposit' | 'withdraw' | 'review'
 
 function App() {
   const [activeTab, setActiveTab] = useState<WorkspaceTab>('customer')
@@ -74,6 +74,7 @@ function App() {
     { id: 'customer', label: 'Customer', hint: 'Onboard and activate a customer' },
     { id: 'account', label: 'Account', hint: 'Open and verify accounts' },
     { id: 'deposit', label: 'Deposit', hint: 'Submit and monitor deposits' },
+    { id: 'withdraw', label: 'Withdraw', hint: 'Submit cash-out transactions' },
     { id: 'review', label: 'Review', hint: 'Resolve pending review items' },
   ]
 
@@ -86,7 +87,7 @@ function App() {
           <h1>Operations Console</h1>
           <p className="intro">
             A frontend-first operator workspace for customer onboarding, account opening,
-            deposit submission, and pending-review recovery.
+            deposit submission, withdrawals, and pending-review recovery.
           </p>
         </div>
         <div className="status-strip">
@@ -178,6 +179,28 @@ function App() {
 
           {activeTab === 'deposit' && (
             <DepositPanel
+              mode="deposit"
+              customerName={customer?.fullName}
+              customerNumber={customer?.customerNumber}
+              accountNumber={account?.accountNumber}
+              accountCurrency={account?.currency}
+              deposit={deposit}
+              form={depositForm}
+              statusText={depositStatusText}
+              errors={depositFormErrors}
+              submitDisabled={!canSubmitDeposit}
+              withdrawDisabled={!canSubmitDeposit}
+              busy={!!busyAction}
+              onFormChange={setDepositForm}
+              onSubmit={() => void handleSubmitDeposit()}
+              onWithdraw={() => void handleSubmitWithdrawal()}
+              onRefresh={() => void handleRefreshDeposit()}
+            />
+          )}
+
+          {activeTab === 'withdraw' && (
+            <DepositPanel
+              mode="withdraw"
               customerName={customer?.fullName}
               customerNumber={customer?.customerNumber}
               accountNumber={account?.accountNumber}

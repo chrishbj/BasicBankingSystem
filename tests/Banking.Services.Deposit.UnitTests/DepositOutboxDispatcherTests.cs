@@ -13,7 +13,7 @@ public sealed class DepositOutboxDispatcherTests
     public async Task DispatchPendingMessagesAsync_Should_PublishAndMarkProcessed()
     {
         var repository = new InMemoryDepositRepository();
-        var message = new DepositRequestedMessage("dep_001", "cus_active_001", "acc_active_001", 100m, "CNY", Domain.DepositChannel.Counter, "corr-001");
+        var message = new DepositRequestedMessage("dep_001", "cus_active_001", "acc_active_001", 100m, "USD", Domain.DepositChannel.Counter, "corr-001");
 
         await repository.AddAsync(
             new Domain.DepositTransaction
@@ -23,7 +23,7 @@ public sealed class DepositOutboxDispatcherTests
                 CustomerId = "cus_active_001",
                 AccountId = "acc_active_001",
                 Amount = 100m,
-                Currency = "CNY",
+                Currency = "USD",
                 Channel = Domain.DepositChannel.Counter,
                 Status = Domain.DepositStatus.Received,
                 IdempotencyKey = "idem-001",

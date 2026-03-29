@@ -264,7 +264,7 @@ export function useOperationsConsole() {
         await openAccount({
           customerId: customer.customerId,
           accountType: 'Checking',
-          currency: 'CNY',
+          currency: 'USD',
         }),
       )
       await loadCustomerAccountsCore(customer.customerId)
