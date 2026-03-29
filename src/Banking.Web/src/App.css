@@ -34,6 +34,56 @@
   align-items: flex-end;
 }
 
+.workspace-shell {
+  display: grid;
+  grid-template-columns: 320px minmax(0, 1fr);
+  gap: 20px;
+}
+
+.workspace-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.workspace-content {
+  min-width: 0;
+}
+
+.workspace-nav {
+  display: grid;
+  gap: 10px;
+}
+
+.workspace-tab {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 16px 18px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  background: var(--panel-bg);
+  color: var(--text-h);
+  box-shadow: var(--shadow);
+}
+
+.workspace-tab span {
+  font-size: 13px;
+  color: var(--text);
+  text-align: left;
+}
+
+.workspace-tab-active {
+  background: linear-gradient(135deg, rgba(13, 106, 110, 0.95), rgba(12, 82, 85, 0.95));
+  border-color: transparent;
+  color: white;
+}
+
+.workspace-tab-active span {
+  color: rgba(255, 255, 255, 0.8);
+}
+
 .eyebrow {
   text-transform: uppercase;
   letter-spacing: 0.22em;
@@ -105,7 +155,7 @@
 
 .health-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: 1fr;
   gap: 12px;
 }
 
@@ -290,13 +340,14 @@ td span,
   }
 
   .hero-panel,
-  .panel-head {
+  .panel-head,
+  .workspace-shell {
     flex-direction: column;
     align-items: stretch;
   }
 
-  .grid {
-    grid-template-columns: 1fr;
+  .workspace-shell {
+    display: flex;
   }
 
   .health-grid {

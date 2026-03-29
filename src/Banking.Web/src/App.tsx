@@ -6,8 +6,12 @@ import { EnvironmentPanel } from './components/EnvironmentPanel'
 import { PendingReviewPanel } from './components/PendingReviewPanel'
 import { ToastBar } from './components/ToastBar'
 import { useOperationsConsole } from './hooks/useOperationsConsole'
+import { useState } from 'react'
+
+type WorkspaceTab = 'customer' | 'account' | 'deposit' | 'review'
 
 function App() {
+  const [activeTab, setActiveTab] = useState<WorkspaceTab>('customer')
   const {
     health,
     message,
@@ -47,6 +51,13 @@ function App() {
     handleResolvePendingReview,
   } = useOperationsConsole()
 
+  const tabs: Array<{ id: WorkspaceTab; label: string; hint: string }> = [
+    { id: 'customer', label: 'Customer', hint: 'Onboard and activate a customer' },
+    { id: 'account', label: 'Account', hint: 'Open and verify accounts' },
+    { id: 'deposit', label: 'Deposit', hint: 'Submit and monitor deposits' },
+    { id: 'review', label: 'Review', hint: 'Resolve pending review items' },
+  ]
+
   return (
     <main className="app-shell">
       <ToastBar text={toast} />
@@ -67,54 +78,82 @@ function App() {
         </div>
       </section>
 
-      <section className="grid">
-        <EnvironmentPanel health={health} />
-        <CustomerPanel
-          customer={customer}
-          form={customerForm}
-          errors={customerFormErrors}
-          createDisabled={!canCreateCustomer}
-          busy={!!busyAction}
-          onFormChange={setCustomerForm}
-          onCreate={() => void handleCreateCustomer()}
-          onActivate={() => void handleActivateCustomer()}
-        />
-        <AccountPanel
-          account={account}
-          openDisabled={!customer || !!busyAction}
-          busy={!!busyAction}
-          onOpen={() => void handleOpenAccount()}
-          onRefresh={() => void handleRefreshAccount()}
-        />
-        <DepositPanel
-          deposit={deposit}
-          form={depositForm}
-          statusText={depositStatusText}
-          errors={depositFormErrors}
-          submitDisabled={!canSubmitDeposit}
-          busy={!!busyAction}
-          onFormChange={setDepositForm}
-          onSubmit={() => void handleSubmitDeposit()}
-          onRefresh={() => void handleRefreshDeposit()}
-        />
-      </section>
+      <section className="workspace-shell">
+        <aside className="workspace-sidebar">
+          <EnvironmentPanel health={health} />
+          <nav className="workspace-nav" aria-label="Operations workspace tabs">
+            {tabs.map((tab) => (
+              <button
+                key={tab.id}
+                className={tab.id === activeTab ? 'workspace-tab workspace-tab-active' : 'workspace-tab'}
+                onClick={() => setActiveTab(tab.id)}
+                type="button"
+              >
+                <strong>{tab.label}</strong>
+                <span>{tab.hint}</span>
+              </button>
+            ))}
+          </nav>
+        </aside>
 
-      <PendingReviewPanel
-        sortBy={sortBy}
-        descending={descending}
-        statusText={reviewStatusText}
-        reviewSearch={reviewSearch}
-        busy={!!busyAction}
-        pendingReviewItems={pendingReviewItems}
-        depositSearchResult={depositSearchResult}
-        onSortByChange={setSortBy}
-        onDescendingChange={setDescending}
-        onReviewSearchChange={setReviewSearch}
-        onLoadQueue={() => void handleLoadPendingReview()}
-        onSearchDeposits={() => void handleSearchDeposits()}
-        onRetry={(transactionId) => void handleRetryPendingReview(transactionId)}
-        onResolve={(transactionId, resolution) => void handleResolvePendingReview(transactionId, resolution)}
-      />
+        <section className="workspace-content">
+          {activeTab === 'customer' && (
+            <CustomerPanel
+              customer={customer}
+              form={customerForm}
+              errors={customerFormErrors}
+              createDisabled={!canCreateCustomer}
+              busy={!!busyAction}
+              onFormChange={setCustomerForm}
+              onCreate={() => void handleCreateCustomer()}
+              onActivate={() => void handleActivateCustomer()}
+            />
+          )}
+
+          {activeTab === 'account' && (
+            <AccountPanel
+              account={account}
+              openDisabled={!customer || !!busyAction}
+              busy={!!busyAction}
+              onOpen={() => void handleOpenAccount()}
+              onRefresh={() => void handleRefreshAccount()}
+            />
+          )}
+
+          {activeTab === 'deposit' && (
+            <DepositPanel
+              deposit={deposit}
+              form={depositForm}
+              statusText={depositStatusText}
+              errors={depositFormErrors}
+              submitDisabled={!canSubmitDeposit}
+              busy={!!busyAction}
+              onFormChange={setDepositForm}
+              onSubmit={() => void handleSubmitDeposit()}
+              onRefresh={() => void handleRefreshDeposit()}
+            />
+          )}
+
+          {activeTab === 'review' && (
+            <PendingReviewPanel
+              sortBy={sortBy}
+              descending={descending}
+              statusText={reviewStatusText}
+              reviewSearch={reviewSearch}
+              busy={!!busyAction}
+              pendingReviewItems={pendingReviewItems}
+              depositSearchResult={depositSearchResult}
+              onSortByChange={setSortBy}
+              onDescendingChange={setDescending}
+              onReviewSearchChange={setReviewSearch}
+              onLoadQueue={() => void handleLoadPendingReview()}
+              onSearchDeposits={() => void handleSearchDeposits()}
+              onRetry={(transactionId) => void handleRetryPendingReview(transactionId)}
+              onResolve={(transactionId, resolution) => void handleResolvePendingReview(transactionId, resolution)}
+            />
+          )}
+        </section>
+      </section>
     </main>
   )
 }
