@@ -218,6 +218,11 @@ The current implementation is still a local development skeleton using in-memory
 - [Frontend Technical Guide](docs/16-frontend-technical-guide.md)
 - [Backend Technical Guide](docs/17-backend-technical-guide.md)
 - [Customer Portal Overview](docs/18-customer-portal-overview.md)
+- [Showcase Overview](docs/19-showcase-overview.md)
+- [Microservices And Boundaries](docs/20-microservices-and-boundaries.md)
+- [Saga, Outbox, And Idempotency](docs/21-saga-outbox-idempotency.md)
+- [Testing And Quality](docs/22-testing-and-quality.md)
+- [OpenAPI And API Contracts](docs/23-openapi-and-api-contracts.md)
 
 ### Chinese Docs
 
