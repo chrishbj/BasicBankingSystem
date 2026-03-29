@@ -23,6 +23,10 @@ public sealed class DepositTransactionProcessor(
 
         try
         {
+            var postingReference = string.IsNullOrWhiteSpace(transaction.ReferenceNumber)
+                ? transaction.TransactionId
+                : transaction.ReferenceNumber.Trim();
+
             transaction.Status = DepositStatus.Processing;
             transaction.AccountPostingStatus = DepositSagaStepStatus.InProgress;
             transaction.CompensationStatus = DepositSagaStepStatus.NotStarted;
@@ -38,7 +42,7 @@ public sealed class DepositTransactionProcessor(
                 transaction.AccountId,
                 transaction.Amount,
                 transaction.Currency,
-                transaction.TransactionId,
+                postingReference,
                 transaction.CorrelationId,
                 cancellationToken);
 
@@ -113,6 +117,10 @@ public sealed class DepositTransactionProcessor(
         string? note,
         CancellationToken cancellationToken)
     {
+        var postingReference = string.IsNullOrWhiteSpace(transaction.ReferenceNumber)
+            ? transaction.TransactionId
+            : transaction.ReferenceNumber.Trim();
+
         transaction.CompensationRetryCount++;
         transaction.LastCompensationAttemptAt = DateTimeOffset.UtcNow;
         if (!string.IsNullOrWhiteSpace(requestedBy))
@@ -138,7 +146,7 @@ public sealed class DepositTransactionProcessor(
                 transaction.AccountId,
                 transaction.Amount,
                 transaction.Currency,
-                transaction.TransactionId,
+                postingReference,
                 $"rev_{transaction.TransactionId}",
                 transaction.CorrelationId,
                 "Compensating partially completed deposit saga.",
@@ -221,6 +229,7 @@ public sealed class DepositTransactionProcessor(
             ["accountId"] = transaction.AccountId,
             ["amount"] = transaction.Amount,
             ["currency"] = transaction.Currency,
+            ["referenceNumber"] = transaction.ReferenceNumber,
             ["status"] = transaction.Status.ToString(),
             ["failureCode"] = transaction.FailureCode,
             ["failureReason"] = transaction.FailureReason,

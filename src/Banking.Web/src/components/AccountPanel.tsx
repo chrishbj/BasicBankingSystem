@@ -221,9 +221,9 @@ export function AccountPanel({
                     className={selectedHistoryItem?.postingReference === item.postingReference ? 'table-row-selected' : ''}
                     onClick={() => onSelectHistoryItem(item)}
                   >
-                    <td>
-                      <strong>{item.postingReference}</strong>
-                      {item.reversalOfPostingReference && <span>Of {item.reversalOfPostingReference}</span>}
+                    <td className="wrap-cell">
+                      <strong className="primary-reference">{item.postingReference}</strong>
+                      {item.reversalOfPostingReference && <span className="subtle-code">Of {item.reversalOfPostingReference}</span>}
                     </td>
                     <td>
                       <StatusBadge label={getAccountActivityLabel(item.postingType)} tone={getAccountActivityTone(item.postingType)} />
@@ -232,7 +232,7 @@ export function AccountPanel({
                       <strong>{formatCurrencyWithCode(item.amount, item.currency)}</strong>
                     </td>
                     <td>{new Date(item.createdAt).toLocaleString()}</td>
-                    <td>{item.correlationId ?? 'N/A'}</td>
+                    <td className="wrap-cell subtle-code">{item.correlationId ?? 'N/A'}</td>
                   </tr>
                 ))}
               </tbody>
@@ -242,9 +242,9 @@ export function AccountPanel({
           {selectedHistoryItem && (
             <aside className="history-detail-card">
               <p className="eyebrow">Activity Detail</p>
-              <h3>{selectedHistoryItem.postingReference}</h3>
+              <h3 className="detail-heading-break">{selectedHistoryItem.postingReference}</h3>
               <dl className="detail-list">
-                <div><dt>Reference Number</dt><dd>{selectedHistoryItem.postingReference}</dd></div>
+                <div><dt>Reference Number</dt><dd className="subtle-code">{selectedHistoryItem.postingReference}</dd></div>
                 <div>
                   <dt>Activity Type</dt>
                   <dd>

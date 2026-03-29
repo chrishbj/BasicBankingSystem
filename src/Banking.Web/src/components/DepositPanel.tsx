@@ -113,6 +113,7 @@ export function DepositPanel({
       {deposit && (
         <dl className="detail-list">
           <div><dt>Transaction Number</dt><dd>{deposit.transactionNumber}</dd></div>
+          <div><dt>Reference Number</dt><dd>{deposit.referenceNumber ?? 'Not provided'}</dd></div>
           <div><dt>Status</dt><dd>{badge && <StatusBadge label={badge.label} tone={badge.tone} />}</dd></div>
           <div><dt>Amount</dt><dd>{formatCurrency(deposit.amount, deposit.currency)}</dd></div>
           <div><dt>Correlation</dt><dd>{deposit.correlationId}</dd></div>

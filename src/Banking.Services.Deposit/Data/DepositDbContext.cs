@@ -21,6 +21,7 @@ public sealed class DepositDbContext(DbContextOptions<DepositDbContext> options)
         deposit.Property(x => x.AccountId).HasMaxLength(64);
         deposit.Property(x => x.Amount).HasPrecision(18, 2);
         deposit.Property(x => x.Currency).HasMaxLength(3);
+        deposit.Property(x => x.ReferenceNumber).HasMaxLength(128);
         deposit.Property(x => x.Channel).HasConversion<string>().HasMaxLength(30);
         deposit.Property(x => x.Status).HasConversion<string>().HasMaxLength(30);
         deposit.Property(x => x.AccountPostingStatus).HasConversion<string>().HasMaxLength(30);

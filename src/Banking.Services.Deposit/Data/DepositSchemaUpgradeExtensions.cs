@@ -49,6 +49,9 @@ public static class DepositSchemaUpgradeExtensions
 
             ALTER TABLE IF EXISTS deposit_transactions
             ADD COLUMN IF NOT EXISTS "LastProcessedAt" timestamp with time zone;
+
+            ALTER TABLE IF EXISTS deposit_transactions
+            ADD COLUMN IF NOT EXISTS "ReferenceNumber" character varying(128);
             """,
             cancellationToken);
     }

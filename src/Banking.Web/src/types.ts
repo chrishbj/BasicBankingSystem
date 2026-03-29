@@ -57,6 +57,7 @@ export type DepositResponse = {
   accountId: string
   amount: number
   currency: string
+  referenceNumber?: string | null
   channel: number
   status: DepositStatus
   accountPostingStatus: number
@@ -98,6 +99,7 @@ export type DepositSummaryResponse = {
   accountId: string
   amount: number
   currency: string
+  referenceNumber?: string | null
   channel: number
   status: DepositStatus
   requestedAt: string

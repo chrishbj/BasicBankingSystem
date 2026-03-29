@@ -474,6 +474,22 @@ td strong,
   color: var(--text-h);
 }
 
+.wrap-cell {
+  min-width: 0;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+.primary-reference {
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+.detail-heading-break {
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
 td span,
 .search-results span {
   display: block;

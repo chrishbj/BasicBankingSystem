@@ -8,6 +8,7 @@ public sealed class DepositTransaction
     public string AccountId { get; init; } = default!;
     public decimal Amount { get; init; }
     public string Currency { get; init; } = default!;
+    public string? ReferenceNumber { get; init; }
     public DepositChannel Channel { get; init; }
     public DepositStatus Status { get; set; }
     public DepositSagaStepStatus AccountPostingStatus { get; set; }

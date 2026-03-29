@@ -55,6 +55,9 @@ public sealed class DepositService(
         }
 
         var now = DateTimeOffset.UtcNow;
+        var referenceNumber = string.IsNullOrWhiteSpace(request.ReferenceNumber)
+            ? null
+            : request.ReferenceNumber.Trim();
         var transaction = new DepositTransaction
         {
             TransactionId = $"dep_{Guid.NewGuid():N}",
@@ -63,6 +66,7 @@ public sealed class DepositService(
             AccountId = request.AccountId,
             Amount = request.Amount,
             Currency = request.Currency.Trim().ToUpperInvariant(),
+            ReferenceNumber = referenceNumber,
             Channel = request.Channel,
             Status = DepositStatus.Received,
             AccountPostingStatus = DepositSagaStepStatus.NotStarted,
@@ -131,6 +135,7 @@ public sealed class DepositService(
             AccountId = request.AccountId.Trim(),
             Amount = request.Amount,
             Currency = account.Currency,
+            ReferenceNumber = $"DEMO-REV-{now:yyyyMMddHHmmssfff}",
             Channel = DepositChannel.Counter,
             Status = DepositStatus.PendingReview,
             AccountPostingStatus = DepositSagaStepStatus.Succeeded,
@@ -252,6 +257,7 @@ public sealed class DepositService(
                 item.AccountId,
                 item.Amount,
                 item.Currency,
+                item.ReferenceNumber,
                 item.Channel,
                 item.Status,
                 item.RequestedAt,
@@ -416,6 +422,7 @@ public sealed class DepositService(
         {
             ["transactionId"] = transaction.TransactionId,
             ["status"] = transaction.Status.ToString(),
+            ["referenceNumber"] = transaction.ReferenceNumber,
             ["failureCode"] = transaction.FailureCode,
             ["failureReason"] = transaction.FailureReason,
             ["accountPostingStatus"] = transaction.AccountPostingStatus.ToString(),
@@ -441,6 +448,7 @@ public sealed class DepositService(
             transaction.AccountId,
             transaction.Amount,
             transaction.Currency,
+            transaction.ReferenceNumber,
             transaction.Channel,
             transaction.Status,
             transaction.AccountPostingStatus,
