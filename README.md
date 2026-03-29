@@ -1,100 +1,130 @@
 # BasicBankingSystem
 
-A backend-first basic banking system prototype designed for phased evolution from a local development skeleton into a scalable, event-driven platform.
+A portfolio-ready banking platform prototype that demonstrates microservices, idempotent financial APIs, SAGA-style transaction handling, OpenAPI-driven integration, and full-stack delivery with separate operator and customer experiences.
 
-The current repository focuses on Phase 1:
+## Why This Project Matters
 
-- Customer management
-- Account opening
-- Deposit processing
-- Audit logging
-- TDD-friendly backend architecture
+This repository was built as a technical showcase rather than a simple CRUD demo.
 
-## Current Status
+It demonstrates:
 
-This repository currently provides:
+- domain-oriented microservice boundaries
+- resilient deposit processing with `Idempotency-Key`, `Outbox`, and `SAGA`
+- explicit compensation and `PendingReview` recovery
+- separate React applications for bank staff and customers
+- layered testing with unit, integration, and contract coverage
+- OpenAPI and Swagger as first-class integration surfaces
 
-- A backend-only .NET 10 solution
-- Separate services for `Customer`, `Account`, `Deposit`, and `Audit`
-- A lightweight `Gateway`
-- Shared building blocks for API defaults and correlation handling
-- Unit tests, integration tests, and contract tests
-- English project documentation in `docs/`
-- Chinese project documentation in `docs/ch-cn/` (not pushed to GitHub)
+## Live Local Surfaces
+
+When the Docker Desktop stack is running, the main entry points are:
+
+- `Operations Console`: `http://localhost:5300`
+- `Customer Portal`: `http://localhost:5301`
+- `Customer Swagger`: `http://localhost:5101/swagger`
+- `Account Swagger`: `http://localhost:5102/swagger`
+- `Deposit Swagger`: `http://localhost:5103/swagger`
+- `Audit Swagger`: `http://localhost:5104/swagger`
+
+If those host ports are already taken on your machine, the Docker Compose file supports overriding them with environment variables such as `BANKING_WEB_PORT`, `BANKING_CUSTOMER_PORTAL_PORT`, and the individual service port settings in [infra/.env.example](/E:/DemoProjects/BasicBankingSystem/infra/.env.example).
+
+Customer portal demo sign-in uses:
+
+- `Customer Number`
+- `Identity Last 4 Digits`
+
+Example:
+
+- stored identity `WITHDRAW-DEMO-001`
+- sign-in input `0001`
+
+## Core System Shape
+
+### Backend Services
+
+- `Customer Service`: customer master data and portal sign-in validation
+- `Account Service`: account lifecycle, balance ownership, and account activity
+- `Deposit Service`: idempotent deposit intake, outbox dispatch, async processing, and compensation
+- `Audit Service`: audit persistence and retrieval
+
+### Frontends
+
+- `Banking.Web`: operator-facing operations console
+- `Banking.CustomerPortal`: customer-facing self-service portal
+
+### Shared Infrastructure
+
+- `PostgreSQL`
+- `RabbitMQ`
+- `Docker Compose`
+- `Swagger / OpenAPI`
+
+## Technical Highlights
+
+### Microservices By Business Responsibility
+
+The backend is intentionally split by domain rather than by technical layer. This makes ownership and workflow boundaries explicit.
+
+Relevant source:
+
+- `src/Banking.Services.Customer/`
+- `src/Banking.Services.Account/`
+- `src/Banking.Services.Deposit/`
+- `src/Banking.Services.Audit/`
+
+### Idempotent Financial Writes
+
+Deposits require `Idempotency-Key`, and downstream posting references are also treated as idempotent.
+
+Relevant source:
+
+- `src/Banking.Services.Deposit/Controllers/DepositsController.cs`
+- `src/Banking.Services.Deposit/Services/DepositService.cs`
+- `src/Banking.Services.Account/Services/AccountService.cs`
+
+### Outbox And SAGA
+
+The deposit flow persists workflow state and outbox records, then dispatches and processes them asynchronously. Partial failures move into compensation or `PendingReview`.
+
+Relevant source:
+
+- `src/Banking.Services.Deposit/Messaging/DepositOutboxDispatcher.cs`
+- `src/Banking.Services.Deposit/Services/DepositTransactionProcessor.cs`
+- `src/Banking.Services.Deposit/Services/DepositPendingReviewRetryWorker.cs`
+
+### Full-Stack Workflow Coverage
+
+The project includes both internal operations UX and customer-facing UX, each aligned to its own role and trust boundary.
+
+Relevant source:
+
+- `src/Banking.Web/src/App.tsx`
+- `src/Banking.Web/src/hooks/useOperationsConsole.ts`
+- `src/Banking.CustomerPortal/src/App.tsx`
 
 ## Tech Stack
 
 - `.NET 10`
-- `ASP.NET Core Web API`
+- `ASP.NET Core`
+- `Entity Framework Core`
+- `PostgreSQL`
+- `RabbitMQ`
+- `React 19`
+- `TypeScript`
+- `Vite`
+- `Docker Compose`
 - `xUnit`
 - `FluentAssertions`
 - `WebApplicationFactory`
-- OpenAPI-first documentation
-
-## Solution Structure
-
-```text
-BasicBankingSystem/
-  docs/
-  src/
-    Banking.Gateway/
-    Banking.BuildingBlocks/
-    Banking.Web/
-    Banking.CustomerPortal/
-    Banking.Services.Customer/
-    Banking.Services.Account/
-    Banking.Services.Deposit/
-    Banking.Services.Audit/
-  tests/
-    Banking.Contracts.Tests/
-    Banking.Services.Customer.UnitTests/
-    Banking.Services.Customer.IntegrationTests/
-    Banking.Services.Account.UnitTests/
-    Banking.Services.Account.IntegrationTests/
-    Banking.Services.Deposit.UnitTests/
-    Banking.Services.Deposit.IntegrationTests/
-    Banking.Services.Audit.UnitTests/
-    Banking.Services.Audit.IntegrationTests/
-```
-
-## Implemented APIs
-
-### Customer Service
-
-- `POST /api/v1/customers`
-- `GET /api/v1/customers/{customerId}`
-- `GET /api/v1/customers`
-- `POST /api/v1/customers/portal-sign-in`
-- `POST /api/v1/customers/{customerId}/status`
-
-### Account Service
-
-- `POST /api/v1/accounts`
-- `GET /api/v1/accounts/{accountId}`
-- `GET /api/v1/accounts/by-number/{accountNumber}`
-- `GET /api/v1/accounts`
-
-### Deposit Service
-
-- `POST /api/v1/deposits`
-- `GET /api/v1/deposits/{transactionId}`
-- `GET /api/v1/deposits`
-- `GET /api/v1/deposits/review/pending`
-- `POST /api/v1/deposits/{transactionId}/review/retry-compensation`
-- `POST /api/v1/deposits/{transactionId}/review/resolve`
-
-### Audit Service
-
-- `POST /api/v1/audits`
-- `GET /api/v1/audits/{auditId}`
-- `GET /api/v1/audits`
+- `OpenAPI / Swagger`
 
 ## Quick Start
 
 ### Prerequisites
 
 - .NET SDK 10
-- PowerShell
+- Node.js
+- Docker Desktop
 
 ### Run All Tests
 
@@ -102,17 +132,7 @@ BasicBankingSystem/
 dotnet test BasicBankingSystem.slnx
 ```
 
-### Run Services Locally
-
-```powershell
-dotnet run --project src/Banking.Gateway
-dotnet run --project src/Banking.Services.Customer
-dotnet run --project src/Banking.Services.Account
-dotnet run --project src/Banking.Services.Deposit
-dotnet run --project src/Banking.Services.Audit
-```
-
-### Run the Frontend
+### Run Frontends Locally
 
 ```powershell
 cd src/Banking.Web
@@ -120,84 +140,45 @@ npm install
 npm run dev
 ```
 
-### Run the Customer Portal
-
 ```powershell
 cd src/Banking.CustomerPortal
 npm install
 npm run dev
 ```
 
-The current demo customer portal sign-in uses:
-
-- `customer number`
-- the last 4 digits normalized from the stored identity number
-
-Example:
-
-- `WITHDRAW-DEMO-001` -> `0001`
-
-The Vite development server proxies API traffic to:
-
-- `Customer`: `http://localhost:5101`
-- `Account`: `http://localhost:5102`
-- `Deposit`: `http://localhost:5103`
-- `Audit`: `http://localhost:5104`
-
-### Run the Frontend in Docker
+### Run Docker Desktop Stack
 
 ```powershell
-docker compose --env-file infra/.env.example -f infra/docker-compose.docker-desktop.yml up --build -d banking-web
+docker compose --env-file infra/.env.example -f infra/docker-compose.docker-desktop.yml up --build -d
 ```
 
-Then open:
+## Documentation Roadmap
 
-- `http://localhost:5300`
-- `http://localhost:5301`
+### Architecture And Design
 
-Frontend notes:
+- [Showcase Overview](docs/19-showcase-overview.md)
+- [Microservices And Boundaries](docs/20-microservices-and-boundaries.md)
+- [Saga, Outbox, And Idempotency](docs/21-saga-outbox-idempotency.md)
+- [Database Schema And Relationships](docs/29-database-schema-and-relationships.md)
+- [Source Code Reading Guide](docs/30-source-code-reading-guide.md)
 
-- `Operations Console` at `5300` now shows `Customer Number` explicitly in customer cards and the current selection panel
-- `Customer Portal` at `5301` signs in with `Customer Number + Identity Last 4 Digits`
+### Testing And Contracts
 
-Default local ports:
+- [Testing And Quality](docs/22-testing-and-quality.md)
+- [OpenAPI And API Contracts](docs/23-openapi-and-api-contracts.md)
+- [End-to-End Manual Test Guide](docs/13-end-to-end-manual-test.md)
+- [Postman Testing Guide](docs/14-postman-testing.md)
+- [Postman Runner and Newman Guide](docs/15-postman-runner-and-newman.md)
 
-- `Gateway`: `http://localhost:5000`
-- `Customer`: `http://localhost:5101`
-- `Account`: `http://localhost:5102`
-- `Deposit`: `http://localhost:5103`
-- `Audit`: `http://localhost:5104`
+### Portfolio And Interview Material
 
-For full local run, test, and publish instructions, see [docs/10-local-run-and-test.md](docs/10-local-run-and-test.md).
+- [One-Page Showcase Summary](docs/24-showcase-one-page-summary.md)
+- [Showcase Talk Track](docs/25-showcase-talk-track.md)
+- [Resume Project Bullets](docs/26-resume-project-bullets.md)
+- [GitHub About Snippets](docs/27-github-about-snippets.md)
+- [Interview Q And A](docs/28-interview-q-and-a.md)
 
-## Architecture Direction
-
-The project is intentionally evolving toward:
-
-- bounded-context-oriented services
-- reliable transaction processing
-- idempotent write APIs
-- eventual consistency with SAGA
-- auditability and observability
-
-The current backend already includes:
-
-- PostgreSQL-backed `Customer`, `Account`, `Deposit`, and `Audit` services
-- RabbitMQ-backed asynchronous deposit processing
-- Outbox dispatching in `Deposit`
-- Saga compensation and `PendingReview` recovery flows
-- Swagger UI for all local services
-- Postman and Newman regression assets
-
-The current implementation is still a local development skeleton using in-memory persistence in order to keep iteration speed high. The next planned steps are:
-
-- replace in-memory stores with local infrastructure
-- introduce message-driven flows
-- evolve deposit processing toward Outbox and SAGA orchestration
-
-## Documentation
-
-### English Docs
+### Additional Project Docs
 
 - [Requirements](docs/01-requirements.md)
 - [Architecture Draft](docs/02-architecture.md)
@@ -212,40 +193,10 @@ The current implementation is still a local development skeleton using in-memory
 - [Local Run and Test Guide](docs/10-local-run-and-test.md)
 - [Local Infrastructure with Docker Compose](docs/11-local-infrastructure.md)
 - [Docker Desktop Run Guide](docs/12-docker-desktop-run.md)
-- [End-to-End Manual Test Guide](docs/13-end-to-end-manual-test.md)
-- [Postman Testing Guide](docs/14-postman-testing.md)
-- [Postman Runner and Newman Guide](docs/15-postman-runner-and-newman.md)
 - [Frontend Technical Guide](docs/16-frontend-technical-guide.md)
 - [Backend Technical Guide](docs/17-backend-technical-guide.md)
 - [Customer Portal Overview](docs/18-customer-portal-overview.md)
-- [Showcase Overview](docs/19-showcase-overview.md)
-- [Microservices And Boundaries](docs/20-microservices-and-boundaries.md)
-- [Saga, Outbox, And Idempotency](docs/21-saga-outbox-idempotency.md)
-- [Testing And Quality](docs/22-testing-and-quality.md)
-- [OpenAPI And API Contracts](docs/23-openapi-and-api-contracts.md)
-- [One-Page Showcase Summary](docs/24-showcase-one-page-summary.md)
-- [Showcase Talk Track](docs/25-showcase-talk-track.md)
-- [Resume Project Bullets](docs/26-resume-project-bullets.md)
-- [GitHub About Snippets](docs/27-github-about-snippets.md)
-- [Interview Q And A](docs/28-interview-q-and-a.md)
-- [Database Schema And Relationships](docs/29-database-schema-and-relationships.md)
-- [Source Code Reading Guide](docs/30-source-code-reading-guide.md)
 
-### Chinese Docs
+## Chinese Documentation
 
-Chinese documents are maintained locally under `docs/ch-cn/` and are intentionally excluded from the GitHub repository.
-
-## Development Approach
-
-The repository is being built with a TDD-oriented workflow:
-
-- define contract and behavior first
-- write tests before or alongside implementation
-- keep services small and independently verifiable
-- evolve infrastructure only after the business slices are stable
-
-## Next Recommended Step
-
-- Start the frontend work against the existing Swagger-backed APIs
-- Add operator-facing screens for deposit review and recovery
-- Continue tightening SAGA observability and operational tooling
+Chinese documents are maintained locally in `docs/ch-cn/` and intentionally excluded from GitHub.
