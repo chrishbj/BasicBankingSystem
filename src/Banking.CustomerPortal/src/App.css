@@ -120,7 +120,9 @@
 }
 
 button,
-select {
+select,
+input,
+textarea {
   font: inherit;
 }
 
@@ -133,6 +135,12 @@ button {
   cursor: pointer;
 }
 
+.ghost-button {
+  background: transparent;
+  color: var(--text-h);
+  border: 1px solid var(--border);
+}
+
 select {
   width: 100%;
   box-sizing: border-box;
@@ -140,6 +148,28 @@ select {
   border-radius: 14px;
   padding: 12px 14px;
   background: white;
+}
+
+input,
+textarea {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 12px 14px;
+  background: white;
+}
+
+.form-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.action-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 14px;
 }
 
 .summary-grid,

@@ -3,6 +3,7 @@ import type {
   AccountResponse,
   AccountSummaryResponse,
   CustomerResponse,
+  DepositResponse,
   PagedResponse,
 } from './types'
 
@@ -44,4 +45,22 @@ export function getAccountActivities(accountId: string, pageNumber = 1, pageSize
   return request<PagedResponse<AccountActivityResponse>>(
     `/account-api/api/v1/accounts/${accountId}/activities?pageNumber=${pageNumber}&pageSize=${pageSize}`,
   )
+}
+
+export function submitDeposit(payload: Record<string, unknown>, idempotencyKey: string, correlationId: string) {
+  return request<DepositResponse>('/deposit-api/api/v1/deposits', {
+    method: 'POST',
+    headers: {
+      'Idempotency-Key': idempotencyKey,
+      'X-Correlation-Id': correlationId,
+    },
+    body: JSON.stringify(payload),
+  })
+}
+
+export function submitWithdrawal(accountId: string, payload: Record<string, unknown>) {
+  return request<AccountResponse>(`/account-api/api/v1/accounts/${accountId}/withdrawals`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
 }

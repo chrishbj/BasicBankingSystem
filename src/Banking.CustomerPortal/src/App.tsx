@@ -1,15 +1,16 @@
 import { useEffect, useState } from 'react'
 import './App.css'
-import { getAccount, getAccountActivities, getAccountsByCustomer, getCustomers } from './api'
+import { getAccount, getAccountActivities, getAccountsByCustomer, getCustomers, submitDeposit, submitWithdrawal } from './api'
 import type {
   AccountActivityResponse,
   AccountResponse,
   AccountSummaryResponse,
   CustomerResponse,
+  DepositResponse,
 } from './types'
 import { formatCurrency } from './utils/currency'
 
-type PortalTab = 'dashboard' | 'accounts' | 'activity' | 'profile'
+type PortalTab = 'dashboard' | 'accounts' | 'activity' | 'cash' | 'profile'
 
 function getActivityLabel(postingType: AccountActivityResponse['postingType']) {
   switch (postingType) {
@@ -58,6 +59,27 @@ function getRiskLabel(riskLevel?: string) {
   return riskLevel
 }
 
+function getDepositStatusLabel(status: number) {
+  switch (status) {
+    case 1:
+      return 'Received'
+    case 2:
+      return 'Processing'
+    case 3:
+      return 'Succeeded'
+    case 4:
+      return 'Rejected'
+    case 5:
+      return 'Failed'
+    case 6:
+      return 'Pending Review'
+    case 7:
+      return 'Reversed'
+    default:
+      return `Status ${status}`
+  }
+}
+
 function groupActivitiesByDate(items: AccountActivityResponse[]) {
   const grouped = new Map<string, AccountActivityResponse[]>()
 
@@ -78,6 +100,12 @@ function App() {
   const [accounts, setAccounts] = useState<AccountSummaryResponse[]>([])
   const [selectedAccount, setSelectedAccount] = useState<AccountResponse | null>(null)
   const [activities, setActivities] = useState<AccountActivityResponse[]>([])
+  const [latestDeposit, setLatestDeposit] = useState<DepositResponse | null>(null)
+  const [transactionForm, setTransactionForm] = useState({
+    amount: '100',
+    referenceNumber: `PORTAL-REF-${Date.now()}`,
+    note: 'Submitted from the customer portal.',
+  })
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState('Pick a customer to enter the portal demo.')
 
@@ -144,6 +172,72 @@ function App() {
   const totalLedger = accounts.reduce((sum, item) => sum + item.ledgerBalance, 0)
   const groupedActivities = groupActivitiesByDate(activities)
 
+  async function refreshCurrentAccount() {
+    if (!selectedAccount) {
+      return
+    }
+
+    await loadAccountWorkspace(selectedAccount.accountId)
+  }
+
+  async function handleSubmitDeposit() {
+    if (!currentCustomer || !selectedAccount) {
+      setMessage('Choose a customer and account first.')
+      return
+    }
+
+    try {
+      setBusy(true)
+      const result = await submitDeposit(
+        {
+          customerId: currentCustomer.customerId,
+          accountId: selectedAccount.accountId,
+          amount: Number(transactionForm.amount),
+          currency: selectedAccount.currency,
+          channel: 1,
+          referenceNumber: transactionForm.referenceNumber.trim(),
+          note: transactionForm.note.trim(),
+        },
+        `portal-idem-${Date.now()}`,
+        `portal-corr-${Date.now()}`,
+      )
+
+      setLatestDeposit(result)
+      await refreshCurrentAccount()
+      setMessage(`Deposit submitted. Current status: ${getDepositStatusLabel(result.status)}.`)
+    } catch (error) {
+      setMessage(`Could not submit deposit: ${error instanceof Error ? error.message : String(error)}`)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function handleSubmitWithdrawal() {
+    if (!selectedAccount) {
+      setMessage('Choose an account first.')
+      return
+    }
+
+    try {
+      setBusy(true)
+      const updated = await submitWithdrawal(selectedAccount.accountId, {
+        amount: Number(transactionForm.amount),
+        currency: selectedAccount.currency,
+        referenceNumber: transactionForm.referenceNumber.trim(),
+        correlationId: `portal-wd-corr-${Date.now()}`,
+        note: transactionForm.note.trim(),
+      })
+
+      setSelectedAccount(updated)
+      await refreshCurrentAccount()
+      setMessage('Withdrawal submitted successfully.')
+    } catch (error) {
+      setMessage(`Could not submit withdrawal: ${error instanceof Error ? error.message : String(error)}`)
+    } finally {
+      setBusy(false)
+    }
+  }
+
   return (
     <main className="portal-shell">
       <section className="portal-hero">
@@ -189,6 +283,7 @@ function App() {
                 ['dashboard', 'Dashboard', 'Overview, balances, and alerts'],
                 ['accounts', 'Accounts', 'Your account list and balances'],
                 ['activity', 'Activity', 'Deposits and withdrawals history'],
+                ['cash', 'Cash', 'Submit deposits and withdrawals'],
                 ['profile', 'Profile', 'Customer details and contact info'],
               ].map(([id, label, hint]) => (
                 <button
@@ -360,6 +455,85 @@ function App() {
                   ))}
                 </div>
               )}
+            </article>
+          )}
+
+          {activeTab === 'cash' && (
+            <article className="panel">
+              <div className="panel-head">
+                <div>
+                  <p className="eyebrow">Cash Services</p>
+                  <h2>Deposit Or Withdraw</h2>
+                </div>
+              </div>
+
+              <div className="content-grid">
+                <section className="info-card">
+                  <p className="eyebrow">Current Account</p>
+                  {selectedAccount ? (
+                    <dl className="detail-list">
+                      <div><dt>Account number</dt><dd>{selectedAccount.accountNumber}</dd></div>
+                      <div><dt>Available balance</dt><dd>{formatCurrency(selectedAccount.availableBalance, selectedAccount.currency)}</dd></div>
+                      <div><dt>Status</dt><dd>{getAccountStatusLabel(selectedAccount.status)}</dd></div>
+                    </dl>
+                  ) : (
+                    <p>Select an account first from the Accounts tab.</p>
+                  )}
+                </section>
+
+                <section className="info-card">
+                  <p className="eyebrow">Transaction Form</p>
+                  <div className="form-grid">
+                    <label className="field-label">
+                      <span>Amount</span>
+                      <input
+                        value={transactionForm.amount}
+                        onChange={(event) => setTransactionForm({ ...transactionForm, amount: event.target.value })}
+                        disabled={busy}
+                      />
+                    </label>
+                    <label className="field-label">
+                      <span>Reference number</span>
+                      <input
+                        value={transactionForm.referenceNumber}
+                        onChange={(event) => setTransactionForm({ ...transactionForm, referenceNumber: event.target.value })}
+                        disabled={busy}
+                      />
+                    </label>
+                    <label className="field-label">
+                      <span>Note</span>
+                      <textarea
+                        value={transactionForm.note}
+                        onChange={(event) => setTransactionForm({ ...transactionForm, note: event.target.value })}
+                        rows={4}
+                        disabled={busy}
+                      />
+                    </label>
+                  </div>
+                  <div className="action-row">
+                    <button type="button" onClick={() => void handleSubmitDeposit()} disabled={!selectedAccount || busy}>
+                      {busy ? 'Working...' : 'Submit deposit'}
+                    </button>
+                    <button type="button" className="ghost-button" onClick={() => void handleSubmitWithdrawal()} disabled={!selectedAccount || busy}>
+                      {busy ? 'Working...' : 'Submit withdrawal'}
+                    </button>
+                  </div>
+                </section>
+
+                <section className="info-card">
+                  <p className="eyebrow">Latest Deposit</p>
+                  {latestDeposit ? (
+                    <dl className="detail-list">
+                      <div><dt>Transaction number</dt><dd>{latestDeposit.transactionNumber}</dd></div>
+                      <div><dt>Status</dt><dd>{getDepositStatusLabel(latestDeposit.status)}</dd></div>
+                      <div><dt>Amount</dt><dd>{formatCurrency(latestDeposit.amount, latestDeposit.currency)}</dd></div>
+                      <div><dt>Reference number</dt><dd>{latestDeposit.referenceNumber ?? 'N/A'}</dd></div>
+                    </dl>
+                  ) : (
+                    <p>No deposit submitted from the portal in this session yet.</p>
+                  )}
+                </section>
+              </div>
             </article>
           )}
 

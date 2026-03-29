@@ -45,6 +45,22 @@ export type AccountActivityResponse = {
   createdAt: string
 }
 
+export type DepositResponse = {
+  transactionId: string
+  transactionNumber: string
+  customerId: string
+  accountId: string
+  amount: number
+  currency: string
+  referenceNumber?: string | null
+  status: number
+  correlationId: string
+  requestedAt: string
+  postedAt?: string | null
+  failureCode?: string | null
+  failureReason?: string | null
+}
+
 export type PagedResponse<T> = {
   items: T[]
   pageNumber: number
