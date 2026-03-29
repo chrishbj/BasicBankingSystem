@@ -125,6 +125,8 @@ export function useOperationsConsole() {
 
     setDepositStatusText('Deposit is still processing. Auto-refresh is active.')
 
+    // The UI polls only while the deposit is in transient states so operators get workflow
+    // progress without manually refreshing the transaction.
     const handle = window.setInterval(async () => {
       try {
         const refreshed = await getDeposit(deposit.transactionId)
@@ -153,6 +155,8 @@ export function useOperationsConsole() {
 
   async function runAction(label: string, action: () => Promise<void>) {
     try {
+      // This hook acts like a lightweight application service for the operator workspace:
+      // one place owns async actions, status text, and optimistic UI coordination.
       setBusyAction(label)
       setMessage(`${label} in progress...`)
       await action()
@@ -375,6 +379,8 @@ export function useOperationsConsole() {
       setDeposit(null)
       setSelectedAccountHistoryItem(null)
 
+      // Selecting a customer intentionally fans out into related account and activity loading,
+      // because the operator workflow is context-driven rather than page-driven.
       const items = await loadCustomerAccountsCore(nextCustomer.customerId)
 
       if (items.length > 0) {

@@ -10,6 +10,8 @@ public sealed class InternalServiceAuthenticationDelegatingHandler(
     {
         var currentService = options.Value.CurrentServiceIdentity;
 
+        // Every internal HTTP call carries service identity headers so downstream services can
+        // distinguish machine-to-machine traffic from external client traffic.
         if (!string.IsNullOrWhiteSpace(currentService.ServiceName))
         {
             request.Headers.Remove(BankingAuthenticationDefaults.ServiceNameHeaderName);

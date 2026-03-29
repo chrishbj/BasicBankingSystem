@@ -30,6 +30,7 @@ public sealed class DepositService(
         var existing = await depositRepository.GetByIdempotencyKeyAsync(idempotencyKey, cancellationToken);
         if (existing is not null)
         {
+            // Idempotency protects the balance from duplicate client retries.
             return Map(existing);
         }
 
@@ -78,6 +79,8 @@ public sealed class DepositService(
             RequestedAt = now
         };
 
+        // Outbox pattern: persist the workflow state and the integration message together
+        // so message publication can be retried safely by a background dispatcher.
         var requestedMessage = new DepositRequestedMessage(
             transaction.TransactionId,
             transaction.CustomerId,
@@ -148,7 +151,7 @@ public sealed class DepositService(
             FailureReason = string.IsNullOrWhiteSpace(request.Note)
                 ? "Demo pending-review item created from the local operations console."
                 : request.Note.Trim(),
-            // Keep demo items in PendingReview so the UI can exercise retry/resolve actions
+            // Keep demo items in PendingReview so the UI can exercise the human recovery path
             // without the automatic retry worker immediately consuming them.
             CompensationRetryCount = 3,
             RequestedAt = now,
@@ -275,6 +278,7 @@ public sealed class DepositService(
         int pageSize,
         CancellationToken cancellationToken)
     {
+        // PendingReview is the explicit "automation stopped here" queue for operators.
         var deposits = await depositRepository.GetPendingReviewAsync(int.MaxValue, cancellationToken);
         deposits = ApplyPendingReviewSort(deposits, sortBy, descending);
         var totalCount = deposits.Count;
@@ -327,6 +331,8 @@ public sealed class DepositService(
         RetryDepositReviewRequest request,
         CancellationToken cancellationToken)
     {
+        // Retry routes back into the compensation branch of the saga instead of creating
+        // a separate recovery workflow.
         await depositTransactionProcessor.RetryCompensationAsync(
             transactionId,
             request.OperatorId,

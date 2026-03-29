@@ -18,6 +18,7 @@ public sealed class DepositOutboxDispatcher(
         {
             try
             {
+                // Polling the outbox keeps message publication decoupled from the request thread.
                 var dispatchedCount = await DispatchPendingMessagesAsync(stoppingToken);
                 if (dispatchedCount == 0)
                 {
@@ -49,6 +50,7 @@ public sealed class DepositOutboxDispatcher(
             var depositRequested = JsonSerializer.Deserialize<DepositRequestedMessage>(message.Payload);
             if (depositRequested is null)
             {
+                // Bad payloads are marked processed so the dispatcher does not poison the queue forever.
                 await repository.MarkOutboxMessageProcessedAsync(message.MessageId, DateTimeOffset.UtcNow, cancellationToken);
                 continue;
             }

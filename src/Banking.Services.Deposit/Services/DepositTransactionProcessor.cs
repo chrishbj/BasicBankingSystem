@@ -27,6 +27,7 @@ public sealed class DepositTransactionProcessor(
                 ? transaction.TransactionId
                 : transaction.ReferenceNumber.Trim();
 
+            // Saga step 1: move the transaction into processing before calling downstream services.
             transaction.Status = DepositStatus.Processing;
             transaction.AccountPostingStatus = DepositSagaStepStatus.InProgress;
             transaction.CompensationStatus = DepositSagaStepStatus.NotStarted;
@@ -47,6 +48,7 @@ public sealed class DepositTransactionProcessor(
                 cancellationToken);
 
             accountPostingCompleted = true;
+            // Saga happy path: account posting succeeded, so the workflow can complete.
             transaction.Status = DepositStatus.Succeeded;
             transaction.AccountPostingStatus = DepositSagaStepStatus.Succeeded;
             transaction.CompensationStatus = DepositSagaStepStatus.Skipped;
@@ -62,6 +64,7 @@ public sealed class DepositTransactionProcessor(
         {
             if (accountPostingCompleted)
             {
+                // If the balance already moved, the workflow must compensate instead of failing in place.
                 await CompensateAsync(transaction, exception, null, null, cancellationToken);
                 return;
             }
@@ -135,6 +138,7 @@ public sealed class DepositTransactionProcessor(
         
         try
         {
+            // Saga compensation step: reverse the posted balance movement in Account Service.
             transaction.CompensationStatus = DepositSagaStepStatus.InProgress;
             transaction.ReviewResolution = requestedBy is null
                 ? DepositReviewResolution.None
@@ -165,6 +169,7 @@ public sealed class DepositTransactionProcessor(
         }
         catch (Exception compensationException)
         {
+            // PendingReview is the explicit fallback when automated compensation is no longer reliable.
             transaction.Status = DepositStatus.PendingReview;
             transaction.CompensationStatus = DepositSagaStepStatus.Failed;
             transaction.ReviewRequiredAt ??= DateTimeOffset.UtcNow;
@@ -181,6 +186,8 @@ public sealed class DepositTransactionProcessor(
         DepositTransaction transaction,
         CancellationToken cancellationToken)
     {
+        // Audit is intentionally non-blocking for the financial workflow. If audit persistence fails,
+        // the transaction state still moves forward and the failure is recorded for later inspection.
         var beforeSnapshot = BuildSnapshot(transaction);
 
         try

@@ -40,6 +40,7 @@ public sealed class AccountService(
             OpenedAt = now
         };
 
+        // Account Service is the single owner of balances and account numbers.
         await accountRepository.AddAsync(account, cancellationToken);
         return Map(account);
     }
@@ -84,6 +85,7 @@ public sealed class AccountService(
         var existingPosting = await accountRepository.GetPostingByReferenceAsync(request.PostingReference, cancellationToken);
         if (existingPosting is not null)
         {
+            // Posting references make downstream balance mutation idempotent.
             if (existingPosting.AccountId != accountId ||
                 existingPosting.PostingType != AccountPostingType.DepositCredit ||
                 existingPosting.Amount != request.Amount ||
@@ -193,6 +195,7 @@ public sealed class AccountService(
         var existingReversal = await accountRepository.GetPostingByReferenceAsync(request.ReversalReference, cancellationToken);
         if (existingReversal is not null)
         {
+            // Compensation must also be idempotent because saga retries can happen after partial failures.
             if (existingReversal.AccountId != accountId ||
                 existingReversal.PostingType != AccountPostingType.DepositReversal ||
                 existingReversal.Amount != request.Amount ||
