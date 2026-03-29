@@ -228,6 +228,7 @@ The current implementation is still a local development skeleton using in-memory
 - [Resume Project Bullets](docs/26-resume-project-bullets.md)
 - [GitHub About Snippets](docs/27-github-about-snippets.md)
 - [Interview Q And A](docs/28-interview-q-and-a.md)
+- [Database Schema And Relationships](docs/29-database-schema-and-relationships.md)
 
 ### Chinese Docs
 
