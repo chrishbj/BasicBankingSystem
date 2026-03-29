@@ -114,6 +114,7 @@ export function useOperationsConsole() {
   useEffect(() => {
     void loadHealth()
     void loadCustomers()
+    void loadPendingReviewSnapshot()
   }, [])
 
   useEffect(() => {
@@ -320,6 +321,15 @@ export function useOperationsConsole() {
       if (selected) {
         setCustomer(selected)
       }
+    }
+  }
+
+  async function loadPendingReviewSnapshot() {
+    try {
+      const response = await getPendingReview(sortBy, descending)
+      setPendingReviewItems(response.items)
+    } catch {
+      setPendingReviewItems([])
     }
   }
 

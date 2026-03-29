@@ -3,16 +3,17 @@ import { AccountPanel } from './components/AccountPanel'
 import { CustomerPanel } from './components/CustomerPanel'
 import { DepositPanel } from './components/DepositPanel'
 import { EnvironmentPanel } from './components/EnvironmentPanel'
+import { OverviewPanel } from './components/OverviewPanel'
 import { PendingReviewPanel } from './components/PendingReviewPanel'
 import { ToastBar } from './components/ToastBar'
 import { WorkspaceContextPanel } from './components/WorkspaceContextPanel'
 import { useOperationsConsole } from './hooks/useOperationsConsole'
 import { useState } from 'react'
 
-type WorkspaceTab = 'customer' | 'account' | 'deposit' | 'withdraw' | 'review'
+type WorkspaceTab = 'overview' | 'customer' | 'account' | 'deposit' | 'withdraw' | 'review'
 
 function App() {
-  const [activeTab, setActiveTab] = useState<WorkspaceTab>('customer')
+  const [activeTab, setActiveTab] = useState<WorkspaceTab>('overview')
   const {
     health,
     message,
@@ -71,6 +72,7 @@ function App() {
   } = useOperationsConsole()
 
   const tabs: Array<{ id: WorkspaceTab; label: string; hint: string }> = [
+    { id: 'overview', label: 'Overview', hint: 'See customer, account, and review summaries' },
     { id: 'customer', label: 'Customer', hint: 'Onboard and activate a customer' },
     { id: 'account', label: 'Account', hint: 'Open and verify accounts' },
     { id: 'deposit', label: 'Deposit', hint: 'Submit and monitor deposits' },
@@ -133,6 +135,18 @@ function App() {
             onSelectAccount={(accountId) => void handleSelectAccount(accountId)}
             onNavigate={setActiveTab}
           />
+
+          {activeTab === 'overview' && (
+            <OverviewPanel
+              customer={customer}
+              customers={customers}
+              account={account}
+              accountList={accountList}
+              accountHistory={accountHistory}
+              pendingReviewItems={pendingReviewItems}
+              onNavigate={setActiveTab}
+            />
+          )}
 
           {activeTab === 'customer' && (
             <CustomerPanel

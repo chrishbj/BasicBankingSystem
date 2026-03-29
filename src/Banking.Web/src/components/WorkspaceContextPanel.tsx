@@ -1,7 +1,7 @@
 import type { AccountResponse, AccountSummaryResponse, CustomerResponse, DepositResponse } from '../types'
 import { formatCurrency } from '../utils/currency'
 
-type WorkspaceTab = 'customer' | 'account' | 'deposit' | 'withdraw' | 'review'
+type WorkspaceTab = 'overview' | 'customer' | 'account' | 'deposit' | 'withdraw' | 'review'
 
 type WorkspaceContextPanelProps = {
   customers: CustomerResponse[]
@@ -34,6 +34,7 @@ export function WorkspaceContextPanel({
           <h2>Current Selection</h2>
         </div>
         <div className="actions">
+          <button className="ghost-button" type="button" onClick={() => onNavigate('overview')}>Go to overview</button>
           <button className="ghost-button" type="button" onClick={() => onNavigate('customer')}>Go to customers</button>
           <button className="ghost-button" type="button" onClick={() => onNavigate('account')}>Go to accounts</button>
           <button className="ghost-button" type="button" onClick={() => onNavigate('deposit')}>Go to deposits</button>

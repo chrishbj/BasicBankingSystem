@@ -98,6 +98,108 @@
   margin-bottom: 0;
 }
 
+.overview-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.overview-card {
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  padding: 18px;
+  background:
+    radial-gradient(circle at top right, rgba(13, 106, 110, 0.12), transparent 34%),
+    var(--panel-accent);
+}
+
+.overview-card-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+  margin-bottom: 16px;
+}
+
+.overview-card h3 {
+  margin: 0;
+}
+
+.overview-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+}
+
+.overview-stat-grid div {
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.72);
+  padding: 12px 14px;
+}
+
+.overview-stat-grid dt {
+  font-size: 12px;
+  text-transform: uppercase;
+  color: var(--text);
+}
+
+.overview-stat-grid dd {
+  margin: 8px 0 0;
+  color: var(--text-h);
+  word-break: break-word;
+}
+
+.overview-foot {
+  margin-top: 16px;
+}
+
+.overview-bottom-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.overview-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.overview-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 12px 14px;
+  background: rgba(255, 255, 255, 0.6);
+}
+
+.overview-list li strong {
+  display: block;
+  color: var(--text-h);
+  word-break: break-word;
+}
+
+.overview-list li span {
+  display: block;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.overview-list-meta {
+  display: grid;
+  justify-items: end;
+  gap: 6px;
+  text-align: right;
+}
+
 .workspace-nav {
   display: grid;
   gap: 10px;
@@ -622,8 +724,20 @@ tbody tr {
   }
 
   .context-grid,
-  .context-summary-grid {
+  .context-summary-grid,
+  .overview-grid,
+  .overview-bottom-grid,
+  .overview-stat-grid {
     grid-template-columns: 1fr;
+  }
+
+  .overview-list li {
+    flex-direction: column;
+  }
+
+  .overview-list-meta {
+    justify-items: start;
+    text-align: left;
   }
 
   .account-history-layout {
