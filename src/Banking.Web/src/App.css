@@ -9,13 +9,35 @@
   position: sticky;
   top: 16px;
   z-index: 20;
-  align-self: flex-end;
-  max-width: 420px;
-  background: rgba(20, 32, 43, 0.94);
+  align-self: stretch;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  max-width: 760px;
   color: white;
-  padding: 12px 16px;
+  padding: 14px 16px;
   border-radius: 16px;
   box-shadow: var(--shadow);
+}
+
+.toast-bar-success {
+  background: rgba(29, 106, 54, 0.94);
+}
+
+.toast-bar-danger {
+  background: rgba(154, 46, 46, 0.96);
+}
+
+.toast-bar-info {
+  background: rgba(20, 32, 43, 0.94);
+}
+
+.toast-dismiss {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  padding: 6px 10px;
+  min-width: auto;
 }
 
 .hero-panel,

@@ -57,6 +57,11 @@ type AccountHistoryFilterState = {
   to: string
 }
 
+type ToastState = {
+  text: string
+  tone: 'success' | 'danger' | 'info'
+}
+
 const initialHealthState: Record<string, string> = {
   customer: 'Checking',
   account: 'Checking',
@@ -64,10 +69,37 @@ const initialHealthState: Record<string, string> = {
   audit: 'Checking',
 }
 
+function randomDigits(length: number) {
+  return Array.from({ length }, () => RandomDigit()).join('')
+}
+
+function RandomDigit() {
+  return Math.floor(Math.random() * 10).toString()
+}
+
+function buildDemoCustomerForm(): CustomerFormState {
+  const suffix = `${Date.now().toString().slice(-6)}${randomDigits(2)}`
+
+  return {
+    fullName: `Bank Demo ${suffix}`,
+    identityNumber: `WEB-${Date.now()}-${randomDigits(4)}`,
+    mobile: `13${randomDigits(9)}`,
+    email: `bank.demo.${suffix}@example.com`,
+  }
+}
+
+function buildDemoTransactionForm(prefix: 'WEB-REF' | 'WEB-WD') : DepositFormState {
+  return {
+    amount: '500',
+    referenceNumber: `${prefix}-${Date.now()}-${randomDigits(4)}`,
+    note: 'Created from the React operations console.',
+  }
+}
+
 export function useOperationsConsole() {
   const [health, setHealth] = useState<Record<string, string>>(initialHealthState)
   const [message, setMessage] = useState('Ready.')
-  const [toast, setToast] = useState('')
+  const [toast, setToast] = useState<ToastState>({ text: '', tone: 'info' })
   const [busyAction, setBusyAction] = useState('')
   const [customerStatusText, setCustomerStatusText] = useState('Create or browse customers, then select one to inspect accounts and activity.')
   const [depositStatusText, setDepositStatusText] = useState('No deposit submitted yet.')
@@ -98,26 +130,8 @@ export function useOperationsConsole() {
     from: '',
     to: '',
   })
-  const [customerForm, setCustomerForm] = useState<CustomerFormState>({
-    fullName: 'Frontend Demo Customer',
-    identityNumber: `WEB-${Date.now()}`,
-    mobile: '13800000000',
-    email: 'frontend.demo@example.com',
-  })
-  const [depositForm, setDepositForm] = useState<DepositFormState>({
-    amount: '500',
-    referenceNumber: `WEB-REF-${Date.now()}`,
-    note: 'Created from the React operations console.',
-  })
-
-  useEffect(() => {
-    if (!toast) {
-      return
-    }
-
-    const handle = window.setTimeout(() => setToast(''), 3000)
-    return () => window.clearTimeout(handle)
-  }, [toast])
+  const [customerForm, setCustomerForm] = useState<CustomerFormState>(() => buildDemoCustomerForm())
+  const [depositForm, setDepositForm] = useState<DepositFormState>(() => buildDemoTransactionForm('WEB-REF'))
 
   useEffect(() => {
     void loadHealth()
@@ -168,11 +182,11 @@ export function useOperationsConsole() {
       setMessage(`${label} in progress...`)
       await action()
       setMessage(`${label} completed.`)
-      setToast(`${label} completed.`)
+      setToast({ text: `${label} completed.`, tone: 'success' })
     } catch (error) {
       const messageText = `${label} failed: ${error instanceof Error ? error.message : String(error)}`
       setMessage(messageText)
-      setToast(messageText)
+      setToast({ text: messageText, tone: 'danger' })
     } finally {
       setBusyAction('')
     }
@@ -257,6 +271,7 @@ export function useOperationsConsole() {
       setSelectedAccountHistoryItem(null)
       setAccountQuery({ accountNumber: '' })
       setDeposit(null)
+      setCustomerForm(buildDemoCustomerForm())
       setCustomerStatusText(`Customer ${created.fullName} created and selected. Activate the customer before opening the first account.`)
       setDepositStatusText('Customer created. Activate the customer, then open an account to continue.')
       setAccountHistoryStatusText('Customer created. Activate the customer, then open or look up an account to inspect history.')
@@ -298,6 +313,7 @@ export function useOperationsConsole() {
       setSelectedAccountHistoryItem(null)
       setAccountHistoryStatusText('Account opened. Load activity history to inspect transactions on this account.')
       setDepositStatusText('Account opened. You can submit a deposit now.')
+      setDepositForm(buildDemoTransactionForm('WEB-REF'))
     })
   }
 
@@ -510,6 +526,7 @@ export function useOperationsConsole() {
       )
       await loadAccountHistoryCore(account.accountId)
       setDepositStatusText('Deposit submitted. Waiting for asynchronous processing.')
+      setDepositForm(buildDemoTransactionForm('WEB-REF'))
     })
   }
 
@@ -531,6 +548,7 @@ export function useOperationsConsole() {
       setAccount(updated)
       await loadAccountHistoryCore(account.accountId)
       setDepositStatusText('Withdrawal submitted and account balance updated.')
+      setDepositForm(buildDemoTransactionForm('WEB-WD'))
     })
   }
 
@@ -639,6 +657,7 @@ export function useOperationsConsole() {
     health,
     message,
     toast,
+    dismissToast: () => setToast({ text: '', tone: 'info' }),
     busyAction,
     customerStatusText,
     depositStatusText,

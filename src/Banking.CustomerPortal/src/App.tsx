@@ -11,6 +11,24 @@ import type {
 import { formatCurrency } from './utils/currency'
 
 type PortalTab = 'dashboard' | 'accounts' | 'activity' | 'cash' | 'transactions' | 'profile'
+type CashTab = 'deposit' | 'withdraw'
+
+function randomDigits(length: number) {
+  return Array.from({ length }, () => Math.floor(Math.random() * 10).toString()).join('')
+}
+
+function buildPortalTransactionForm(mode: CashTab) {
+  const prefix = mode === 'deposit' ? 'PORTAL-DEP' : 'PORTAL-WD'
+  const note = mode === 'deposit'
+    ? 'Submitted from the customer portal deposit workspace.'
+    : 'Submitted from the customer portal withdrawal workspace.'
+
+  return {
+    amount: '100',
+    referenceNumber: `${prefix}-${Date.now()}-${randomDigits(4)}`,
+    note,
+  }
+}
 
 function getActivityLabel(postingType: AccountActivityResponse['postingType']) {
   switch (postingType) {
@@ -119,11 +137,8 @@ function App() {
   const [activities, setActivities] = useState<AccountActivityResponse[]>([])
   const [latestDeposit, setLatestDeposit] = useState<DepositResponse | null>(null)
   const [depositStatuses, setDepositStatuses] = useState<DepositResponse[]>([])
-  const [transactionForm, setTransactionForm] = useState({
-    amount: '100',
-    referenceNumber: `PORTAL-REF-${Date.now()}`,
-    note: 'Submitted from the customer portal.',
-  })
+  const [cashTab, setCashTab] = useState<CashTab>('deposit')
+  const [transactionForm, setTransactionForm] = useState(() => buildPortalTransactionForm('deposit'))
   const [loginForm, setLoginForm] = useState({
     customerNumber: '',
     identityLast4: '',
@@ -141,6 +156,10 @@ function App() {
     // refreshes the deposit list whenever that context changes.
     void loadDepositStatuses(currentCustomer.customerId, selectedAccount?.accountId)
   }, [currentCustomer?.customerId, selectedAccount?.accountId])
+
+  useEffect(() => {
+    setTransactionForm(buildPortalTransactionForm(cashTab))
+  }, [cashTab])
 
   useEffect(() => {
     const pending = depositStatuses.some((item) => item.status === 1 || item.status === 2)
@@ -306,6 +325,7 @@ function App() {
       // that is the next decision point for the customer.
       setActiveTab('transactions')
       setMessage(`Deposit submitted. Current status: ${getDepositStatusLabel(result.status)}.`)
+      setTransactionForm(buildPortalTransactionForm('deposit'))
     } catch (error) {
       setMessage(`Could not submit deposit: ${error instanceof Error ? error.message : String(error)}`)
     } finally {
@@ -335,6 +355,7 @@ function App() {
         await loadDepositStatuses(currentCustomer.customerId, updated.accountId, true)
       }
       setMessage('Withdrawal submitted successfully.')
+      setTransactionForm(buildPortalTransactionForm('withdraw'))
     } catch (error) {
       setMessage(`Could not submit withdrawal: ${error instanceof Error ? error.message : String(error)}`)
     } finally {
@@ -617,8 +638,25 @@ function App() {
               <div className="panel-head">
                 <div>
                   <p className="eyebrow">Cash Services</p>
-                  <h2>Deposit Or Withdraw</h2>
+                  <h2>Cash Transactions</h2>
                 </div>
+              </div>
+
+              <div className="portal-subtab-list">
+                <button
+                  type="button"
+                  className={cashTab === 'deposit' ? 'portal-subtab portal-subtab-active' : 'portal-subtab'}
+                  onClick={() => setCashTab('deposit')}
+                >
+                  Deposit
+                </button>
+                <button
+                  type="button"
+                  className={cashTab === 'withdraw' ? 'portal-subtab portal-subtab-active' : 'portal-subtab'}
+                  onClick={() => setCashTab('withdraw')}
+                >
+                  Withdraw
+                </button>
               </div>
 
               <div className="content-grid">
@@ -636,7 +674,7 @@ function App() {
                 </section>
 
                 <section className="info-card">
-                  <p className="eyebrow">Transaction Form</p>
+                  <p className="eyebrow">{cashTab === 'deposit' ? 'Deposit Form' : 'Withdrawal Form'}</p>
                   <div className="form-grid">
                     <label className="field-label">
                       <span>Amount</span>
@@ -665,11 +703,22 @@ function App() {
                     </label>
                   </div>
                   <div className="action-row">
-                    <button type="button" onClick={() => void handleSubmitDeposit()} disabled={!selectedAccount || busy}>
-                      {busy ? 'Working...' : 'Submit deposit'}
-                    </button>
-                    <button type="button" className="ghost-button" onClick={() => void handleSubmitWithdrawal()} disabled={!selectedAccount || busy}>
-                      {busy ? 'Working...' : 'Submit withdrawal'}
+                    {cashTab === 'deposit' ? (
+                      <button type="button" onClick={() => void handleSubmitDeposit()} disabled={!selectedAccount || busy}>
+                        {busy ? 'Working...' : 'Submit deposit'}
+                      </button>
+                    ) : (
+                      <button type="button" onClick={() => void handleSubmitWithdrawal()} disabled={!selectedAccount || busy}>
+                        {busy ? 'Working...' : 'Submit withdrawal'}
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      className="ghost-button"
+                      onClick={() => setTransactionForm(buildPortalTransactionForm(cashTab))}
+                      disabled={busy}
+                    >
+                      Generate demo values
                     </button>
                   </div>
                 </section>

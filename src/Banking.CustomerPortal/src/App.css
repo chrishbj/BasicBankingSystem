@@ -85,6 +85,13 @@
   gap: 10px;
 }
 
+.portal-subtab-list {
+  display: inline-flex;
+  gap: 10px;
+  margin-bottom: 18px;
+  flex-wrap: wrap;
+}
+
 .portal-tab {
   display: flex;
   flex-direction: column;
@@ -111,6 +118,18 @@
 
 .portal-tab-active span {
   color: rgba(255, 255, 255, 0.82);
+}
+
+.portal-subtab {
+  background: var(--panel-accent);
+  color: var(--text-h);
+  border: 1px solid var(--border);
+}
+
+.portal-subtab-active {
+  background: linear-gradient(135deg, rgba(12, 116, 95, 0.94), rgba(9, 86, 70, 0.96));
+  border-color: transparent;
+  color: white;
 }
 
 .eyebrow {

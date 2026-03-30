@@ -18,6 +18,7 @@ function App() {
     health,
     message,
     toast,
+    dismissToast,
     busyAction,
     customerStatusText,
     depositStatusText,
@@ -84,7 +85,7 @@ function App() {
 
   return (
     <main className="app-shell">
-      <ToastBar text={toast} />
+      <ToastBar text={toast.text} tone={toast.tone} onDismiss={dismissToast} />
       <section className="hero-panel">
         <div>
           <p className="eyebrow">Basic Banking System</p>
