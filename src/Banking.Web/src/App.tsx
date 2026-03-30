@@ -55,6 +55,7 @@ function App() {
     handleLoadCustomers,
     handleSelectCustomer,
     handleCreateCustomer,
+    handleActivateCustomer,
     handleOpenAccount,
     handleRefreshAccount,
     handleLookupAccount,
@@ -153,14 +154,17 @@ function App() {
           {activeTab === 'customer' && (
             <CustomerPanel
               selectedCustomerId={customer?.customerId}
+              selectedCustomerStatus={customer?.status}
               customers={customers}
               statusText={customerStatusText}
               form={customerForm}
               errors={customerFormErrors}
               createDisabled={!canCreateCustomer}
+              activateDisabled={!customer || customer.status === 2 || !!busyAction}
               busy={!!busyAction}
               onFormChange={setCustomerForm}
               onCreate={() => void handleCreateCustomer()}
+              onActivate={() => void handleActivateCustomer()}
               onLoadCustomers={() => void handleLoadCustomers()}
               onSelectCustomer={(selectedCustomer) => void handleSelectCustomer(selectedCustomer)}
             />
@@ -170,6 +174,7 @@ function App() {
             <AccountPanel
               customerName={customer?.fullName}
               customerNumber={customer?.customerNumber}
+              customerStatus={customer?.status}
               account={account}
               accountList={accountList}
               lookupAccountNumber={accountQuery.accountNumber}
@@ -177,7 +182,7 @@ function App() {
               history={accountHistory}
               selectedHistoryItem={selectedAccountHistoryItem}
               historyFilters={accountHistoryFilters}
-              openDisabled={!customer || !!busyAction}
+              openDisabled={!customer || customer.status !== 2 || !!busyAction}
               lookupDisabled={!accountQuery.accountNumber.trim() || !!busyAction}
               loadHistoryDisabled={!account?.accountId || !!busyAction}
               busy={!!busyAction}

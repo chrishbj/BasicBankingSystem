@@ -11,14 +11,17 @@ type CustomerFormState = {
 
 type CustomerPanelProps = {
   selectedCustomerId?: string
+  selectedCustomerStatus?: number
   customers: CustomerResponse[]
   statusText: string
   form: CustomerFormState
   errors: Record<string, string>
   createDisabled: boolean
+  activateDisabled: boolean
   busy: boolean
   onFormChange: (next: CustomerFormState) => void
   onCreate: () => void
+  onActivate: () => void
   onLoadCustomers: () => void
   onSelectCustomer: (customer: CustomerResponse) => void
 }
@@ -49,14 +52,17 @@ function getCustomerStatusTone(status: number) {
 
 export function CustomerPanel({
   selectedCustomerId,
+  selectedCustomerStatus,
   customers,
   statusText,
   form,
   errors,
   createDisabled,
+  activateDisabled,
   busy,
   onFormChange,
   onCreate,
+  onActivate,
   onLoadCustomers,
   onSelectCustomer,
 }: CustomerPanelProps) {
@@ -70,18 +76,27 @@ export function CustomerPanel({
         </div>
         <div className="actions">
           <button onClick={onCreate} disabled={createDisabled}>{busy ? 'Working...' : 'Create customer'}</button>
+          <button className="ghost-button" onClick={onActivate} disabled={activateDisabled}>
+            {busy ? 'Working...' : 'Activate selected customer'}
+          </button>
           <button className="ghost-button" onClick={onLoadCustomers} disabled={busy}>Browse customers</button>
         </div>
       </div>
       <div className="info-card">
         <p className="eyebrow">How To Use</p>
         <p>
-          Browse the customer directory and select one customer card from the list below. The shared workspace selector at the top tracks the current customer and related account context.
+          Browse the customer directory and select one customer card from the list below. New customers start in the Pending state, so activate the selected customer before opening an account.
         </p>
       </div>
+      {selectedCustomerId && selectedCustomerStatus === 1 && (
+        <div className="info-card">
+          <p className="eyebrow">Activation Required</p>
+          <p>The selected customer is still Pending. Use <strong>Activate selected customer</strong> before opening the first account.</p>
+        </div>
+      )}
       <div className="info-card">
         <p className="eyebrow">New Customer</p>
-        <p>Create a new customer profile here. After creation, the new customer is automatically selected in the workspace.</p>
+        <p>Create a new customer profile here. After creation, the new customer is automatically selected in the workspace and can then be activated from this page.</p>
       </div>
       <div className="form-grid">
         <label className="field-label">

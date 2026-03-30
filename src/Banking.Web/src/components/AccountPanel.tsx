@@ -13,6 +13,7 @@ type AccountHistoryFilterState = {
 type AccountPanelProps = {
   customerName?: string
   customerNumber?: string
+  customerStatus?: number
   account: AccountResponse | null
   accountList: AccountSummaryResponse[]
   lookupAccountNumber: string
@@ -63,6 +64,7 @@ function getAccountStatusTone(status: number): StatusTone {
 export function AccountPanel({
   customerName,
   customerNumber,
+  customerStatus,
   account,
   accountList,
   lookupAccountNumber,
@@ -104,6 +106,14 @@ export function AccountPanel({
           Select a customer first, load that customer&apos;s accounts, then click an account card to inspect balances and full activity history. New accounts are created directly in the Active state.
         </p>
       </div>
+      {customerName && customerStatus !== 2 && (
+        <div className="info-card">
+          <p className="eyebrow">Account Opening Requirement</p>
+          <p>
+            The selected customer is not Active yet. Go back to the Customer tab and activate the customer before opening an account.
+          </p>
+        </div>
+      )}
 
       <div className="search-grid account-search-grid">
         <label className="field-label">

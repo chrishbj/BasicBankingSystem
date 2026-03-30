@@ -257,9 +257,9 @@ export function useOperationsConsole() {
       setSelectedAccountHistoryItem(null)
       setAccountQuery({ accountNumber: '' })
       setDeposit(null)
-      setCustomerStatusText(`Customer ${created.fullName} created and selected.`)
-      setDepositStatusText('Customer created. Open an account to continue.')
-      setAccountHistoryStatusText('Customer created. Open or look up an account to inspect history.')
+      setCustomerStatusText(`Customer ${created.fullName} created and selected. Activate the customer before opening the first account.`)
+      setDepositStatusText('Customer created. Activate the customer, then open an account to continue.')
+      setAccountHistoryStatusText('Customer created. Activate the customer, then open or look up an account to inspect history.')
     })
   }
 
@@ -274,6 +274,8 @@ export function useOperationsConsole() {
       setCustomer(updated)
       await loadCustomers(updated.customerId)
       setCustomerStatusText(`Customer ${updated.fullName} activated.`)
+      setDepositStatusText('Customer activated. You can open an account now.')
+      setAccountHistoryStatusText('Customer activated. Open an account or load existing accounts to inspect history.')
     })
   }
 
