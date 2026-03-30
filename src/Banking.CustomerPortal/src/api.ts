@@ -10,6 +10,23 @@ import type {
 
 const apiKey = 'local-dev-api-key'
 
+function extractErrorMessage(rawText: string, response: Response) {
+  if (!rawText) {
+    return `${response.status} ${response.statusText}`
+  }
+
+  try {
+    const parsed = JSON.parse(rawText) as { title?: string; detail?: string; status?: number }
+    if (parsed.title || parsed.detail) {
+      return [parsed.title, parsed.detail].filter(Boolean).join(': ')
+    }
+  } catch {
+    // Fall back to raw text when the payload is not JSON.
+  }
+
+  return rawText
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(path, {
     ...init,
@@ -22,7 +39,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
   if (!response.ok) {
     const text = await response.text()
-    throw new Error(text || `${response.status} ${response.statusText}`)
+    throw new Error(extractErrorMessage(text, response))
   }
 
   return response.json() as Promise<T>

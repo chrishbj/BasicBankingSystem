@@ -45,8 +45,30 @@
 }
 
 .status-note {
-  color: var(--text);
+  color: var(--text-h);
   font-size: 14px;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.74);
+  padding: 12px 14px;
+}
+
+.status-note-neutral {
+  color: var(--text);
+}
+
+.status-note-success {
+  color: #186034;
+  border-color: rgba(24, 96, 52, 0.22);
+  background: rgba(223, 245, 230, 0.82);
+}
+
+.status-note-danger {
+  color: #8f2525;
+  border-color: rgba(154, 46, 46, 0.24);
+  background: rgba(251, 224, 222, 0.92);
 }
 
 .portal-layout {
@@ -307,6 +329,17 @@ textarea {
   gap: 14px;
 }
 
+.account-master-detail {
+  display: grid;
+  gap: 18px;
+}
+
+.account-activity-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(280px, 1fr);
+  gap: 18px;
+}
+
 .account-card {
   padding: 16px;
   display: grid;
@@ -343,6 +376,15 @@ textarea {
   border-radius: 16px;
   background: rgba(255, 255, 255, 0.72);
   padding: 14px;
+}
+
+.activity-row-active {
+  border-color: rgba(12, 116, 95, 0.28);
+  background: rgba(12, 116, 95, 0.1);
+}
+
+.static-row {
+  cursor: default;
 }
 
 .activity-row span {
@@ -474,6 +516,7 @@ textarea {
   .summary-grid,
   .content-grid,
   .profile-grid,
+  .account-activity-layout,
   .progress-strip {
     grid-template-columns: 1fr;
   }
