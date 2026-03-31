@@ -197,6 +197,4 @@ docker compose --env-file infra/docker.env.local -f infra/docker-compose.docker-
 - [Backend Technical Guide](docs/17-backend-technical-guide.md)
 - [Customer Portal Overview](docs/18-customer-portal-overview.md)
 
-## Chinese Documentation
-
-Chinese documents are maintained locally in `docs/ch-cn/` and intentionally excluded from GitHub.
+ 

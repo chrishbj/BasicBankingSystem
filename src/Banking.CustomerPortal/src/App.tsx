@@ -174,17 +174,41 @@ function App() {
     return () => window.clearInterval(handle)
   }, [currentCustomer, selectedAccount, depositStatuses, latestDeposit])
 
+  async function refreshAccountSummaries(customerId: string, preferredAccountId?: string) {
+    const accountResponse = await getAccountsByCustomer(customerId)
+    setAccounts(accountResponse.items)
+
+    if (!preferredAccountId) {
+      return accountResponse.items
+    }
+
+    const refreshedSummary = accountResponse.items.find((item) => item.accountId === preferredAccountId)
+    if (!refreshedSummary) {
+      return accountResponse.items
+    }
+
+    setSelectedAccount((current) => current && current.accountId === preferredAccountId
+      ? {
+          ...current,
+          availableBalance: refreshedSummary.availableBalance,
+          ledgerBalance: refreshedSummary.ledgerBalance,
+          status: refreshedSummary.status,
+        }
+      : current)
+
+    return accountResponse.items
+  }
+
   async function loadCustomerWorkspace(customer: CustomerResponse) {
     try {
       setBusy(true)
       setCurrentCustomer(customer)
-      const accountResponse = await getAccountsByCustomer(customer.customerId)
-      setAccounts(accountResponse.items)
+      const accountItems = await refreshAccountSummaries(customer.customerId)
 
-      if (accountResponse.items.length > 0) {
+      if (accountItems.length > 0) {
         // The first account is loaded automatically so the portal feels task-ready
         // immediately after sign-in.
-        await loadAccountWorkspace(accountResponse.items[0].accountId)
+        await loadAccountWorkspace(accountItems[0].accountId)
       } else {
         setSelectedAccount(null)
         setActivities([])
@@ -243,6 +267,7 @@ function App() {
     try {
       setBusy(true)
       const account = await getAccount(accountId)
+      await refreshAccountSummaries(account.customerId, account.accountId)
       const activityResponse = await getAccountActivities(accountId)
       setSelectedAccount(account)
       setActivities(activityResponse.items)
@@ -262,7 +287,12 @@ function App() {
       return
     }
 
-    await loadAccountWorkspace(selectedAccount.accountId)
+    const refreshed = await getAccount(selectedAccount.accountId)
+    setSelectedAccount(refreshed)
+    await refreshAccountSummaries(refreshed.customerId, refreshed.accountId)
+    const activityResponse = await getAccountActivities(refreshed.accountId)
+    setActivities(activityResponse.items)
+    setSelectedActivity(activityResponse.items[0] ?? null)
   }
 
   async function loadDepositStatuses(customerId: string, accountId?: string, silent = false) {
@@ -271,6 +301,12 @@ function App() {
       const details = await Promise.all(response.items.map((item) => getDeposit(item.transactionId)))
       const ordered = details.sort((left, right) => new Date(right.requestedAt).getTime() - new Date(left.requestedAt).getTime())
       setDepositStatuses(ordered)
+
+      if (accountId) {
+        const trackedAccount = await getAccount(accountId)
+        setSelectedAccount((current) => current?.accountId === trackedAccount.accountId ? trackedAccount : current)
+        await refreshAccountSummaries(customerId, trackedAccount.accountId)
+      }
 
       if (latestDeposit) {
         const refreshedLatest = ordered.find((item) => item.transactionId === latestDeposit.transactionId)
@@ -347,6 +383,7 @@ function App() {
       })
 
       setSelectedAccount(updated)
+      await refreshAccountSummaries(updated.customerId, updated.accountId)
       await refreshCurrentAccount()
       if (currentCustomer) {
         await loadDepositStatuses(currentCustomer.customerId, updated.accountId, true)

@@ -154,6 +154,12 @@ export function useOperationsConsole() {
         setDeposit(refreshed)
 
         if (![1, 2].includes(refreshed.status)) {
+          if (account) {
+            const refreshedAccount = await getAccount(account.accountId)
+            setAccount(refreshedAccount)
+            await loadCustomerAccountsCore(refreshedAccount.customerId)
+            await loadAccountHistoryCore(refreshedAccount.accountId)
+          }
           setDepositStatusText(`Deposit finished with status ${refreshed.status}.`)
           window.clearInterval(handle)
         }
@@ -326,6 +332,7 @@ export function useOperationsConsole() {
     await runAction('Refresh account', async () => {
       const refreshed = await getAccount(account.accountId)
       setAccount(refreshed)
+      await loadCustomerAccountsCore(refreshed.customerId)
       setAccountHistoryStatusText(`Refreshed account ${refreshed.accountNumber}.`)
     })
   }
@@ -524,6 +531,7 @@ export function useOperationsConsole() {
           `web-corr-${Date.now()}`,
         ),
       )
+      await loadCustomerAccountsCore(customer.customerId)
       await loadAccountHistoryCore(account.accountId)
       setDepositStatusText('Deposit submitted. Waiting for asynchronous processing.')
       setDepositForm(buildDemoTransactionForm('WEB-REF'))
@@ -546,6 +554,7 @@ export function useOperationsConsole() {
       })
 
       setAccount(updated)
+      await loadCustomerAccountsCore(updated.customerId)
       await loadAccountHistoryCore(account.accountId)
       setDepositStatusText('Withdrawal submitted and account balance updated.')
       setDepositForm(buildDemoTransactionForm('WEB-WD'))

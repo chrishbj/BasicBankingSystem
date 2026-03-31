@@ -17,3 +17,8 @@ TestResults/
 
 # Chinese local-only docs
 docs/ch-cn/
+docs/.obsidian/app.json
+docs/.obsidian/appearance.json
+docs/.obsidian/community-plugins.json
+docs/.obsidian/core-plugins.json
+docs/.obsidian/workspace.json
