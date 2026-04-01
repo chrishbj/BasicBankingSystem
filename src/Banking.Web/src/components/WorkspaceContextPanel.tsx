@@ -10,8 +10,8 @@ type WorkspaceContextPanelProps = {
   account: AccountResponse | null
   deposit: DepositResponse | null
   busy: boolean
-  onSelectCustomer: (customerId: string) => void
-  onSelectAccount: (accountId: string) => void
+  onSelectCustomer: (customerNumber: string) => void
+  onSelectAccount: (accountNumber: string) => void
   onNavigate: (tab: WorkspaceTab) => void
 }
 
@@ -47,13 +47,13 @@ export function WorkspaceContextPanel({
         <label className="field-label">
           <span>Selected customer</span>
           <select
-            value={customer?.customerId ?? ''}
+            value={customer?.customerNumber ?? ''}
             onChange={(event) => onSelectCustomer(event.target.value)}
             disabled={busy || customers.length === 0}
           >
             <option value="">Choose a customer</option>
             {customers.map((item) => (
-              <option key={item.customerId} value={item.customerId}>
+              <option key={item.customerNumber} value={item.customerNumber}>
                 {item.fullName} | {item.customerNumber}
               </option>
             ))}
@@ -63,13 +63,13 @@ export function WorkspaceContextPanel({
         <label className="field-label">
           <span>Selected account</span>
           <select
-            value={account?.accountId ?? ''}
+            value={account?.accountNumber ?? ''}
             onChange={(event) => onSelectAccount(event.target.value)}
             disabled={busy || accountList.length === 0}
           >
             <option value="">Choose an account</option>
             {accountList.map((item) => (
-              <option key={item.accountId} value={item.accountId}>
+              <option key={item.accountNumber} value={item.accountNumber}>
                 {item.accountType} | {item.accountNumber}
               </option>
             ))}

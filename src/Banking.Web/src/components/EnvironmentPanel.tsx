@@ -19,6 +19,9 @@ export function EnvironmentPanel({ health }: EnvironmentPanelProps) {
           <p className="eyebrow">Environment</p>
           <h2>Services</h2>
         </div>
+        <a className="ghost-button" href="/gateway-api/api/v1/system/docs" target="_blank" rel="noreferrer">
+          Docs
+        </a>
       </div>
       <div className="service-health-list">
         {services.map((name) => {

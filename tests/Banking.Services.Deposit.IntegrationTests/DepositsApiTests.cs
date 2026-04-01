@@ -90,7 +90,7 @@ public sealed class DepositsApiTests : IClassFixture<DepositServiceWebApplicatio
             "/api/v1/deposits/review/pending?pageNumber=1&pageSize=20");
 
         response.Should().NotBeNull();
-        response!.Items.Should().ContainSingle(item => item.TransactionId == transactionId);
+        response!.Items.Should().ContainSingle(item => item.TransactionId == transactionId && item.AccountNumber == "6222200000000000001");
     }
 
     [Fact]
@@ -158,6 +158,7 @@ public sealed class DepositsApiTests : IClassFixture<DepositServiceWebApplicatio
         response.Should().NotBeNull();
         response!.Items.Should().Contain(item => item.TransactionId == created.TransactionId);
         response.Items.Should().OnlyContain(item => item.CustomerId == created.CustomerId && item.AccountId == created.AccountId);
+        response.Items.Should().Contain(item => item.TransactionId == created.TransactionId && item.AccountNumber == "6222200000000000001");
     }
 
     private async Task<DepositResponse> WaitForDepositAsync(string transactionId, DepositStatus expectedStatus)

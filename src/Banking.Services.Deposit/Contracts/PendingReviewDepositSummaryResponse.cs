@@ -7,6 +7,7 @@ public sealed record PendingReviewDepositSummaryResponse(
     string TransactionNumber,
     string CustomerId,
     string AccountId,
+    string AccountNumber,
     decimal Amount,
     string Currency,
     DepositSagaStepStatus CompensationStatus,

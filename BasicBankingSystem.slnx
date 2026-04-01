@@ -1,5 +1,6 @@
 <Solution>
   <Folder Name="/src/">
+    <Project Path="src/Banking.Bff.CustomerPortal/Banking.Bff.CustomerPortal.csproj" />
     <Project Path="src/Banking.BuildingBlocks/Banking.BuildingBlocks.csproj" />
     <Project Path="src/Banking.Gateway/Banking.Gateway.csproj" />
     <Project Path="src/Banking.Services.Account/Banking.Services.Account.csproj" />
@@ -8,7 +9,9 @@
     <Project Path="src/Banking.Services.Deposit/Banking.Services.Deposit.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/Banking.Bff.CustomerPortal.IntegrationTests/Banking.Bff.CustomerPortal.IntegrationTests.csproj" />
     <Project Path="tests/Banking.Contracts.Tests/Banking.Contracts.Tests.csproj" />
+    <Project Path="tests/Banking.Gateway.IntegrationTests/Banking.Gateway.IntegrationTests.csproj" />
     <Project Path="tests/Banking.Services.Account.IntegrationTests/Banking.Services.Account.IntegrationTests.csproj" />
     <Project Path="tests/Banking.Services.Account.UnitTests/Banking.Services.Account.UnitTests.csproj" />
     <Project Path="tests/Banking.Services.Audit.IntegrationTests/Banking.Services.Audit.IntegrationTests.csproj" />

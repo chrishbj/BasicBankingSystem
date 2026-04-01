@@ -13,6 +13,7 @@ public sealed class InMemoryDepositAccountDirectory : IDepositAccountDirectory
                 new DepositAccountRecord
                 {
                     AccountId = "acc_active_001",
+                    AccountNumber = "6222200000000000001",
                     CustomerId = "cus_active_001",
                     Currency = "USD",
                     Status = DepositAccountStatus.Active,
@@ -24,6 +25,7 @@ public sealed class InMemoryDepositAccountDirectory : IDepositAccountDirectory
                 new DepositAccountRecord
                 {
                     AccountId = "acc_frozen_001",
+                    AccountNumber = "6222200000000000002",
                     CustomerId = "cus_active_001",
                     Currency = "USD",
                     Status = DepositAccountStatus.Frozen,

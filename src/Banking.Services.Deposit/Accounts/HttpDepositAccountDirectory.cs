@@ -23,6 +23,7 @@ public sealed class HttpDepositAccountDirectory(HttpClient httpClient) : IDeposi
         return new DepositAccountRecord
         {
             AccountId = account.AccountId,
+            AccountNumber = account.AccountNumber,
             CustomerId = account.CustomerId,
             Currency = account.Currency,
             Status = MapStatus(account.Status),

@@ -16,14 +16,14 @@ This guide walks through a full Phase 1 happy-path test against the Docker Deskt
 - The local stack is up:
 
 ```powershell
-docker compose --env-file infra/.env.example -f infra/docker-compose.docker-desktop.yml up --build -d
+docker compose --env-file infra/docker.env.local -f infra/docker-compose.docker-desktop.yml up --build -d
 ```
 
 - Swagger pages are reachable:
-  - `http://localhost:5101/swagger`
-  - `http://localhost:5102/swagger`
-  - `http://localhost:5103/swagger`
-  - `http://localhost:5104/swagger`
+  - `http://localhost:18081/swagger`
+  - `http://localhost:18082/swagger`
+  - `http://localhost:18083/swagger`
+  - `http://localhost:18084/swagger`
 - Protected API calls need:
   - `X-Api-Key: local-dev-api-key`
 
@@ -55,15 +55,13 @@ Use Swagger UI to execute the following calls in order.
 
 ## UI Notes
 
-- `Operations Console` at `http://localhost:5300` shows `Customer Number` explicitly in customer cards and in the current selection summary.
-- `Customer Portal` at `http://localhost:5301` signs in with `Customer Number + Identity Last 4 Digits`.
-- Demo identity normalization example:
-  - stored identity `WITHDRAW-DEMO-001`
-  - sign-in input `0001`
+- `Operations Console` at `http://localhost:18090` shows `Customer Number` explicitly in customer cards, current selection, and portal sign-in hints.
+- `Customer Portal` at `http://localhost:18091` signs in with `Customer Number + Identity Last 4 Digits`.
+- For the most reliable demo sign-in, read the values from an existing customer card in the Operations Console instead of relying on a hard-coded sample.
 
 ### 1. Create a Customer
 
-Open `http://localhost:5101/swagger` and call `POST /api/v1/customers` with:
+Open `http://localhost:18081/swagger` and call `POST /api/v1/customers` with:
 
 ```json
 {
@@ -100,7 +98,7 @@ Still in Customer Swagger, call `POST /api/v1/customers/{customerId}/status` wit
 
 ### 3. Open an Account
 
-Open `http://localhost:5102/swagger` and call `POST /api/v1/accounts` with:
+Open `http://localhost:18082/swagger` and call `POST /api/v1/accounts` with:
 
 ```json
 {
@@ -114,7 +112,7 @@ Capture the returned `accountId` and `accountNumber`.
 
 ### 4. Submit a Deposit
 
-Open `http://localhost:5103/swagger` and call `POST /api/v1/deposits`.
+Open `http://localhost:18083/swagger` and call `POST /api/v1/deposits`.
 
 Add headers:
 
@@ -161,7 +159,7 @@ Expected result after a successful deposit:
 
 ### 7. Verify Audit Trail
 
-Open `http://localhost:5104/swagger` and call `GET /api/v1/audits`.
+Open `http://localhost:18084/swagger` and call `GET /api/v1/audits`.
 
 Add header:
 
@@ -213,7 +211,7 @@ docker ps
 Then verify:
 
 ```powershell
-Invoke-WebRequest http://localhost:5103/swagger -UseBasicParsing
+Invoke-WebRequest http://localhost:18083/swagger -UseBasicParsing
 ```
 
 ### Deposit stays in `Received`
@@ -222,8 +220,8 @@ Check:
 
 - `basicbanking-deposit` container logs
 - RabbitMQ container status
-- Account service health at `http://localhost:5102/api/v1/health`
-- Audit service health at `http://localhost:5104/api/v1/health`
+- Account service health at `http://localhost:18082/api/v1/health`
+- Audit service health at `http://localhost:18084/api/v1/health`
 
 Useful commands:
 

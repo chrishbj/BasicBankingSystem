@@ -33,10 +33,14 @@ Customer portal demo sign-in uses:
 - `Customer Number`
 - `Identity Last 4 Digits`
 
-Example:
+The safest way to get current demo credentials is:
 
-- stored identity `WITHDRAW-DEMO-001`
-- sign-in input `0001`
+- open `Operations Console`
+- browse existing customers
+- read `Customer Number`
+- read `Portal Sign-In Last 4 Digits`
+
+Some seeded demo identities still normalize values such as `WITHDRAW-DEMO-001 -> 0001`, but newer runtime customers may have different last-4 values.
 
 ## Core System Shape
 
@@ -160,6 +164,7 @@ docker compose --env-file infra/docker.env.local -f infra/docker-compose.docker-
 - [Microservices And Boundaries](docs/20-microservices-and-boundaries.md)
 - [Saga, Outbox, And Idempotency](docs/21-saga-outbox-idempotency.md)
 - [Database Schema And Relationships](docs/29-database-schema-and-relationships.md)
+- [Gateway And Customer BFF Design](docs/32-gateway-and-customer-bff-design.md)
 - [Source Code Reading Guide](docs/30-source-code-reading-guide.md)
 
 ### Testing And Contracts

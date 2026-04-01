@@ -1,20 +1,19 @@
 export type CustomerResponse = {
-  customerId: string
   customerNumber: string
   fullName: string
   identityType: string
   identityNumberMasked: string
+  portalIdentityLast4: string
   mobile: string
   email?: string | null
   status: number
   riskLevel: string
   createdAt: string
+  updatedAt: string
 }
 
 export type AccountResponse = {
-  accountId: string
   accountNumber: string
-  customerId: string
   accountType: string
   currency: string
   status: number
@@ -25,7 +24,6 @@ export type AccountResponse = {
 }
 
 export type AccountSummaryResponse = {
-  accountId: string
   accountNumber: string
   accountType: string
   currency: string
@@ -36,7 +34,6 @@ export type AccountSummaryResponse = {
 
 export type AccountActivityResponse = {
   postingReference: string
-  accountId: string
   postingType: 1 | 2 | 3
   amount: number
   currency: string
@@ -46,10 +43,8 @@ export type AccountActivityResponse = {
 }
 
 export type DepositResponse = {
-  transactionId: string
   transactionNumber: string
-  customerId: string
-  accountId: string
+  accountNumber: string
   amount: number
   currency: string
   referenceNumber?: string | null
@@ -62,10 +57,8 @@ export type DepositResponse = {
 }
 
 export type DepositSummaryResponse = {
-  transactionId: string
   transactionNumber: string
-  customerId: string
-  accountId: string
+  accountNumber: string
   amount: number
   currency: string
   referenceNumber?: string | null
@@ -80,4 +73,55 @@ export type PagedResponse<T> = {
   pageSize: number
   totalCount: number
   totalPages: number
+}
+
+export type TransactionStatusSummaryResponse = {
+  transactionNumber: string
+  accountNumber: string
+  amount: number
+  currency: string
+  status: number
+  referenceNumber?: string | null
+  requestedAt: string
+  postedAt?: string | null
+  failureCode?: string | null
+  failureReason?: string | null
+}
+
+export type CustomerDashboardResponse = {
+  customer: {
+    customerNumber: string
+    fullName: string
+    status: number
+    riskLevel: string
+  }
+  portfolio: {
+    accountCount: number
+    totalAvailableBalance: number
+    totalLedgerBalance: number
+  }
+  currentAccount?: {
+    accountNumber: string
+    accountType: string
+    status: number
+    currency: string
+    availableBalance: number
+    ledgerBalance: number
+  } | null
+  latestActivity?: {
+    type: string
+    reference: string
+    amount: number
+    currency: string
+    createdAt: string
+  } | null
+  recentActivities: Array<{
+    accountNumber: string
+    type: string
+    reference: string
+    amount: number
+    currency: string
+    createdAt: string
+  }>
+  recentTransactions: TransactionStatusSummaryResponse[]
 }

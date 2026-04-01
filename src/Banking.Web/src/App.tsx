@@ -61,7 +61,7 @@ function App() {
     handleRefreshAccount,
     handleLookupAccount,
     handleLoadCustomerAccounts,
-    handleSelectAccount,
+    handleSelectAccountNumber,
     handleLoadAccountHistory,
     handleSubmitDeposit,
     handleSubmitWithdrawal,
@@ -129,13 +129,13 @@ function App() {
             account={account}
             deposit={deposit}
             busy={!!busyAction}
-            onSelectCustomer={(customerId) => {
-              const selected = customers.find((item) => item.customerId === customerId)
+            onSelectCustomer={(customerNumber) => {
+              const selected = customers.find((item) => item.customerNumber === customerNumber)
               if (selected) {
                 void handleSelectCustomer(selected)
               }
             }}
-            onSelectAccount={(accountId) => void handleSelectAccount(accountId)}
+            onSelectAccount={(accountNumber) => void handleSelectAccountNumber(accountNumber)}
             onNavigate={setActiveTab}
           />
 
@@ -154,7 +154,7 @@ function App() {
 
           {activeTab === 'customer' && (
             <CustomerPanel
-              selectedCustomerId={customer?.customerId}
+              selectedCustomerNumber={customer?.customerNumber}
               selectedCustomerStatus={customer?.status}
               customers={customers}
               statusText={customerStatusText}
@@ -185,7 +185,7 @@ function App() {
               historyFilters={accountHistoryFilters}
               openDisabled={!customer || customer.status !== 2 || !!busyAction}
               lookupDisabled={!accountQuery.accountNumber.trim() || !!busyAction}
-              loadHistoryDisabled={!account?.accountId || !!busyAction}
+              loadHistoryDisabled={!account?.accountNumber || !!busyAction}
               busy={!!busyAction}
               onLookupAccountNumberChange={(accountNumber) => setAccountQuery({ accountNumber })}
               onHistoryFiltersChange={setAccountHistoryFilters}
@@ -193,7 +193,7 @@ function App() {
               onRefresh={() => void handleRefreshAccount()}
               onLookup={() => void handleLookupAccount()}
               onLoadCustomerAccounts={() => void handleLoadCustomerAccounts()}
-              onSelectAccount={(accountId) => void handleSelectAccount(accountId)}
+              onSelectAccount={(accountNumber) => void handleSelectAccountNumber(accountNumber)}
               onLoadHistory={() => void handleLoadAccountHistory()}
               onSelectHistoryItem={setSelectedAccountHistoryItem}
             />
@@ -255,7 +255,6 @@ function App() {
               selectedCustomerName={customer?.fullName}
               selectedCustomerNumber={customer?.customerNumber}
               selectedAccountNumber={account?.accountNumber}
-              selectedAccountId={account?.accountId}
               onSortByChange={setSortBy}
               onDescendingChange={setDescending}
               onReviewSearchChange={setReviewSearch}

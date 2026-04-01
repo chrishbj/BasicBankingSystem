@@ -39,6 +39,9 @@ export async function getHealth(basePath: string): Promise<string> {
   try {
     response = await fetch(`${basePath}/api/v1/health`, {
       signal: controller.signal,
+      headers: {
+        'X-Api-Key': apiKey,
+      },
     })
   } catch (error) {
     if (error instanceof DOMException && error.name === 'AbortError') {

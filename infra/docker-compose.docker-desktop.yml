@@ -51,6 +51,8 @@ services:
       Security__Authentication__InternalServices__0__ApiKey: ${ACCOUNT_SERVICE_API_KEY:-account-service-dev-key}
       Security__Authentication__InternalServices__1__Name: deposit-service
       Security__Authentication__InternalServices__1__ApiKey: ${DEPOSIT_SERVICE_API_KEY:-deposit-service-dev-key}
+      Security__Authentication__InternalServices__2__Name: gateway-service
+      Security__Authentication__InternalServices__2__ApiKey: ${GATEWAY_SERVICE_API_KEY:-gateway-service-dev-key}
       Security__CurrentServiceIdentity__ServiceName: customer-service
       Security__CurrentServiceIdentity__ApiKey: ${CUSTOMER_SERVICE_API_KEY:-customer-service-dev-key}
     depends_on:
@@ -76,6 +78,8 @@ services:
       Security__Authentication__InternalServices__0__ApiKey: ${DEPOSIT_SERVICE_API_KEY:-deposit-service-dev-key}
       Security__Authentication__InternalServices__1__Name: customer-service
       Security__Authentication__InternalServices__1__ApiKey: ${CUSTOMER_SERVICE_API_KEY:-customer-service-dev-key}
+      Security__Authentication__InternalServices__2__Name: gateway-service
+      Security__Authentication__InternalServices__2__ApiKey: ${GATEWAY_SERVICE_API_KEY:-gateway-service-dev-key}
       Security__CurrentServiceIdentity__ServiceName: account-service
       Security__CurrentServiceIdentity__ApiKey: ${ACCOUNT_SERVICE_API_KEY:-account-service-dev-key}
     depends_on:
@@ -100,6 +104,8 @@ services:
       Security__Authentication__ExternalApiKeys__0__ApiKey: ${LOCAL_DEV_API_KEY:-local-dev-api-key}
       Security__Authentication__InternalServices__0__Name: deposit-service
       Security__Authentication__InternalServices__0__ApiKey: ${DEPOSIT_SERVICE_API_KEY:-deposit-service-dev-key}
+      Security__Authentication__InternalServices__1__Name: gateway-service
+      Security__Authentication__InternalServices__1__ApiKey: ${GATEWAY_SERVICE_API_KEY:-gateway-service-dev-key}
       Security__CurrentServiceIdentity__ServiceName: audit-service
       Security__CurrentServiceIdentity__ApiKey: ${AUDIT_SERVICE_API_KEY:-audit-service-dev-key}
     depends_on:
@@ -128,6 +134,8 @@ services:
       Security__Authentication__InternalServices__0__ApiKey: ${ACCOUNT_SERVICE_API_KEY:-account-service-dev-key}
       Security__Authentication__InternalServices__1__Name: deposit-service
       Security__Authentication__InternalServices__1__ApiKey: ${DEPOSIT_SERVICE_API_KEY:-deposit-service-dev-key}
+      Security__Authentication__InternalServices__2__Name: gateway-service
+      Security__Authentication__InternalServices__2__ApiKey: ${GATEWAY_SERVICE_API_KEY:-gateway-service-dev-key}
       Security__CurrentServiceIdentity__ServiceName: deposit-service
       Security__CurrentServiceIdentity__ApiKey: ${DEPOSIT_SERVICE_API_KEY:-deposit-service-dev-key}
     depends_on:
@@ -142,12 +150,25 @@ services:
     ports:
       - "${DEPOSIT_SERVICE_PORT:-5103}:8080"
 
-  banking-web:
+  gateway-service:
     build:
       context: ..
-      dockerfile: src/Banking.Web/Dockerfile
-    container_name: basicbanking-web
+      dockerfile: src/Banking.Gateway/Dockerfile
+    container_name: basicbanking-gateway
     restart: unless-stopped
+    environment:
+      ASPNETCORE_ENVIRONMENT: Docker
+      ASPNETCORE_URLS: http://+:8080
+      Infrastructure__CustomerServiceBaseUrl: http://customer-service:8080/
+      Infrastructure__AccountServiceBaseUrl: http://account-service:8080/
+      Infrastructure__DepositServiceBaseUrl: http://deposit-service:8080/
+      Infrastructure__AuditServiceBaseUrl: http://audit-service:8080/
+      Security__Authentication__ExternalApiKeys__0__Name: local-dev-client
+      Security__Authentication__ExternalApiKeys__0__ApiKey: ${LOCAL_DEV_API_KEY:-local-dev-api-key}
+      Security__Authentication__InternalServices__0__Name: gateway-service
+      Security__Authentication__InternalServices__0__ApiKey: ${GATEWAY_SERVICE_API_KEY:-gateway-service-dev-key}
+      Security__CurrentServiceIdentity__ServiceName: gateway-service
+      Security__CurrentServiceIdentity__ApiKey: ${GATEWAY_SERVICE_API_KEY:-gateway-service-dev-key}
     depends_on:
       customer-service:
         condition: service_started
@@ -156,6 +177,18 @@ services:
       deposit-service:
         condition: service_started
       audit-service:
+        condition: service_started
+    ports:
+      - "${GATEWAY_SERVICE_PORT:-5000}:8080"
+
+  banking-web:
+    build:
+      context: ..
+      dockerfile: src/Banking.Web/Dockerfile
+    container_name: basicbanking-web
+    restart: unless-stopped
+    depends_on:
+      gateway-service:
         condition: service_started
     ports:
       - "${BANKING_WEB_PORT:-5300}:80"
@@ -167,6 +200,8 @@ services:
     container_name: basicbanking-customer-portal
     restart: unless-stopped
     depends_on:
+      banking-customer-bff:
+        condition: service_started
       customer-service:
         condition: service_started
       account-service:
@@ -177,6 +212,29 @@ services:
         condition: service_started
     ports:
       - "${BANKING_CUSTOMER_PORTAL_PORT:-5301}:80"
+
+  banking-customer-bff:
+    build:
+      context: ..
+      dockerfile: src/Banking.Bff.CustomerPortal/Dockerfile
+    container_name: basicbanking-customer-bff
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_ENVIRONMENT: Docker
+      ASPNETCORE_URLS: http://+:8080
+      Infrastructure__CustomerServiceBaseUrl: http://customer-service:8080/
+      Infrastructure__AccountServiceBaseUrl: http://account-service:8080/
+      Infrastructure__DepositServiceBaseUrl: http://deposit-service:8080/
+      Infrastructure__ExternalApiKey: ${LOCAL_DEV_API_KEY:-local-dev-api-key}
+    depends_on:
+      customer-service:
+        condition: service_started
+      account-service:
+        condition: service_started
+      deposit-service:
+        condition: service_started
+    ports:
+      - "${BANKING_CUSTOMER_BFF_PORT:-5302}:8080"
 
 volumes:
   postgres-data:

@@ -469,6 +469,16 @@ export function useOperationsConsole() {
     })
   }
 
+  async function handleSelectAccountNumber(accountNumber: string) {
+    await runAction('Switch account', async () => {
+      const fetched = await getAccountByNumber(accountNumber)
+      setAccount(fetched)
+      setAccountQuery({ accountNumber: fetched.accountNumber })
+      await loadAccountHistoryCore(fetched.accountId)
+      setAccountHistoryStatusText(`Loaded account ${fetched.accountNumber} and its history.`)
+    })
+  }
+
   async function loadAccountHistoryCore(accountId: string) {
     const params = new URLSearchParams({
       pageNumber: '1',
@@ -710,6 +720,7 @@ export function useOperationsConsole() {
     handleLookupAccount,
     handleLoadCustomerAccounts,
     handleSelectAccount,
+    handleSelectAccountNumber,
     handleLoadAccountHistory,
     handleSubmitDeposit,
     handleSubmitWithdrawal,

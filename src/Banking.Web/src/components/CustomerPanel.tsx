@@ -10,7 +10,7 @@ type CustomerFormState = {
 }
 
 type CustomerPanelProps = {
-  selectedCustomerId?: string
+  selectedCustomerNumber?: string
   selectedCustomerStatus?: number
   customers: CustomerResponse[]
   statusText: string
@@ -51,7 +51,7 @@ function getCustomerStatusTone(status: number) {
 }
 
 export function CustomerPanel({
-  selectedCustomerId,
+  selectedCustomerNumber,
   selectedCustomerStatus,
   customers,
   statusText,
@@ -88,7 +88,7 @@ export function CustomerPanel({
           Browse the customer directory and select one customer card from the list below. New customers start in the Pending state, so activate the selected customer before opening an account.
         </p>
       </div>
-      {selectedCustomerId && selectedCustomerStatus === 1 && (
+      {selectedCustomerNumber && selectedCustomerStatus === 1 && (
         <div className="info-card">
           <p className="eyebrow">Activation Required</p>
           <p>The selected customer is still Pending. Use <strong>Activate selected customer</strong> before opening the first account.</p>
@@ -142,9 +142,9 @@ export function CustomerPanel({
           <div className="customer-directory-grid">
             {customers.map((item) => (
               <button
-                key={item.customerId}
+                key={item.customerNumber}
                 type="button"
-                className={item.customerId === selectedCustomerId ? 'customer-card customer-card-active' : 'customer-card'}
+                className={item.customerNumber === selectedCustomerNumber ? 'customer-card customer-card-active' : 'customer-card'}
                 onClick={() => onSelectCustomer(item)}
               >
                 <div className="customer-card-head">
@@ -167,7 +167,6 @@ export function CustomerPanel({
                   <span className="card-label">Mobile</span>
                   <span className="card-value">{item.mobile}</span>
                 </div>
-                <span className="subtle-code">{item.customerId}</span>
               </button>
             ))}
           </div>

@@ -20,7 +20,6 @@ type PendingReviewPanelProps = {
   selectedCustomerName?: string
   selectedCustomerNumber?: string
   selectedAccountNumber?: string
-  selectedAccountId?: string
   onSortByChange: (sortBy: PendingReviewSortBy) => void
   onDescendingChange: (descending: boolean) => void
   onReviewSearchChange: (next: ReviewSearchState) => void
@@ -43,7 +42,6 @@ export function PendingReviewPanel({
   selectedCustomerName,
   selectedCustomerNumber,
   selectedAccountNumber,
-  selectedAccountId,
   onSortByChange,
   onDescendingChange,
   onReviewSearchChange,
@@ -81,7 +79,7 @@ export function PendingReviewPanel({
             Descending order
           </label>
           <button onClick={onLoadQueue} disabled={busy}>{busy ? 'Working...' : 'Load queue'}</button>
-          <button className="ghost-button" onClick={onCreateDemo} disabled={!selectedCustomerName || !selectedAccountId || busy}>
+          <button className="ghost-button" onClick={onCreateDemo} disabled={!selectedCustomerName || !selectedAccountNumber || busy}>
             Create demo review item
           </button>
           <button className="ghost-button" onClick={onSearchDeposits} disabled={busy}>Search matching deposits</button>
@@ -98,7 +96,7 @@ export function PendingReviewPanel({
           {selectedCustomerName && <span className="helper-chip">Customer: {selectedCustomerName}</span>}
           {selectedCustomerNumber && <span className="helper-chip">Customer No: {selectedCustomerNumber}</span>}
           {selectedAccountNumber && <span className="helper-chip">Account No: {selectedAccountNumber}</span>}
-          {selectedAccountId && <button className="ghost-button" type="button" onClick={onGoToAccount}>Open account workspace</button>}
+          {selectedAccountNumber && <button className="ghost-button" type="button" onClick={onGoToAccount}>Open account workspace</button>}
         </div>
       </div>
 
@@ -154,7 +152,6 @@ export function PendingReviewPanel({
                   <td>
                     <strong>{item.transactionNumber}</strong>
                     <span>{formatCurrencyWithCode(item.amount, item.currency)}</span>
-                    <span className="subtle-code">{item.transactionId}</span>
                   </td>
                   <td>
                     <StatusBadge
@@ -189,7 +186,6 @@ export function PendingReviewPanel({
                   <strong>{item.transactionNumber}</strong>
                   <span>{getDepositStatusLabel(item.status)}</span>
                   <span>{getReviewResolutionLabel(item.reviewResolution)}</span>
-                  <span className="subtle-code">{item.transactionId}</span>
                 </li>
               ))}
           </ul>

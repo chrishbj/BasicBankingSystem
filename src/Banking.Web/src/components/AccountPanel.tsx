@@ -33,7 +33,7 @@ type AccountPanelProps = {
   onLoadHistory: () => void
   onSelectHistoryItem: (transaction: AccountActivityResponse) => void
   onLoadCustomerAccounts: () => void
-  onSelectAccount: (accountId: string) => void
+  onSelectAccount: (accountNumber: string) => void
 }
 
 function getAccountStatusLabel(status: number) {
@@ -179,10 +179,10 @@ export function AccountPanel({
         <div className="account-summary-grid">
           {accountList.map((item) => (
             <button
-              key={item.accountId}
+              key={item.accountNumber}
               type="button"
-              className={item.accountId === account?.accountId ? 'account-summary-card account-summary-card-active' : 'account-summary-card'}
-              onClick={() => onSelectAccount(item.accountId)}
+              className={item.accountNumber === account?.accountNumber ? 'account-summary-card account-summary-card-active' : 'account-summary-card'}
+              onClick={() => onSelectAccount(item.accountNumber)}
             >
               <div className="account-summary-card-head">
                 <strong>{item.accountType}</strong>
@@ -190,7 +190,6 @@ export function AccountPanel({
               </div>
               <span>{item.accountNumber}</span>
               <span>{formatCurrency(item.availableBalance, item.currency)} / {formatCurrency(item.ledgerBalance, item.currency)}</span>
-              <span className="subtle-code">{item.accountId}</span>
             </button>
           ))}
         </div>
@@ -207,7 +206,6 @@ export function AccountPanel({
           <div><dt>Available</dt><dd>{formatCurrency(account.availableBalance, account.currency)}</dd></div>
           <div><dt>Ledger</dt><dd>{formatCurrency(account.ledgerBalance, account.currency)}</dd></div>
           <div><dt>Opened At</dt><dd>{new Date(account.openedAt).toLocaleString()}</dd></div>
-          <div><dt>Internal Reference</dt><dd className="subtle-code">{account.accountId}</dd></div>
         </dl>
       )}
 

@@ -64,7 +64,8 @@ Customer portal demo sign-in:
 
 - enter a `Customer Number`
 - enter the last 4 digits of the stored identity number
-- for demo identities such as `WITHDRAW-DEMO-001`, use the normalized last 4 digits `0001`
+- for the most reliable local demo flow, read both values from `Operations Console -> Customer Management`
+- some seeded identities still normalize values such as `WITHDRAW-DEMO-001 -> 0001`
 
 ## Authentication Headers
 

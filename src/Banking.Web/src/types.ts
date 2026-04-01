@@ -98,6 +98,7 @@ export type DepositSummaryResponse = {
   transactionNumber: string
   customerId: string
   accountId: string
+  accountNumber: string
   amount: number
   currency: string
   referenceNumber?: string | null
@@ -112,6 +113,7 @@ export type PendingReviewDepositSummaryResponse = {
   transactionNumber: string
   customerId: string
   accountId: string
+  accountNumber: string
   amount: number
   currency: string
   compensationStatus: number

@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react'
 import './App.css'
-import { getAccount, getAccountActivities, getAccountsByCustomer, getDeposit, searchDeposits, signInCustomer, submitDeposit, submitWithdrawal } from './api'
+import { getAccount, getAccountActivities, getAccountsByCustomer, getCurrentCustomer, getDashboard, getTransactions, signInCustomer, signOutCustomer, submitDeposit, submitWithdrawal } from './api'
 import type {
   AccountActivityResponse,
   AccountResponse,
   AccountSummaryResponse,
+  CustomerDashboardResponse,
   CustomerResponse,
-  DepositResponse,
+  TransactionStatusSummaryResponse,
 } from './types'
 import { formatCurrency } from './utils/currency'
 
@@ -135,8 +136,9 @@ function App() {
   const [selectedAccount, setSelectedAccount] = useState<AccountResponse | null>(null)
   const [activities, setActivities] = useState<AccountActivityResponse[]>([])
   const [selectedActivity, setSelectedActivity] = useState<AccountActivityResponse | null>(null)
-  const [latestDeposit, setLatestDeposit] = useState<DepositResponse | null>(null)
-  const [depositStatuses, setDepositStatuses] = useState<DepositResponse[]>([])
+  const [latestDeposit, setLatestDeposit] = useState<TransactionStatusSummaryResponse | null>(null)
+  const [depositStatuses, setDepositStatuses] = useState<TransactionStatusSummaryResponse[]>([])
+  const [dashboard, setDashboard] = useState<CustomerDashboardResponse | null>(null)
   const [depositForm, setDepositForm] = useState(() => buildPortalTransactionForm('deposit'))
   const [withdrawalForm, setWithdrawalForm] = useState(() => buildPortalTransactionForm('withdraw'))
   const [loginForm, setLoginForm] = useState({
@@ -147,15 +149,28 @@ function App() {
   const [message, setMessage] = useState('Enter your customer number and the last 4 digits of your identity number.')
 
   useEffect(() => {
+    void (async () => {
+      try {
+        const current = await getCurrentCustomer()
+        await loadCustomerWorkspace(current)
+        setDashboard(await getDashboard())
+      } catch {
+        // No active portal session yet.
+      }
+    })()
+  }, [])
+
+  useEffect(() => {
     if (!currentCustomer) {
       setDepositStatuses([])
+      setDashboard(null)
       return
     }
 
     // The portal keeps customer and account context local in the browser, then
     // refreshes the deposit list whenever that context changes.
-    void loadDepositStatuses(currentCustomer.customerId, selectedAccount?.accountId)
-  }, [currentCustomer?.customerId, selectedAccount?.accountId])
+    void loadDepositStatuses(selectedAccount?.accountNumber)
+  }, [currentCustomer?.customerNumber, selectedAccount?.accountNumber])
 
   useEffect(() => {
     const pending = depositStatuses.some((item) => item.status === 1 || item.status === 2)
@@ -168,26 +183,26 @@ function App() {
     // Customer-facing polling only runs for transient states so the portal behaves
     // like a live transaction tracker without turning every screen into a polling client.
     const handle = window.setInterval(() => {
-      void loadDepositStatuses(currentCustomer.customerId, selectedAccount?.accountId, true)
+      void loadDepositStatuses(selectedAccount?.accountNumber, true)
     }, 2000)
 
     return () => window.clearInterval(handle)
   }, [currentCustomer, selectedAccount, depositStatuses, latestDeposit])
 
-  async function refreshAccountSummaries(customerId: string, preferredAccountId?: string) {
-    const accountResponse = await getAccountsByCustomer(customerId)
+  async function refreshAccountSummaries(preferredAccountNumber?: string) {
+    const accountResponse = await getAccountsByCustomer()
     setAccounts(accountResponse.items)
 
-    if (!preferredAccountId) {
+    if (!preferredAccountNumber) {
       return accountResponse.items
     }
 
-    const refreshedSummary = accountResponse.items.find((item) => item.accountId === preferredAccountId)
+    const refreshedSummary = accountResponse.items.find((item) => item.accountNumber === preferredAccountNumber)
     if (!refreshedSummary) {
       return accountResponse.items
     }
 
-    setSelectedAccount((current) => current && current.accountId === preferredAccountId
+    setSelectedAccount((current) => current && current.accountNumber === preferredAccountNumber
       ? {
           ...current,
           availableBalance: refreshedSummary.availableBalance,
@@ -203,18 +218,19 @@ function App() {
     try {
       setBusy(true)
       setCurrentCustomer(customer)
-      const accountItems = await refreshAccountSummaries(customer.customerId)
+      const accountItems = await refreshAccountSummaries()
 
       if (accountItems.length > 0) {
         // The first account is loaded automatically so the portal feels task-ready
         // immediately after sign-in.
-        await loadAccountWorkspace(accountItems[0].accountId)
+        await loadAccountWorkspace(accountItems[0].accountNumber)
       } else {
         setSelectedAccount(null)
         setActivities([])
         setSelectedActivity(null)
         setLatestDeposit(null)
         setDepositStatuses([])
+        setDashboard(null)
       }
 
       setMessage(`Signed in as ${customer.fullName}.`)
@@ -240,6 +256,7 @@ function App() {
       // goes through a dedicated backend check instead of leaking verification logic to the UI.
       const matched = await signInCustomer(customerNumber, identityLast4)
       await loadCustomerWorkspace(matched)
+      setDashboard(await getDashboard())
     } catch (error) {
       setMessage(`Sign-in failed: ${error instanceof Error ? error.message : String(error)}`)
     } finally {
@@ -247,7 +264,13 @@ function App() {
     }
   }
 
-  function handleSignOut() {
+  async function handleSignOut() {
+    try {
+      await signOutCustomer()
+    } catch {
+      // Best-effort sign-out. The local UI state is still cleared below.
+    }
+
     setCurrentCustomer(null)
     setAccounts([])
     setSelectedAccount(null)
@@ -255,6 +278,7 @@ function App() {
     setSelectedActivity(null)
     setLatestDeposit(null)
     setDepositStatuses([])
+    setDashboard(null)
     setActiveTab('dashboard')
     setLoginForm({
       customerNumber: '',
@@ -263,12 +287,12 @@ function App() {
     setMessage('Signed out. Enter your customer number and identity last 4 digits to sign in again.')
   }
 
-  async function loadAccountWorkspace(accountId: string) {
+  async function loadAccountWorkspace(accountNumber: string) {
     try {
       setBusy(true)
-      const account = await getAccount(accountId)
-      await refreshAccountSummaries(account.customerId, account.accountId)
-      const activityResponse = await getAccountActivities(accountId)
+      const account = await getAccount(accountNumber)
+      await refreshAccountSummaries(account.accountNumber)
+      const activityResponse = await getAccountActivities(accountNumber)
       setSelectedAccount(account)
       setActivities(activityResponse.items)
       setSelectedActivity(activityResponse.items[0] ?? null)
@@ -280,36 +304,43 @@ function App() {
     }
   }
 
-  const totalAvailable = accounts.reduce((sum, item) => sum + item.availableBalance, 0)
-  const totalLedger = accounts.reduce((sum, item) => sum + item.ledgerBalance, 0)
+  async function refreshDashboard() {
+    if (!currentCustomer) {
+      return
+    }
+
+    const nextDashboard = await getDashboard()
+    setDashboard(nextDashboard)
+    setLatestDeposit(nextDashboard.recentTransactions[0] ?? null)
+  }
+
   async function refreshCurrentAccount() {
     if (!selectedAccount) {
       return
     }
 
-    const refreshed = await getAccount(selectedAccount.accountId)
+    const refreshed = await getAccount(selectedAccount.accountNumber)
     setSelectedAccount(refreshed)
-    await refreshAccountSummaries(refreshed.customerId, refreshed.accountId)
-    const activityResponse = await getAccountActivities(refreshed.accountId)
+    await refreshAccountSummaries(refreshed.accountNumber)
+    const activityResponse = await getAccountActivities(refreshed.accountNumber)
     setActivities(activityResponse.items)
     setSelectedActivity(activityResponse.items[0] ?? null)
   }
 
-  async function loadDepositStatuses(customerId: string, accountId?: string, silent = false) {
+  async function loadDepositStatuses(accountNumber?: string, silent = false) {
     try {
-      const response = await searchDeposits(customerId, accountId)
-      const details = await Promise.all(response.items.map((item) => getDeposit(item.transactionId)))
-      const ordered = details.sort((left, right) => new Date(right.requestedAt).getTime() - new Date(left.requestedAt).getTime())
+      const response = await getTransactions(accountNumber)
+      const ordered = [...response.items].sort((left, right) => new Date(right.requestedAt).getTime() - new Date(left.requestedAt).getTime())
       setDepositStatuses(ordered)
 
-      if (accountId) {
-        const trackedAccount = await getAccount(accountId)
-        setSelectedAccount((current) => current?.accountId === trackedAccount.accountId ? trackedAccount : current)
-        await refreshAccountSummaries(customerId, trackedAccount.accountId)
+      if (accountNumber) {
+        const trackedAccount = await getAccount(accountNumber)
+        setSelectedAccount((current) => current?.accountNumber === trackedAccount.accountNumber ? trackedAccount : current)
+        await refreshAccountSummaries(trackedAccount.accountNumber)
       }
 
       if (latestDeposit) {
-        const refreshedLatest = ordered.find((item) => item.transactionId === latestDeposit.transactionId)
+        const refreshedLatest = ordered.find((item) => item.transactionNumber === latestDeposit.transactionNumber)
         if (refreshedLatest) {
           setLatestDeposit(refreshedLatest)
         }
@@ -339,8 +370,7 @@ function App() {
       // which keeps financial safety in the backend instead of forking client logic.
       const result = await submitDeposit(
         {
-          customerId: currentCustomer.customerId,
-          accountId: selectedAccount.accountId,
+          accountNumber: selectedAccount.accountNumber,
           amount: Number(depositForm.amount),
           currency: selectedAccount.currency,
           channel: 1,
@@ -353,7 +383,8 @@ function App() {
 
       setLatestDeposit(result)
       await refreshCurrentAccount()
-      await loadDepositStatuses(currentCustomer.customerId, selectedAccount.accountId, true)
+      await loadDepositStatuses(selectedAccount.accountNumber, true)
+      await refreshDashboard()
       // After submission, the portal pivots to the transaction-status view because
       // that is the next decision point for the customer.
       setActiveTab('transactions')
@@ -374,7 +405,7 @@ function App() {
 
     try {
       setBusy(true)
-      const updated = await submitWithdrawal(selectedAccount.accountId, {
+      const updated = await submitWithdrawal(selectedAccount.accountNumber, {
         amount: Number(withdrawalForm.amount),
         currency: selectedAccount.currency,
         referenceNumber: withdrawalForm.referenceNumber.trim(),
@@ -383,11 +414,12 @@ function App() {
       })
 
       setSelectedAccount(updated)
-      await refreshAccountSummaries(updated.customerId, updated.accountId)
+      await refreshAccountSummaries(updated.accountNumber)
       await refreshCurrentAccount()
       if (currentCustomer) {
-        await loadDepositStatuses(currentCustomer.customerId, updated.accountId, true)
+        await loadDepositStatuses(updated.accountNumber, true)
       }
+      await refreshDashboard()
       setActiveTab('accounts')
       setMessage('Withdrawal submitted successfully.')
       setWithdrawalForm(buildPortalTransactionForm('withdraw'))
@@ -481,7 +513,7 @@ function App() {
             <div><dt>Customer number</dt><dd>{currentCustomer.customerNumber}</dd></div>
           </div>
           <div className="action-row">
-            <button type="button" className="ghost-button" onClick={handleSignOut} disabled={busy}>Sign out</button>
+            <button type="button" className="ghost-button" onClick={() => void handleSignOut()} disabled={busy}>Sign out</button>
           </div>
           <p className={`status-note status-note-${getMessageTone(message)}`}>{message}</p>
         </div>
@@ -536,45 +568,78 @@ function App() {
               <div className="summary-grid">
                 <section className="summary-card">
                   <p className="eyebrow">Portfolio</p>
-                  <h3>{accounts.length} account{accounts.length === 1 ? '' : 's'}</h3>
-                  <dl className="mini-detail-list">
-                    <div><dt>Available total</dt><dd>{formatCurrency(totalAvailable)}</dd></div>
-                    <div><dt>Ledger total</dt><dd>{formatCurrency(totalLedger)}</dd></div>
-                  </dl>
+                  {dashboard ? (
+                    <>
+                      <h3>{dashboard.portfolio.accountCount} account{dashboard.portfolio.accountCount === 1 ? '' : 's'}</h3>
+                      <dl className="mini-detail-list">
+                        <div><dt>Available total</dt><dd>{formatCurrency(dashboard.portfolio.totalAvailableBalance)}</dd></div>
+                        <div><dt>Ledger total</dt><dd>{formatCurrency(dashboard.portfolio.totalLedgerBalance)}</dd></div>
+                      </dl>
+                    </>
+                  ) : (
+                    <p>Loading dashboard summary...</p>
+                  )}
                 </section>
 
                 <section className="summary-card">
                   <p className="eyebrow">Current Account</p>
-                  <h3>{selectedAccount?.accountNumber ?? 'None selected'}</h3>
-                  <dl className="mini-detail-list">
-                    <div><dt>Status</dt><dd>{selectedAccount ? getAccountStatusLabel(selectedAccount.status) : 'N/A'}</dd></div>
-                    <div><dt>Available</dt><dd>{selectedAccount ? formatCurrency(selectedAccount.availableBalance, selectedAccount.currency) : '$0.00'}</dd></div>
-                  </dl>
+                  {dashboard?.currentAccount ? (
+                    <>
+                      <h3>{dashboard.currentAccount.accountNumber}</h3>
+                      <dl className="mini-detail-list">
+                        <div><dt>Status</dt><dd>{getAccountStatusLabel(dashboard.currentAccount.status)}</dd></div>
+                        <div><dt>Available</dt><dd>{formatCurrency(dashboard.currentAccount.availableBalance, dashboard.currentAccount.currency)}</dd></div>
+                      </dl>
+                    </>
+                  ) : (
+                    <p>No account summary available yet.</p>
+                  )}
                 </section>
 
                 <section className="summary-card">
                   <p className="eyebrow">Recent Activity</p>
-                  <h3>{activities.length} item{activities.length === 1 ? '' : 's'}</h3>
-                  <dl className="mini-detail-list">
-                    <div><dt>Latest type</dt><dd>{activities[0] ? getActivityLabel(activities[0].postingType) : 'No activity yet'}</dd></div>
-                    <div><dt>Latest date</dt><dd>{activities[0] ? new Date(activities[0].createdAt).toLocaleString() : 'N/A'}</dd></div>
-                  </dl>
+                  {dashboard ? (
+                    <>
+                      <h3>{dashboard.recentActivities.length} item{dashboard.recentActivities.length === 1 ? '' : 's'}</h3>
+                      <dl className="mini-detail-list">
+                        <div><dt>Latest type</dt><dd>{dashboard.latestActivity?.type ?? 'No activity yet'}</dd></div>
+                        <div><dt>Latest date</dt><dd>{dashboard.latestActivity ? new Date(dashboard.latestActivity.createdAt).toLocaleString() : 'N/A'}</dd></div>
+                      </dl>
+                    </>
+                  ) : (
+                    <p>Loading recent activity...</p>
+                  )}
+                </section>
+
+                <section className="summary-card">
+                  <p className="eyebrow">Recent Transactions</p>
+                  {dashboard ? (
+                    <>
+                      <h3>{dashboard.recentTransactions.length} item{dashboard.recentTransactions.length === 1 ? '' : 's'}</h3>
+                      <dl className="mini-detail-list">
+                        <div><dt>Latest transaction</dt><dd>{dashboard.recentTransactions[0]?.transactionNumber ?? 'No deposits yet'}</dd></div>
+                        <div><dt>Latest status</dt><dd>{dashboard.recentTransactions[0] ? getDepositStatusLabel(dashboard.recentTransactions[0].status) : 'N/A'}</dd></div>
+                      </dl>
+                    </>
+                  ) : (
+                    <p>Loading transaction summary...</p>
+                  )}
                 </section>
               </div>
 
               <div className="content-grid">
                 <section className="info-card">
                   <p className="eyebrow">Recent Activity Feed</p>
-                  {activities.length === 0 ? (
+                  {!dashboard || dashboard.recentActivities.length === 0 ? (
                     <p>No activity available for the selected customer yet.</p>
                   ) : (
                     <ul className="timeline">
-                      {activities.slice(0, 6).map((item) => (
-                        <li key={item.postingReference}>
+                      {dashboard.recentActivities.slice(0, 6).map((item) => (
+                        <li key={item.reference}>
                           <div className="timeline-marker" />
                           <div>
-                            <strong>{getActivityLabel(item.postingType)}</strong>
-                            <span>{item.postingReference}</span>
+                            <strong>{item.type}</strong>
+                            <span>{item.reference}</span>
                             <span>{new Date(item.createdAt).toLocaleString()}</span>
                           </div>
                           <strong>{formatCurrency(item.amount, item.currency)}</strong>
@@ -612,10 +677,10 @@ function App() {
                   <div className="account-grid">
                     {accounts.map((item) => (
                       <button
-                        key={item.accountId}
+                        key={item.accountNumber}
                         type="button"
-                        className={selectedAccount?.accountId === item.accountId ? 'account-card account-card-active' : 'account-card'}
-                        onClick={() => void loadAccountWorkspace(item.accountId)}
+                        className={selectedAccount?.accountNumber === item.accountNumber ? 'account-card account-card-active' : 'account-card'}
+                        onClick={() => void loadAccountWorkspace(item.accountNumber)}
                       >
                         <div className="account-card-head">
                           <strong>{item.accountType}</strong>
@@ -855,7 +920,7 @@ function App() {
                   <button
                     type="button"
                     className="ghost-button"
-                    onClick={() => currentCustomer && void loadDepositStatuses(currentCustomer.customerId, selectedAccount?.accountId)}
+                    onClick={() => currentCustomer && void loadDepositStatuses(selectedAccount?.accountNumber)}
                     disabled={!currentCustomer || busy}
                   >
                     Refresh statuses
@@ -868,7 +933,7 @@ function App() {
               ) : (
                 <div className="transaction-status-list">
                   {depositStatuses.map((item) => (
-                    <section key={item.transactionId} className="transaction-card">
+                    <section key={item.transactionNumber} className="transaction-card">
                       <div className="transaction-card-head">
                         <div>
                           <p className="eyebrow">Transaction</p>
@@ -880,7 +945,7 @@ function App() {
                       </div>
 
                       <dl className="detail-list">
-                        <div><dt>Account</dt><dd>{selectedAccount?.accountNumber ?? 'Selected account'}</dd></div>
+                        <div><dt>Account</dt><dd>{item.accountNumber}</dd></div>
                         <div><dt>Amount</dt><dd>{formatCurrency(item.amount, item.currency)}</dd></div>
                         <div><dt>Reference number</dt><dd>{item.referenceNumber ?? 'Not provided'}</dd></div>
                         <div><dt>Requested at</dt><dd>{new Date(item.requestedAt).toLocaleString()}</dd></div>

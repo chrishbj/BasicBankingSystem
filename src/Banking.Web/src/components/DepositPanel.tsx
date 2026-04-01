@@ -121,7 +121,6 @@ export function DepositPanel({
           <div><dt>Amount</dt><dd>{formatCurrency(deposit.amount, deposit.currency)}</dd></div>
           <div><dt>Correlation</dt><dd>{deposit.correlationId}</dd></div>
           <div><dt>Failure</dt><dd>{deposit.failureCode ?? 'None'}</dd></div>
-          <div><dt>Internal Reference</dt><dd className="subtle-code">{deposit.transactionId}</dd></div>
         </dl>
       )}
     </article>

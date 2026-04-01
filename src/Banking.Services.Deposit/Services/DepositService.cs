@@ -249,6 +249,8 @@ public sealed class DepositService(
                 .ToArray();
         }
 
+        var accountNumbers = await LoadAccountNumbersAsync(deposits, cancellationToken);
+
         var totalCount = deposits.Count;
         var items = deposits
             .Skip((pageNumber - 1) * pageSize)
@@ -258,6 +260,7 @@ public sealed class DepositService(
                 item.TransactionNumber,
                 item.CustomerId,
                 item.AccountId,
+                accountNumbers.GetValueOrDefault(item.AccountId, item.AccountId),
                 item.Amount,
                 item.Currency,
                 item.ReferenceNumber,
@@ -281,6 +284,7 @@ public sealed class DepositService(
         // PendingReview is the explicit "automation stopped here" queue for operators.
         var deposits = await depositRepository.GetPendingReviewAsync(int.MaxValue, cancellationToken);
         deposits = ApplyPendingReviewSort(deposits, sortBy, descending);
+        var accountNumbers = await LoadAccountNumbersAsync(deposits, cancellationToken);
         var totalCount = deposits.Count;
         var items = deposits
             .Skip((pageNumber - 1) * pageSize)
@@ -290,6 +294,7 @@ public sealed class DepositService(
                 item.TransactionNumber,
                 item.CustomerId,
                 item.AccountId,
+                accountNumbers.GetValueOrDefault(item.AccountId, item.AccountId),
                 item.Amount,
                 item.Currency,
                 item.CompensationStatus,
@@ -324,6 +329,28 @@ public sealed class DepositService(
         return descending
             ? deposits.OrderByDescending(keySelector).ToArray()
             : deposits.OrderBy(keySelector).ToArray();
+    }
+
+    private async Task<Dictionary<string, string>> LoadAccountNumbersAsync(
+        IReadOnlyCollection<DepositTransaction> deposits,
+        CancellationToken cancellationToken)
+    {
+        var accountIds = deposits
+            .Select(item => item.AccountId)
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+
+        var resolved = await Task.WhenAll(accountIds.Select(async accountId =>
+        {
+            var account = await accountDirectory.GetByIdAsync(accountId, cancellationToken);
+            return new
+            {
+                AccountId = accountId,
+                AccountNumber = account?.AccountNumber ?? accountId
+            };
+        }));
+
+        return resolved.ToDictionary(item => item.AccountId, item => item.AccountNumber, StringComparer.Ordinal);
     }
 
     public async Task<DepositResponse> RetryPendingReviewAsync(

@@ -35,6 +35,7 @@ public sealed record DepositSummaryResponse(
     string TransactionNumber,
     string CustomerId,
     string AccountId,
+    string AccountNumber,
     decimal Amount,
     string Currency,
     string? ReferenceNumber,

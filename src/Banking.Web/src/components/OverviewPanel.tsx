@@ -86,11 +86,12 @@ export function OverviewPanel({
 }: OverviewPanelProps) {
   const totalAvailableBalance = accountList.reduce((sum, item) => sum + item.availableBalance, 0)
   const totalLedgerBalance = accountList.reduce((sum, item) => sum + item.ledgerBalance, 0)
+  const loadedAccountNumbers = new Set(accountList.map((item) => item.accountNumber))
   const customerPendingReviewCount = customer
-    ? pendingReviewItems.filter((item) => item.customerId === customer.customerId).length
+    ? pendingReviewItems.filter((item) => loadedAccountNumbers.has(item.accountNumber)).length
     : 0
   const accountPendingReviewCount = account
-    ? pendingReviewItems.filter((item) => item.accountId === account.accountId).length
+    ? pendingReviewItems.filter((item) => item.accountNumber === account.accountNumber).length
     : 0
   const depositCount = accountHistory.filter((item) => item.postingType === 1).length
   const withdrawalCount = accountHistory.filter((item) => item.postingType === 3).length
@@ -286,7 +287,7 @@ export function OverviewPanel({
                 <li key={item.transactionId}>
                   <div>
                     <strong>{item.transactionNumber}</strong>
-                    <span>{item.failureCode ?? 'No failure code'}</span>
+                    <span>{item.accountNumber} | {item.failureCode ?? 'No failure code'}</span>
                   </div>
                   <div className="overview-list-meta">
                     <span>{formatCurrency(item.amount, item.currency)}</span>

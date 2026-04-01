@@ -2,13 +2,13 @@ import type {
   AccountActivityResponse,
   AccountResponse,
   AccountSummaryResponse,
+  CustomerDashboardResponse,
   CustomerResponse,
   DepositResponse,
   DepositSummaryResponse,
   PagedResponse,
+  TransactionStatusSummaryResponse,
 } from './types'
-
-const apiKey = 'local-dev-api-key'
 
 function extractErrorMessage(rawText: string, response: Response) {
   if (!rawText) {
@@ -30,9 +30,9 @@ function extractErrorMessage(rawText: string, response: Response) {
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(path, {
     ...init,
+    credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
-      'X-Api-Key': apiKey,
       ...(init?.headers ?? {}),
     },
   })
@@ -42,15 +42,15 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     throw new Error(extractErrorMessage(text, response))
   }
 
+  if (response.status === 204) {
+    return undefined as T
+  }
+
   return response.json() as Promise<T>
 }
 
-export function getCustomers(pageNumber = 1, pageSize = 50) {
-  return request<PagedResponse<CustomerResponse>>(`/customer-api/api/v1/customers?pageNumber=${pageNumber}&pageSize=${pageSize}`)
-}
-
 export function signInCustomer(customerNumber: string, identityLast4: string) {
-  return request<CustomerResponse>('/customer-api/api/v1/customers/portal-sign-in', {
+  return request<CustomerResponse>('/customer-portal-api/api/customer-portal/auth/sign-in', {
     method: 'POST',
     body: JSON.stringify({
       customerNumber,
@@ -59,54 +59,76 @@ export function signInCustomer(customerNumber: string, identityLast4: string) {
   })
 }
 
-export function getAccountsByCustomer(customerId: string, pageNumber = 1, pageSize = 50) {
-  return request<PagedResponse<AccountSummaryResponse>>(
-    `/account-api/api/v1/accounts?customerId=${encodeURIComponent(customerId)}&pageNumber=${pageNumber}&pageSize=${pageSize}`,
-  )
-}
-
-export function getAccount(accountId: string) {
-  return request<AccountResponse>(`/account-api/api/v1/accounts/${accountId}`)
-}
-
-export function getAccountActivities(accountId: string, pageNumber = 1, pageSize = 50) {
-  return request<PagedResponse<AccountActivityResponse>>(
-    `/account-api/api/v1/accounts/${accountId}/activities?pageNumber=${pageNumber}&pageSize=${pageSize}`,
-  )
-}
-
-export function submitDeposit(payload: Record<string, unknown>, idempotencyKey: string, correlationId: string) {
-  return request<DepositResponse>('/deposit-api/api/v1/deposits', {
+export function signOutCustomer() {
+  return request<void>('/customer-portal-api/api/customer-portal/auth/sign-out', {
     method: 'POST',
-    headers: {
-      'Idempotency-Key': idempotencyKey,
-      'X-Correlation-Id': correlationId,
-    },
+  })
+}
+
+export function getCurrentCustomer() {
+  return request<CustomerResponse>('/customer-portal-api/api/customer-portal/auth/me')
+}
+
+export function getDashboard() {
+  return request<CustomerDashboardResponse>('/customer-portal-api/api/customer-portal/dashboard')
+}
+
+export function getAccountsByCustomer(pageNumber = 1, pageSize = 50) {
+  return request<PagedResponse<AccountSummaryResponse>>(
+    `/customer-portal-api/api/customer-portal/accounts?pageNumber=${pageNumber}&pageSize=${pageSize}`,
+  )
+}
+
+export function getAccount(accountNumber: string) {
+  return request<AccountResponse>(`/customer-portal-api/api/customer-portal/accounts/${encodeURIComponent(accountNumber)}`)
+}
+
+export function getAccountActivities(accountNumber: string, pageNumber = 1, pageSize = 50) {
+  return request<PagedResponse<AccountActivityResponse>>(
+    `/customer-portal-api/api/customer-portal/accounts/${encodeURIComponent(accountNumber)}/activities?pageNumber=${pageNumber}&pageSize=${pageSize}`,
+  )
+}
+
+export function submitDeposit(payload: Record<string, unknown>, _idempotencyKey: string, _correlationId: string) {
+  return request<DepositResponse>('/customer-portal-api/api/customer-portal/deposits', {
+    method: 'POST',
     body: JSON.stringify(payload),
   })
 }
 
 export function submitWithdrawal(accountId: string, payload: Record<string, unknown>) {
-  return request<AccountResponse>(`/account-api/api/v1/accounts/${accountId}/withdrawals`, {
+  return request<AccountResponse>(`/customer-portal-api/api/customer-portal/accounts/${encodeURIComponent(accountId)}/withdrawals`, {
     method: 'POST',
     body: JSON.stringify(payload),
   })
 }
 
-export function getDeposit(transactionId: string) {
-  return request<DepositResponse>(`/deposit-api/api/v1/deposits/${transactionId}`)
+export function getDeposit(transactionNumber: string) {
+  return request<TransactionStatusSummaryResponse>(`/customer-portal-api/api/customer-portal/transactions/${encodeURIComponent(transactionNumber)}`)
 }
 
-export function searchDeposits(customerId: string, accountId?: string, pageNumber = 1, pageSize = 20) {
+export function searchDeposits(accountNumber?: string, pageNumber = 1, pageSize = 20) {
   const query = new URLSearchParams({
-    customerId,
     pageNumber: String(pageNumber),
     pageSize: String(pageSize),
   })
 
-  if (accountId) {
-    query.set('accountId', accountId)
+  if (accountNumber) {
+    query.set('accountNumber', accountNumber)
   }
 
-  return request<PagedResponse<DepositSummaryResponse>>(`/deposit-api/api/v1/deposits?${query.toString()}`)
+  return request<PagedResponse<DepositSummaryResponse>>(`/customer-portal-api/api/customer-portal/deposits?${query.toString()}`)
+}
+
+export function getTransactions(accountNumber?: string, pageNumber = 1, pageSize = 20) {
+  const query = new URLSearchParams({
+    pageNumber: String(pageNumber),
+    pageSize: String(pageSize),
+  })
+
+  if (accountNumber) {
+    query.set('accountNumber', accountNumber)
+  }
+
+  return request<PagedResponse<TransactionStatusSummaryResponse>>(`/customer-portal-api/api/customer-portal/transactions?${query.toString()}`)
 }

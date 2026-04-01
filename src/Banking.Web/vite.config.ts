@@ -7,24 +7,25 @@ export default defineConfig({
   server: {
     proxy: {
       '/customer-api': {
-        target: 'http://localhost:5101',
+        target: 'http://localhost:5000',
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/customer-api/, ''),
       },
       '/account-api': {
-        target: 'http://localhost:5102',
+        target: 'http://localhost:5000',
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/account-api/, ''),
       },
       '/deposit-api': {
-        target: 'http://localhost:5103',
+        target: 'http://localhost:5000',
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/deposit-api/, ''),
       },
       '/audit-api': {
-        target: 'http://localhost:5104',
+        target: 'http://localhost:5000',
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/audit-api/, ''),
+      },
+      '/gateway-api': {
+        target: 'http://localhost:5000',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/gateway-api/, ''),
       },
     },
   },
