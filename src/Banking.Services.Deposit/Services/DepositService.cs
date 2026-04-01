@@ -6,6 +6,7 @@ using Banking.Services.Deposit.Domain;
 using Banking.Services.Deposit.Exceptions;
 using Banking.Services.Deposit.Messaging;
 using Banking.Services.Deposit.Repositories;
+using Microsoft.Extensions.Options;
 
 namespace Banking.Services.Deposit.Services;
 
@@ -14,6 +15,8 @@ public sealed class DepositService(
     IDepositAccountDirectory accountDirectory,
     IDepositTransactionProcessor depositTransactionProcessor,
     IAuditLogWriter auditLogWriter,
+    IOptions<PendingReviewRetryOptions> pendingReviewRetryOptions,
+    IOptions<RabbitMqOptions> rabbitMqOptions,
     ILogger<DepositService> logger) : IDepositService
 {
     public async Task<DepositResponse> CreateAsync(
@@ -314,6 +317,69 @@ public sealed class DepositService(
         return new PagedResponse<PendingReviewDepositSummaryResponse>(items, pageNumber, pageSize, totalCount, totalPages);
     }
 
+    public async Task<DepositRuntimeStatusResponse> GetRuntimeStatusAsync(CancellationToken cancellationToken)
+    {
+        var pendingReviewItems = await depositRepository.GetPendingReviewAsync(int.MaxValue, cancellationToken);
+        var pendingOutboxMessages = await depositRepository.GetPendingOutboxMessagesAsync(int.MaxValue, cancellationToken);
+        var retrySettings = pendingReviewRetryOptions.Value;
+        var transportSettings = rabbitMqOptions.Value;
+
+        var workers = new[]
+        {
+            new DepositWorkerRuntimeStatusResponse(
+                "DepositPendingReviewRetryWorker",
+                "AutomaticCompensationRetry",
+                retrySettings.Enabled,
+                Math.Max(250, retrySettings.PollingIntervalMilliseconds),
+                pendingReviewItems.Count(item =>
+                    item.Status == DepositStatus.PendingReview &&
+                    item.CompensationStatus == DepositSagaStepStatus.Failed &&
+                    item.CompensationRetryCount < retrySettings.MaxAutomaticRetries),
+                $"Max automatic retries: {retrySettings.MaxAutomaticRetries}."),
+            new DepositWorkerRuntimeStatusResponse(
+                "DepositOutboxDispatcher",
+                "OutboxDispatch",
+                true,
+                Math.Max(50, transportSettings.PollingIntervalMilliseconds),
+                pendingOutboxMessages.Count,
+                $"Transport: {transportSettings.Transport}. Queue: {transportSettings.QueueName}.")
+        };
+
+        return new DepositRuntimeStatusResponse(
+            DateTimeOffset.UtcNow,
+            transportSettings.Transport,
+            pendingReviewItems.Count,
+            pendingOutboxMessages.Count,
+            workers);
+    }
+
+    public async Task<IReadOnlyCollection<DepositOutboxMessageResponse>> GetOutboxMessagesAsync(
+        int maxCount,
+        bool pendingOnly,
+        CancellationToken cancellationToken)
+    {
+        var messages = await depositRepository.GetOutboxMessagesAsync(maxCount, pendingOnly, cancellationToken);
+        return messages.Select(MapOutboxMessage).ToArray();
+    }
+
+    public async Task<DepositOutboxMessageResponse?> GetOutboxMessageByIdAsync(
+        string messageId,
+        CancellationToken cancellationToken)
+    {
+        var message = await depositRepository.GetOutboxMessageByIdAsync(messageId, cancellationToken);
+        return message is null ? null : MapOutboxMessage(message);
+    }
+
+    public async Task<DepositOutboxMessageResponse?> RequeueOutboxMessageAsync(
+        string messageId,
+        RequeueDepositOutboxMessageRequest request,
+        CancellationToken cancellationToken)
+    {
+        await depositRepository.RequeueOutboxMessageAsync(messageId, cancellationToken);
+        var message = await depositRepository.GetOutboxMessageByIdAsync(messageId, cancellationToken);
+        return message is null ? null : MapOutboxMessage(message);
+    }
+
     private static IReadOnlyCollection<DepositTransaction> ApplyPendingReviewSort(
         IReadOnlyCollection<DepositTransaction> deposits,
         PendingReviewSortBy sortBy,
@@ -501,5 +567,16 @@ public sealed class DepositService(
             transaction.ReviewResolvedAt,
             transaction.LastCompensationAttemptAt,
             transaction.LastProcessedAt);
+    }
+
+    private static DepositOutboxMessageResponse MapOutboxMessage(DepositOutboxMessage message)
+    {
+        return new DepositOutboxMessageResponse(
+            message.MessageId,
+            message.TransactionId,
+            message.MessageType,
+            message.OccurredAt,
+            message.ProcessedAt,
+            message.LastError);
     }
 }

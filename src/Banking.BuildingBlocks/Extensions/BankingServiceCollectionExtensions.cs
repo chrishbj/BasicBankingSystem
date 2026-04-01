@@ -21,6 +21,7 @@ public static class BankingServiceCollectionExtensions
         services.AddControllers();
         services.AddProblemDetails();
         services.AddHealthChecks();
+        services.AddBankingRequestProtection(configuration, environment);
         services.Configure<BankingSecurityOptions>(configuration.GetSection(BankingSecurityOptions.SectionName));
         services.Configure<BankingSecurityRuntimeOptions>(options => options.AuthenticationEnabled = authenticationEnabled);
         services.AddSingleton<BankingSecurityHeaderValidator>();
@@ -51,6 +52,44 @@ public static class BankingServiceCollectionExtensions
                         .RequireAuthenticatedUser()
                         .RequireRole(BankingPrincipalTypes.ExternalClient));
 
+                options.AddPolicy(BankingPolicies.CustomerOnly, policy =>
+                    policy.AddAuthenticationSchemes(BankingAuthenticationDefaults.SchemeName)
+                        .RequireAuthenticatedUser()
+                        .RequireRole(BankingPrincipalTypes.Customer));
+
+                options.AddPolicy(BankingPolicies.BusinessUserOnly, policy =>
+                    policy.AddAuthenticationSchemes(BankingAuthenticationDefaults.SchemeName)
+                        .RequireAuthenticatedUser()
+                        .RequireRole(BankingPrincipalTypes.BusinessUser));
+
+                options.AddPolicy(BankingPolicies.PlatformReadOnly, policy =>
+                    policy.AddAuthenticationSchemes(BankingAuthenticationDefaults.SchemeName)
+                        .RequireAuthenticatedUser()
+                        .RequireRole(
+                            BankingPrincipalTypes.PlatformOperator,
+                            BankingPrincipalTypes.PlatformAdministrator,
+                            BankingPrincipalTypes.SecurityAdministrator,
+                            BankingPrincipalTypes.InternalService));
+
+                options.AddPolicy(BankingPolicies.PlatformOperatorOnly, policy =>
+                    policy.AddAuthenticationSchemes(BankingAuthenticationDefaults.SchemeName)
+                        .RequireAuthenticatedUser()
+                        .RequireRole(
+                            BankingPrincipalTypes.PlatformOperator,
+                            BankingPrincipalTypes.PlatformAdministrator));
+
+                options.AddPolicy(BankingPolicies.SecurityAdministratorOnly, policy =>
+                    policy.AddAuthenticationSchemes(BankingAuthenticationDefaults.SchemeName)
+                        .RequireAuthenticatedUser()
+                        .RequireRole(BankingPrincipalTypes.SecurityAdministrator));
+
+                options.AddPolicy(BankingPolicies.PrivilegedMaintenanceAction, policy =>
+                    policy.AddAuthenticationSchemes(BankingAuthenticationDefaults.SchemeName)
+                        .RequireAuthenticatedUser()
+                        .RequireRole(
+                            BankingPrincipalTypes.PlatformAdministrator,
+                            BankingPrincipalTypes.SecurityAdministrator));
+
                 options.AddPolicy(BankingPolicies.InternalServiceOnly, policy =>
                     policy.AddAuthenticationSchemes(BankingAuthenticationDefaults.SchemeName)
                         .RequireAuthenticatedUser()
@@ -61,6 +100,12 @@ public static class BankingServiceCollectionExtensions
                 // Testing disables auth globally so test cases can focus on business behavior.
                 options.AddPolicy(BankingPolicies.ExternalOrInternal, policy => policy.RequireAssertion(_ => true));
                 options.AddPolicy(BankingPolicies.ExternalClientOnly, policy => policy.RequireAssertion(_ => true));
+                options.AddPolicy(BankingPolicies.CustomerOnly, policy => policy.RequireAssertion(_ => true));
+                options.AddPolicy(BankingPolicies.BusinessUserOnly, policy => policy.RequireAssertion(_ => true));
+                options.AddPolicy(BankingPolicies.PlatformReadOnly, policy => policy.RequireAssertion(_ => true));
+                options.AddPolicy(BankingPolicies.PlatformOperatorOnly, policy => policy.RequireAssertion(_ => true));
+                options.AddPolicy(BankingPolicies.SecurityAdministratorOnly, policy => policy.RequireAssertion(_ => true));
+                options.AddPolicy(BankingPolicies.PrivilegedMaintenanceAction, policy => policy.RequireAssertion(_ => true));
                 options.AddPolicy(BankingPolicies.InternalServiceOnly, policy => policy.RequireAssertion(_ => true));
             }
         });

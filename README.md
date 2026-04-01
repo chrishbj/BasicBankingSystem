@@ -11,7 +11,7 @@ It demonstrates:
 - domain-oriented microservice boundaries
 - resilient deposit processing with `Idempotency-Key`, `Outbox`, and `SAGA`
 - explicit compensation and `PendingReview` recovery
-- separate React applications for bank staff and customers
+- separate React applications for bank staff, customers, and platform operators
 - layered testing with unit, integration, and contract coverage
 - OpenAPI and Swagger as first-class integration surfaces
 
@@ -55,6 +55,7 @@ Some seeded demo identities still normalize values such as `WITHDRAW-DEMO-001 ->
 
 - `Banking.Web`: operator-facing operations console
 - `Banking.CustomerPortal`: customer-facing self-service portal
+- `Banking.PlatformOps`: platform operations console shell for runtime monitoring and diagnostics
 
 ### Shared Infrastructure
 
@@ -80,11 +81,26 @@ Relevant source:
 
 Deposits require `Idempotency-Key`, and downstream posting references are also treated as idempotent.
 
+The platform now separates request protection into two layers:
+
+- all HTTP endpoints receive shared request-rate protection
+- idempotent write endpoints receive replay-aware protection
+
+For idempotent writes such as `POST /api/v1/deposits`:
+
+- the first retry with the same `Idempotency-Key` replays the original logical result quickly
+- repeated short-window replays of the same write are progressively slowed down
+- replay responses may include `X-Idempotent-Replay`, `X-Idempotency-Replay-Attempt`, and `Retry-After`
+
+This means safe client retries stay safe, while duplicate request storms are softened without changing the business result.
+
 Relevant source:
 
 - `src/Banking.Services.Deposit/Controllers/DepositsController.cs`
 - `src/Banking.Services.Deposit/Services/DepositService.cs`
 - `src/Banking.Services.Account/Services/AccountService.cs`
+- `src/Banking.BuildingBlocks/Extensions/RequestProtectionExtensions.cs`
+- `src/Banking.BuildingBlocks/Resilience/IdempotencyReplayProtectionMiddleware.cs`
 
 ### Outbox And SAGA
 
@@ -105,6 +121,18 @@ Relevant source:
 - `src/Banking.Web/src/App.tsx`
 - `src/Banking.Web/src/hooks/useOperationsConsole.ts`
 - `src/Banking.CustomerPortal/src/App.tsx`
+- `src/Banking.PlatformOps/src/App.tsx`
+
+### Platform Control Plane
+
+The gateway now exposes a platform-oriented read API for service monitoring, workflow summary, correlation diagnostics, and deposit runtime worker status. The repository also includes a dedicated `Banking.PlatformOps` frontend shell to consume that control-plane surface.
+
+Relevant source:
+
+- `src/Banking.Gateway/Controllers/PlatformController.cs`
+- `src/Banking.Gateway/Services/PlatformMonitoringService.cs`
+- `src/Banking.PlatformOps/src/App.tsx`
+- `src/Banking.PlatformOps/src/api.ts`
 
 ## Tech Stack
 
@@ -150,6 +178,12 @@ npm install
 npm run dev
 ```
 
+```powershell
+cd src/Banking.PlatformOps
+npm install
+npm run dev
+```
+
 ### Run Docker Desktop Stack
 
 ```powershell
@@ -165,12 +199,15 @@ docker compose --env-file infra/docker.env.local -f infra/docker-compose.docker-
 - [Saga, Outbox, And Idempotency](docs/21-saga-outbox-idempotency.md)
 - [Database Schema And Relationships](docs/29-database-schema-and-relationships.md)
 - [Gateway And Customer BFF Design](docs/32-gateway-and-customer-bff-design.md)
+- [Platform Identity and Operations Architecture](docs/34-platform-identity-and-operations-architecture.md)
+- [Platform Operations Console Detailed Design](docs/35-platform-operations-console-detailed-design.md)
 - [Source Code Reading Guide](docs/30-source-code-reading-guide.md)
 
 ### Testing And Contracts
 
 - [Testing And Quality](docs/22-testing-and-quality.md)
 - [OpenAPI And API Contracts](docs/23-openapi-and-api-contracts.md)
+- [Request Protection and Idempotency Strategy](docs/33-request-protection-and-idempotency-strategy.md)
 - [End-to-End Manual Test Guide](docs/13-end-to-end-manual-test.md)
 - [Postman Testing Guide](docs/14-postman-testing.md)
 - [Postman Runner and Newman Guide](docs/15-postman-runner-and-newman.md)

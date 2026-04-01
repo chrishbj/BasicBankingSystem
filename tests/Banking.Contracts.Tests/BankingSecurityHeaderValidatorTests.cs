@@ -20,7 +20,9 @@ public sealed class BankingSecurityHeaderValidatorTests
                     new ExternalApiKeyOptions
                     {
                         Name = "local-dev-client",
-                        ApiKey = "local-dev-api-key"
+                        ApiKey = "local-dev-api-key",
+                        PrincipalType = BankingPrincipalTypes.BusinessUser,
+                        Roles = [BankingPrincipalTypes.PlatformOperator]
                     }
                 ],
                 InternalServices =
@@ -28,7 +30,8 @@ public sealed class BankingSecurityHeaderValidatorTests
                     new InternalServiceKeyOptions
                     {
                         Name = "deposit-service",
-                        ApiKey = "deposit-service-dev-key"
+                        ApiKey = "deposit-service-dev-key",
+                        Roles = [BankingPrincipalTypes.InternalService]
                     }
                 ]
             }
@@ -48,8 +51,9 @@ public sealed class BankingSecurityHeaderValidatorTests
         var result = _validator.Validate(headers);
 
         result.Succeeded.Should().BeTrue();
-        result.PrincipalType.Should().Be(BankingPrincipalTypes.ExternalClient);
+        result.PrincipalType.Should().Be(BankingPrincipalTypes.BusinessUser);
         result.PrincipalName.Should().Be("local-dev-client");
+        result.Roles.Should().Contain(BankingPrincipalTypes.PlatformOperator);
     }
 
     [Fact]
@@ -66,6 +70,7 @@ public sealed class BankingSecurityHeaderValidatorTests
         result.Succeeded.Should().BeTrue();
         result.PrincipalType.Should().Be(BankingPrincipalTypes.InternalService);
         result.PrincipalName.Should().Be("deposit-service");
+        result.Roles.Should().Contain(BankingPrincipalTypes.InternalService);
     }
 
     [Fact]

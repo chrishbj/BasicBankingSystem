@@ -33,7 +33,10 @@ public sealed class BankingSecurityHeaderValidator(IOptionsMonitor<BankingSecuri
                 return BankingSecurityValidationResult.Fail("The internal service credentials are invalid.");
             }
 
-            return BankingSecurityValidationResult.Success(BankingPrincipalTypes.InternalService, matchedService.Name);
+            return BankingSecurityValidationResult.Success(
+                matchedService.PrincipalType,
+                matchedService.Name,
+                matchedService.Roles);
         }
 
         if (hasApiKey)
@@ -46,7 +49,10 @@ public sealed class BankingSecurityHeaderValidator(IOptionsMonitor<BankingSecuri
                 return BankingSecurityValidationResult.Fail("The API key is invalid.");
             }
 
-            return BankingSecurityValidationResult.Success(BankingPrincipalTypes.ExternalClient, matchedClient.Name);
+            return BankingSecurityValidationResult.Success(
+                matchedClient.PrincipalType,
+                matchedClient.Name,
+                matchedClient.Roles);
         }
 
         return BankingSecurityValidationResult.NoCredentials();

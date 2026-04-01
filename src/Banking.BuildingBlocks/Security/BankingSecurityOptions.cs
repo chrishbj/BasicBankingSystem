@@ -23,6 +23,10 @@ public sealed class ExternalApiKeyOptions
     public string Name { get; set; } = string.Empty;
 
     public string ApiKey { get; set; } = string.Empty;
+
+    public string PrincipalType { get; set; } = BankingPrincipalTypes.ExternalClient;
+
+    public List<string> Roles { get; set; } = [];
 }
 
 public sealed class InternalServiceKeyOptions
@@ -30,6 +34,10 @@ public sealed class InternalServiceKeyOptions
     public string Name { get; set; } = string.Empty;
 
     public string ApiKey { get; set; } = string.Empty;
+
+    public string PrincipalType { get; set; } = BankingPrincipalTypes.InternalService;
+
+    public List<string> Roles { get; set; } = [];
 }
 
 public sealed class CurrentServiceIdentityOptions

@@ -48,6 +48,31 @@ public class InMemoryDepositRepository : IDepositRepository
                 .ToArray());
     }
 
+    public Task<DepositOutboxMessage?> GetOutboxMessageByIdAsync(string messageId, CancellationToken cancellationToken)
+    {
+        _outboxMessages.TryGetValue(messageId, out var message);
+        return Task.FromResult(message);
+    }
+
+    public Task<IReadOnlyCollection<DepositOutboxMessage>> GetOutboxMessagesAsync(
+        int maxCount,
+        bool pendingOnly,
+        CancellationToken cancellationToken)
+    {
+        var query = _outboxMessages.Values.AsEnumerable();
+        if (pendingOnly)
+        {
+            query = query.Where(item => item.ProcessedAt is null);
+        }
+
+        return Task.FromResult<IReadOnlyCollection<DepositOutboxMessage>>(
+            query
+                .OrderBy(item => item.ProcessedAt is null ? 0 : 1)
+                .ThenBy(item => item.OccurredAt)
+                .Take(maxCount)
+                .ToArray());
+    }
+
     public Task<IReadOnlyCollection<DepositOutboxMessage>> GetPendingOutboxMessagesAsync(int maxCount, CancellationToken cancellationToken)
     {
         return Task.FromResult<IReadOnlyCollection<DepositOutboxMessage>>(
@@ -63,6 +88,17 @@ public class InMemoryDepositRepository : IDepositRepository
         if (_outboxMessages.TryGetValue(messageId, out var message))
         {
             message.ProcessedAt = processedAt;
+            message.LastError = null;
+        }
+
+        return Task.CompletedTask;
+    }
+
+    public Task RequeueOutboxMessageAsync(string messageId, CancellationToken cancellationToken)
+    {
+        if (_outboxMessages.TryGetValue(messageId, out var message))
+        {
+            message.ProcessedAt = null;
             message.LastError = null;
         }
 

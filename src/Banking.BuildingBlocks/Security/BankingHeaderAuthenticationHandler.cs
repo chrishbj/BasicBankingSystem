@@ -41,15 +41,11 @@ public sealed class BankingHeaderAuthenticationHandler(
             new(BankingPrincipalTypes.PrincipalNameClaim, validationResult.PrincipalName!)
         };
 
-        if (validationResult.PrincipalType == BankingPrincipalTypes.ExternalClient)
-        {
-            claims.Add(new Claim(ClaimTypes.Role, BankingPrincipalTypes.ExternalClient));
-        }
+        claims.Add(new Claim(ClaimTypes.Role, validationResult.PrincipalType!));
 
-        if (validationResult.PrincipalType == BankingPrincipalTypes.InternalService)
+        foreach (var role in validationResult.Roles.Where(role => !string.IsNullOrWhiteSpace(role)).Distinct(StringComparer.Ordinal))
         {
-            // Internal callers receive a dedicated role so services can protect machine-only endpoints.
-            claims.Add(new Claim(ClaimTypes.Role, BankingPrincipalTypes.InternalService));
+            claims.Add(new Claim(ClaimTypes.Role, role));
         }
 
         var identity = new ClaimsIdentity(claims, Scheme.Name);
