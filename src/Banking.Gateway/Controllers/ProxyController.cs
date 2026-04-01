@@ -9,6 +9,10 @@ namespace Banking.Gateway.Controllers;
 public sealed class ProxyController(GatewayProxyService proxyService) : ControllerBase
 {
     [AllowAnonymous]
+    [HttpGet("customer-api/swagger")]
+    public IActionResult RedirectCustomerSwagger() => Redirect("/customer-api/swagger/index.html");
+
+    [AllowAnonymous]
     [AcceptVerbs("GET", "HEAD")]
     [Route("customer-api/api/v1/health")]
     public Task ProxyCustomerHealth(CancellationToken cancellationToken) =>
@@ -30,6 +34,10 @@ public sealed class ProxyController(GatewayProxyService proxyService) : Controll
     [Route("customer-api/{**downstreamPath}")]
     public Task ProxyCustomer(string? downstreamPath, CancellationToken cancellationToken) =>
         proxyService.ProxyAsync(HttpContext, "customer-service", downstreamPath, cancellationToken);
+
+    [AllowAnonymous]
+    [HttpGet("account-api/swagger")]
+    public IActionResult RedirectAccountSwagger() => Redirect("/account-api/swagger/index.html");
 
     [AllowAnonymous]
     [AcceptVerbs("GET", "HEAD")]
@@ -55,6 +63,10 @@ public sealed class ProxyController(GatewayProxyService proxyService) : Controll
         proxyService.ProxyAsync(HttpContext, "account-service", downstreamPath, cancellationToken);
 
     [AllowAnonymous]
+    [HttpGet("deposit-api/swagger")]
+    public IActionResult RedirectDepositSwagger() => Redirect("/deposit-api/swagger/index.html");
+
+    [AllowAnonymous]
     [AcceptVerbs("GET", "HEAD")]
     [Route("deposit-api/api/v1/health")]
     public Task ProxyDepositHealth(CancellationToken cancellationToken) =>
@@ -76,6 +88,10 @@ public sealed class ProxyController(GatewayProxyService proxyService) : Controll
     [Route("deposit-api/{**downstreamPath}")]
     public Task ProxyDeposit(string? downstreamPath, CancellationToken cancellationToken) =>
         proxyService.ProxyAsync(HttpContext, "deposit-service", downstreamPath, cancellationToken);
+
+    [AllowAnonymous]
+    [HttpGet("audit-api/swagger")]
+    public IActionResult RedirectAuditSwagger() => Redirect("/audit-api/swagger/index.html");
 
     [AllowAnonymous]
     [AcceptVerbs("GET", "HEAD")]

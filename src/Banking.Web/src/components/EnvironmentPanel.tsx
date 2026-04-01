@@ -5,10 +5,10 @@ type EnvironmentPanelProps = {
 const services = ['customer', 'account', 'deposit', 'audit'] as const
 
 const serviceLinks: Record<string, string> = {
-  customer: '/customer-api/swagger',
-  account: '/account-api/swagger',
-  deposit: '/deposit-api/swagger',
-  audit: '/audit-api/swagger',
+  customer: '/customer-api/swagger/index.html',
+  account: '/account-api/swagger/index.html',
+  deposit: '/deposit-api/swagger/index.html',
+  audit: '/audit-api/swagger/index.html',
 }
 
 export function EnvironmentPanel({ health }: EnvironmentPanelProps) {

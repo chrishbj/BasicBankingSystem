@@ -39,7 +39,7 @@ public sealed class GatewayApiTests : IClassFixture<GatewayWebApplicationFactory
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         content.Should().Contain("Banking Gateway");
-        content.Should().Contain("/customer-api/swagger");
+        content.Should().Contain("/customer-api/swagger/index.html");
         content.Should().Contain("/audit-api/openapi/v1.json");
     }
 
@@ -62,5 +62,15 @@ public sealed class GatewayApiTests : IClassFixture<GatewayWebApplicationFactory
         proxied.Headers["X-Service-Name"].Should().ContainSingle("gateway-service");
         proxied.Headers.Should().ContainKey("X-Service-Key");
         proxied.Headers["X-Service-Key"].Should().ContainSingle("gateway-service-dev-key");
+    }
+
+    [Fact]
+    public async Task SwaggerShortcut_Should_RedirectToIndexHtml()
+    {
+        var response = await _client.GetAsync("/customer-api/swagger");
+
+        response.StatusCode.Should().Be(HttpStatusCode.Redirect);
+        response.Headers.Location.Should().NotBeNull();
+        response.Headers.Location!.ToString().Should().Be("/customer-api/swagger/index.html");
     }
 }

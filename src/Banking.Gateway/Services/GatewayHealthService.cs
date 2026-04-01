@@ -38,7 +38,7 @@ public sealed class GatewayHealthService(IHttpClientFactory httpClientFactory)
                 service.BasePath,
                 string.IsNullOrWhiteSpace(health) ? "Healthy" : health,
                 (int)response.StatusCode,
-                $"{service.BasePath}/swagger",
+                $"{service.BasePath}/swagger/index.html",
                 $"{service.BasePath}/openapi/v1.json");
         }
         catch (TaskCanceledException)
@@ -59,6 +59,6 @@ public sealed class GatewayHealthService(IHttpClientFactory httpClientFactory)
             service.BasePath,
             health,
             null,
-            $"{service.BasePath}/swagger",
+            $"{service.BasePath}/swagger/index.html",
             $"{service.BasePath}/openapi/v1.json");
 }
