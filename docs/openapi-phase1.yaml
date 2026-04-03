@@ -926,7 +926,7 @@ components:
         reason:
           type: string
           maxLength: 500
-    ResolveDepositReviewRequest:
+    PlatformResolveDepositReviewRequest:
       type: object
       required: [resolution, reason]
       properties:
@@ -1509,32 +1509,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PendingReviewDepositPagedResponse'
-  /api/v1/deposits/by-number/{transactionNumber}:
-    get:
-      tags: [Deposits]
-      summary: Get deposit by transaction number
-      security:
-        - externalApiKey: []
-      parameters:
-        - $ref: '#/components/parameters/CorrelationIdHeader'
-        - name: transactionNumber
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        '200':
-          description: Deposit detail
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Deposit'
-        '404':
-          description: Deposit not found
-          content:
-            application/problem+json:
-              schema:
-                $ref: '#/components/schemas/ProblemDetails'
   /api/v1/deposits/{transactionId}/review/retry-compensation:
     post:
       tags: [Deposits]
@@ -1590,8 +1564,8 @@ paths:
         required: true
         content:
           application/json:
-            schema:
-              $ref: '#/components/schemas/ResolveDepositReviewRequest'
+              schema:
+                $ref: '#/components/schemas/PlatformResolveDepositReviewRequest'
       responses:
         '200':
           description: Deposit after manual resolution
