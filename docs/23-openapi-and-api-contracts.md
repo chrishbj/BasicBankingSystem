@@ -9,6 +9,19 @@ This repository uses OpenAPI as both documentation and a stability mechanism bet
 - `docs/openapi-phase1.yaml`
 - `tests/Banking.Contracts.Tests/OpenApiContractTests.cs`
 
+Current scope of `docs/openapi-phase1.yaml`:
+
+- documented public backend service APIs
+- customer, account, deposit, audit, and platform endpoints
+- deposit pending-review endpoints that are part of the operator-facing service workflow
+
+Not currently in scope:
+
+- Gateway routes
+- Customer Portal BFF routes
+- demo-only endpoints
+- internal-only service-to-service endpoints
+
 ## Runtime Swagger Support
 
 Each backend service exposes Swagger UI in local development and Docker mode.
@@ -40,6 +53,8 @@ The React applications depend on stable API shapes for:
 - account activity history
 - deposit search and transaction status
 - pending review workflows
+
+Some stable HTTP surfaces are intentionally still protected only by integration tests today, especially Gateway and Customer Portal BFF routes. They should move into contract scope only if the team decides to maintain them as explicit long-term API contracts.
 
 Frontend contract usage:
 

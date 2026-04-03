@@ -1,11 +1,12 @@
 openapi: 3.1.0
 info:
-  title: BasicBankingSystem Phase 1 API
+  title: BasicBankingSystem Phase 1 Service APIs
   version: 1.0.0
   description: |
-    Phase 1 API contract for the Basic Banking System.
-    Scope includes customer management, account opening, deposit processing,
-    audit retrieval, and platform health endpoints.
+    Phase 1 API contract for the public backend service APIs in BasicBankingSystem.
+    This document intentionally covers the documented service endpoints only.
+    Gateway routes, Customer Portal BFF routes, demo endpoints, and internal-only service
+    operations are protected by integration tests unless they are explicitly added here.
 servers:
   - url: http://localhost:8080
     description: Local gateway
@@ -17,10 +18,10 @@ tags:
   - name: Platform
 components:
   securitySchemes:
-    bearerAuth:
-      type: http
-      scheme: bearer
-      bearerFormat: JWT
+    externalApiKey:
+      type: apiKey
+      in: header
+      name: X-Api-Key
   parameters:
     CorrelationIdHeader:
       name: X-Correlation-Id
@@ -108,12 +109,24 @@ components:
     AccountStatus:
       type: string
       enum: [Active, Frozen, Closed]
+    AccountPostingType:
+      type: string
+      enum: [DepositCredit, DepositReversal, WithdrawalDebit]
     DepositStatus:
       type: string
       enum: [Received, Processing, Succeeded, Rejected, Failed, PendingReview]
     Channel:
       type: string
-      enum: [Counter, Online, ATM, Batch]
+      enum: [Counter, Online, Atm, Batch]
+    DepositSagaStepStatus:
+      type: string
+      enum: [NotStarted, InProgress, Succeeded, Failed, Compensated, Skipped]
+    DepositReviewResolution:
+      type: string
+      enum: [None, RetryRequested, ReversedExternally, FailedExternally]
+    PendingReviewSortBy:
+      type: string
+      enum: [ReviewRequiredAt, LastCompensationAttemptAt, RequestedAt]
     CreateCustomerRequest:
       type: object
       required: [fullName, identityType, identityNumber, mobile, address, riskLevel]
@@ -138,9 +151,19 @@ components:
         riskLevel:
           type: string
           maxLength: 30
+    CustomerPortalSignInRequest:
+      type: object
+      required: [customerNumber, identityLast4]
+      properties:
+        customerNumber:
+          type: string
+        identityLast4:
+          type: string
+          minLength: 4
+          maxLength: 4
     Customer:
       type: object
-      required: [customerId, customerNumber, fullName, identityType, identityNumberMasked, mobile, address, riskLevel, status, createdAt, updatedAt]
+      required: [customerId, customerNumber, fullName, identityType, identityNumberMasked, portalIdentityLast4, mobile, address, riskLevel, status, createdAt, updatedAt]
       properties:
         customerId:
           type: string
@@ -151,6 +174,8 @@ components:
         identityType:
           type: string
         identityNumberMasked:
+          type: string
+        portalIdentityLast4:
           type: string
         mobile:
           type: string
@@ -171,13 +196,17 @@ components:
           format: date-time
     CustomerSummary:
       type: object
-      required: [customerId, customerNumber, fullName, mobile, status, createdAt]
+      required: [customerId, customerNumber, fullName, identityNumberMasked, portalIdentityLast4, mobile, status, createdAt]
       properties:
         customerId:
           type: string
         customerNumber:
           type: string
         fullName:
+          type: string
+        identityNumberMasked:
+          type: string
+        portalIdentityLast4:
           type: string
         mobile:
           type: string
@@ -202,18 +231,6 @@ components:
           type: integer
         totalPages:
           type: integer
-    UpdateCustomerContactRequest:
-      type: object
-      required: [mobile, address]
-      properties:
-        mobile:
-          type: string
-          maxLength: 30
-        email:
-          type: [string, "null"]
-          format: email
-        address:
-          $ref: '#/components/schemas/Address'
     ChangeCustomerStatusRequest:
       type: object
       required: [targetStatus, reason]
@@ -249,6 +266,26 @@ components:
           type: string
           minLength: 3
           maxLength: 3
+    CreateWithdrawalRequest:
+      type: object
+      required: [amount, currency, referenceNumber]
+      properties:
+        amount:
+          type: number
+          exclusiveMinimum: 0
+        currency:
+          type: string
+          minLength: 3
+          maxLength: 3
+        referenceNumber:
+          type: string
+          minLength: 1
+          maxLength: 100
+        correlationId:
+          type: [string, "null"]
+        note:
+          type: [string, "null"]
+          maxLength: 500
     Account:
       type: object
       required: [accountId, accountNumber, customerId, accountType, currency, status, availableBalance, ledgerBalance, openedAt]
@@ -309,26 +346,43 @@ components:
           type: integer
         totalPages:
           type: integer
-    CloseAccountRequest:
+    AccountActivity:
       type: object
-      required: [reason]
+      required: [postingReference, accountId, postingType, amount, currency, createdAt]
       properties:
-        reason:
+        postingReference:
           type: string
-          maxLength: 500
-    CloseAccountResponse:
-      type: object
-      required: [accountId, previousStatus, currentStatus, closedAt]
-      properties:
         accountId:
           type: string
-        previousStatus:
-          $ref: '#/components/schemas/AccountStatus'
-        currentStatus:
-          $ref: '#/components/schemas/AccountStatus'
-        closedAt:
+        postingType:
+          $ref: '#/components/schemas/AccountPostingType'
+        amount:
+          type: number
+        currency:
+          type: string
+        correlationId:
+          type: [string, "null"]
+        reversalOfPostingReference:
+          type: [string, "null"]
+        createdAt:
           type: string
           format: date-time
+    AccountActivityPagedResponse:
+      type: object
+      required: [items, pageNumber, pageSize, totalCount, totalPages]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/AccountActivity'
+        pageNumber:
+          type: integer
+        pageSize:
+          type: integer
+        totalCount:
+          type: integer
+        totalPages:
+          type: integer
     CreateDepositRequest:
       type: object
       required: [customerId, accountId, amount, currency, channel]
@@ -354,7 +408,7 @@ components:
           maxLength: 500
     Deposit:
       type: object
-      required: [transactionId, transactionNumber, customerId, accountId, amount, currency, channel, status, correlationId, requestedAt]
+      required: [transactionId, transactionNumber, customerId, accountId, amount, currency, channel, status, accountPostingStatus, auditStatus, compensationStatus, reviewResolution, correlationId, compensationRetryCount, requestedAt]
       properties:
         transactionId:
           type: string
@@ -368,16 +422,32 @@ components:
           type: number
         currency:
           type: string
+        referenceNumber:
+          type: [string, "null"]
         channel:
           $ref: '#/components/schemas/Channel'
         status:
           $ref: '#/components/schemas/DepositStatus'
+        accountPostingStatus:
+          $ref: '#/components/schemas/DepositSagaStepStatus'
+        auditStatus:
+          $ref: '#/components/schemas/DepositSagaStepStatus'
+        compensationStatus:
+          $ref: '#/components/schemas/DepositSagaStepStatus'
+        reviewResolution:
+          $ref: '#/components/schemas/DepositReviewResolution'
+        correlationId:
+          type: string
         failureCode:
           type: [string, "null"]
         failureReason:
           type: [string, "null"]
-        correlationId:
-          type: string
+        compensationRetryCount:
+          type: integer
+        reviewLastActionBy:
+          type: [string, "null"]
+        reviewNote:
+          type: [string, "null"]
         requestedAt:
           type: string
           format: date-time
@@ -387,22 +457,36 @@ components:
         reversedAt:
           type: [string, "null"]
           format: date-time
+        reviewRequiredAt:
+          type: [string, "null"]
+          format: date-time
+        reviewResolvedAt:
+          type: [string, "null"]
+          format: date-time
+        lastCompensationAttemptAt:
+          type: [string, "null"]
+          format: date-time
+        lastProcessedAt:
+          type: [string, "null"]
+          format: date-time
     DepositSummary:
       type: object
-      required: [transactionId, transactionNumber, accountId, customerId, amount, currency, channel, status, requestedAt]
+      required: [transactionId, transactionNumber, customerId, accountId, amount, currency, channel, status, requestedAt]
       properties:
         transactionId:
           type: string
         transactionNumber:
           type: string
-        accountId:
-          type: string
         customerId:
+          type: string
+        accountId:
           type: string
         amount:
           type: number
         currency:
           type: string
+        referenceNumber:
+          type: [string, "null"]
         channel:
           $ref: '#/components/schemas/Channel'
         status:
@@ -429,6 +513,83 @@ components:
           type: integer
         totalPages:
           type: integer
+    PendingReviewDepositSummary:
+      type: object
+      required: [transactionId, transactionNumber, customerId, accountId, accountNumber, amount, currency, compensationStatus, reviewResolution, compensationRetryCount, requestedAt]
+      properties:
+        transactionId:
+          type: string
+        transactionNumber:
+          type: string
+        customerId:
+          type: string
+        accountId:
+          type: string
+        accountNumber:
+          type: string
+        amount:
+          type: number
+        currency:
+          type: string
+        compensationStatus:
+          $ref: '#/components/schemas/DepositSagaStepStatus'
+        reviewResolution:
+          $ref: '#/components/schemas/DepositReviewResolution'
+        failureCode:
+          type: [string, "null"]
+        failureReason:
+          type: [string, "null"]
+        compensationRetryCount:
+          type: integer
+        reviewLastActionBy:
+          type: [string, "null"]
+        reviewNote:
+          type: [string, "null"]
+        requestedAt:
+          type: string
+          format: date-time
+        reviewRequiredAt:
+          type: [string, "null"]
+          format: date-time
+        lastCompensationAttemptAt:
+          type: [string, "null"]
+          format: date-time
+        lastProcessedAt:
+          type: [string, "null"]
+          format: date-time
+    PendingReviewDepositPagedResponse:
+      type: object
+      required: [items, pageNumber, pageSize, totalCount, totalPages]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/PendingReviewDepositSummary'
+        pageNumber:
+          type: integer
+        pageSize:
+          type: integer
+        totalCount:
+          type: integer
+        totalPages:
+          type: integer
+    RetryDepositReviewRequest:
+      type: object
+      properties:
+        operatorId:
+          type: [string, "null"]
+        note:
+          type: [string, "null"]
+    ResolveDepositReviewRequest:
+      type: object
+      required: [resolution, operatorId, note]
+      properties:
+        resolution:
+          $ref: '#/components/schemas/DepositReviewResolution'
+        operatorId:
+          type: string
+        note:
+          type: string
     AuditSummary:
       type: object
       required: [auditId, actorType, actorId, action, aggregateType, aggregateId, correlationId, occurredAt]
@@ -507,7 +668,7 @@ paths:
       tags: [Customers]
       summary: Create a customer
       security:
-        - bearerAuth: []
+        - externalApiKey: []
       parameters:
         - $ref: '#/components/parameters/CorrelationIdHeader'
       requestBody:
@@ -537,47 +698,16 @@ paths:
                 $ref: '#/components/schemas/ProblemDetails'
     get:
       tags: [Customers]
-      summary: Search customers
+      summary: List customers
       security:
-        - bearerAuth: []
+        - externalApiKey: []
       parameters:
         - $ref: '#/components/parameters/CorrelationIdHeader'
-        - name: customerNumber
-          in: query
-          schema:
-            type: string
-        - name: fullName
-          in: query
-          schema:
-            type: string
-        - name: mobile
-          in: query
-          schema:
-            type: string
-        - name: identityNumber
-          in: query
-          schema:
-            type: string
-        - name: status
-          in: query
-          schema:
-            $ref: '#/components/schemas/CustomerStatus'
-        - name: sortBy
-          in: query
-          schema:
-            type: string
-            default: createdAt
-        - name: sortDirection
-          in: query
-          schema:
-            type: string
-            enum: [asc, desc]
-            default: desc
         - $ref: '#/components/parameters/PageNumber'
         - $ref: '#/components/parameters/PageSize'
       responses:
         '200':
-          description: Customer search result
+          description: Customer list
           content:
             application/json:
               schema:
@@ -587,7 +717,7 @@ paths:
       tags: [Customers]
       summary: Get customer by id
       security:
-        - bearerAuth: []
+        - externalApiKey: []
       parameters:
         - $ref: '#/components/parameters/CorrelationIdHeader'
         - name: customerId
@@ -608,46 +738,27 @@ paths:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/ProblemDetails'
-  /api/v1/customers/{customerId}/contact:
-    put:
+  /api/v1/customers/portal-sign-in:
+    post:
       tags: [Customers]
-      summary: Update customer contact
+      summary: Sign in for the customer portal
       security:
-        - bearerAuth: []
-      parameters:
-        - $ref: '#/components/parameters/CorrelationIdHeader'
-        - name: customerId
-          in: path
-          required: true
-          schema:
-            type: string
+        - externalApiKey: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/UpdateCustomerContactRequest'
+              $ref: '#/components/schemas/CustomerPortalSignInRequest'
       responses:
         '200':
-          description: Updated customer
+          description: Customer matched for portal sign-in
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Customer'
-        '400':
-          description: Validation error
-          content:
-            application/problem+json:
-              schema:
-                $ref: '#/components/schemas/ProblemDetails'
-        '404':
-          description: Customer not found
-          content:
-            application/problem+json:
-              schema:
-                $ref: '#/components/schemas/ProblemDetails'
-        '409':
-          description: Mobile conflict
+        '401':
+          description: Invalid sign-in details
           content:
             application/problem+json:
               schema:
@@ -657,7 +768,7 @@ paths:
       tags: [Customers]
       summary: Change customer status
       security:
-        - bearerAuth: []
+        - externalApiKey: []
       parameters:
         - $ref: '#/components/parameters/CorrelationIdHeader'
         - name: customerId
@@ -695,7 +806,7 @@ paths:
       tags: [Accounts]
       summary: Open account
       security:
-        - bearerAuth: []
+        - externalApiKey: []
       parameters:
         - $ref: '#/components/parameters/CorrelationIdHeader'
       requestBody:
@@ -733,7 +844,7 @@ paths:
       tags: [Accounts]
       summary: Search accounts by customer
       security:
-        - bearerAuth: []
+        - externalApiKey: []
       parameters:
         - $ref: '#/components/parameters/CorrelationIdHeader'
         - name: customerId
@@ -741,10 +852,6 @@ paths:
           required: true
           schema:
             type: string
-        - name: status
-          in: query
-          schema:
-            $ref: '#/components/schemas/AccountStatus'
         - $ref: '#/components/parameters/PageNumber'
         - $ref: '#/components/parameters/PageSize'
       responses:
@@ -759,7 +866,7 @@ paths:
       tags: [Accounts]
       summary: Get account by id
       security:
-        - bearerAuth: []
+        - externalApiKey: []
       parameters:
         - $ref: '#/components/parameters/CorrelationIdHeader'
         - name: accountId
@@ -785,7 +892,7 @@ paths:
       tags: [Accounts]
       summary: Get account by account number
       security:
-        - bearerAuth: []
+        - externalApiKey: []
       parameters:
         - $ref: '#/components/parameters/CorrelationIdHeader'
         - name: accountNumber
@@ -806,12 +913,12 @@ paths:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/ProblemDetails'
-  /api/v1/accounts/{accountId}/close:
+  /api/v1/accounts/{accountId}/withdrawals:
     post:
       tags: [Accounts]
-      summary: Close account
+      summary: Create a withdrawal
       security:
-        - bearerAuth: []
+        - externalApiKey: []
       parameters:
         - $ref: '#/components/parameters/CorrelationIdHeader'
         - name: accountId
@@ -824,20 +931,14 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CloseAccountRequest'
+              $ref: '#/components/schemas/CreateWithdrawalRequest'
       responses:
         '200':
-          description: Account closed
+          description: Account after withdrawal
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CloseAccountResponse'
-        '400':
-          description: Account cannot be closed
-          content:
-            application/problem+json:
-              schema:
-                $ref: '#/components/schemas/ProblemDetails'
+                $ref: '#/components/schemas/Account'
         '404':
           description: Account not found
           content:
@@ -845,7 +946,52 @@ paths:
               schema:
                 $ref: '#/components/schemas/ProblemDetails'
         '409':
-          description: Account status conflict
+          description: Account not eligible for withdrawal
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /api/v1/accounts/{accountId}/activities:
+    get:
+      tags: [Accounts]
+      summary: Get account activities
+      security:
+        - externalApiKey: []
+      parameters:
+        - $ref: '#/components/parameters/CorrelationIdHeader'
+        - name: accountId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: activityType
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/AccountPostingType'
+        - name: from
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+        - $ref: '#/components/parameters/PageNumber'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: Account activity list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountActivityPagedResponse'
+        '404':
+          description: Account not found
           content:
             application/problem+json:
               schema:
@@ -855,7 +1001,7 @@ paths:
       tags: [Deposits]
       summary: Create deposit request
       security:
-        - bearerAuth: []
+        - externalApiKey: []
       parameters:
         - $ref: '#/components/parameters/CorrelationIdHeader'
         - $ref: '#/components/parameters/IdempotencyKeyHeader'
@@ -894,32 +1040,43 @@ paths:
       tags: [Deposits]
       summary: Search deposits
       security:
-        - bearerAuth: []
+        - externalApiKey: []
       parameters:
         - $ref: '#/components/parameters/CorrelationIdHeader'
-        - name: accountId
-          in: query
-          schema:
-            type: string
-        - name: customerId
-          in: query
-          schema:
-            type: string
         - name: status
           in: query
+          required: false
           schema:
             $ref: '#/components/schemas/DepositStatus'
-        - name: channel
+        - name: customerId
           in: query
+          required: false
           schema:
-            $ref: '#/components/schemas/Channel'
-        - name: from
+            type: string
+        - name: accountId
           in: query
+          required: false
+          schema:
+            type: string
+        - name: correlationId
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: failureCode
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: requestedFrom
+          in: query
+          required: false
           schema:
             type: string
             format: date-time
-        - name: to
+        - name: requestedTo
           in: query
+          required: false
           schema:
             type: string
             format: date-time
@@ -937,7 +1094,7 @@ paths:
       tags: [Deposits]
       summary: Get deposit by id
       security:
-        - bearerAuth: []
+        - externalApiKey: []
       parameters:
         - $ref: '#/components/parameters/CorrelationIdHeader'
         - name: transactionId
@@ -958,22 +1115,56 @@ paths:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/ProblemDetails'
-  /api/v1/deposits/by-number/{transactionNumber}:
+  /api/v1/deposits/review/pending:
     get:
       tags: [Deposits]
-      summary: Get deposit by transaction number
+      summary: List pending review deposits
       security:
-        - bearerAuth: []
+        - externalApiKey: []
       parameters:
         - $ref: '#/components/parameters/CorrelationIdHeader'
-        - name: transactionNumber
+        - name: sortBy
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/PendingReviewSortBy'
+        - name: descending
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
+        - $ref: '#/components/parameters/PageNumber'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: Pending review queue
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PendingReviewDepositPagedResponse'
+  /api/v1/deposits/{transactionId}/review/retry-compensation:
+    post:
+      tags: [Deposits]
+      summary: Retry compensation for a pending review deposit
+      security:
+        - externalApiKey: []
+      parameters:
+        - $ref: '#/components/parameters/CorrelationIdHeader'
+        - name: transactionId
           in: path
           required: true
           schema:
             type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RetryDepositReviewRequest'
       responses:
         '200':
-          description: Deposit detail
+          description: Deposit after retry request
           content:
             application/json:
               schema:
@@ -984,40 +1175,58 @@ paths:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/ProblemDetails'
+        '409':
+          description: Deposit review action is invalid
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /api/v1/deposits/{transactionId}/review/resolve:
+    post:
+      tags: [Deposits]
+      summary: Resolve a pending review deposit
+      security:
+        - externalApiKey: []
+      parameters:
+        - $ref: '#/components/parameters/CorrelationIdHeader'
+        - name: transactionId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResolveDepositReviewRequest'
+      responses:
+        '200':
+          description: Deposit after manual resolution
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Deposit'
+        '404':
+          description: Deposit not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '409':
+          description: Deposit review action is invalid
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
   /api/v1/audits:
     get:
       tags: [Audits]
       summary: Search audit logs
       security:
-        - bearerAuth: []
+        - externalApiKey: []
       parameters:
         - $ref: '#/components/parameters/CorrelationIdHeader'
-        - name: aggregateType
-          in: query
-          schema:
-            type: string
-        - name: aggregateId
-          in: query
-          schema:
-            type: string
-        - name: actorId
-          in: query
-          schema:
-            type: string
-        - name: action
-          in: query
-          schema:
-            type: string
-        - name: from
-          in: query
-          schema:
-            type: string
-            format: date-time
-        - name: to
-          in: query
-          schema:
-            type: string
-            format: date-time
         - $ref: '#/components/parameters/PageNumber'
         - $ref: '#/components/parameters/PageSize'
       responses:
@@ -1032,7 +1241,7 @@ paths:
       tags: [Audits]
       summary: Get audit detail by id
       security:
-        - bearerAuth: []
+        - externalApiKey: []
       parameters:
         - $ref: '#/components/parameters/CorrelationIdHeader'
         - name: auditId

@@ -28,7 +28,8 @@ Use it as the design baseline for:
 ### Integration-Test Frameworks
 
 - `WebApplicationFactory` for HTTP-level integration tests
-- SQLite-backed test hosts where the service integration setup already uses SQLite
+- shared SQLite-backed test hosts for service integration tests
+- service-specific stubs and drivers only where the boundary requires them, such as Gateway and Customer Portal BFF tests
 
 ### Regression And Contract Tools
 
@@ -72,7 +73,7 @@ Unit tests should usually mock:
 
 - repositories
 - service clients
-- directories/lookups
+- directories and lookups
 - publishers
 - audit writers
 - background-process collaborators
@@ -88,7 +89,7 @@ Default mock style:
 
 - prefer `MockBehavior.Strict`
 - explicitly set up only the calls needed by the scenario
-- verify critical write operations such as `AddAsync`, `UpdateAsync`, `SavePostingAsync`, `PublishAsync`
+- verify critical write operations such as `AddAsync`, `UpdateAsync`, `SavePostingAsync`, and `PublishAsync`
 - verify non-occurrence for forbidden side effects when relevant
 
 ### 2. Integration Tests
@@ -105,13 +106,22 @@ Use integration tests for:
 - DI wiring
 - persistence behavior
 - API regression protection
+- proxy and BFF boundary behavior
 
 Integration tests should:
 
 - call endpoints through `HttpClient`
 - use `WebApplicationFactory`
 - keep assertions focused on contract and behavior visible at the API boundary
+- assert status code first, then the response body
+- verify `ProblemDetails`, pagination metadata, filtering, and sorting whenever those are part of the contract
 - avoid re-testing every branch already covered by unit tests
+
+Service integration tests should normally:
+
+- inherit from the shared SQLite `WebApplicationFactory` base
+- keep request builders and drivers in a local `Support/` folder
+- seed data through the HTTP surface unless a carefully chosen internal setup step materially reduces noise
 
 ### 3. Contract Tests
 
@@ -119,9 +129,24 @@ Contract tests verify that public API definitions stay aligned with the intended
 
 Use contract tests for:
 
-- OpenAPI path coverage
+- one chosen contract source, not multiple competing definitions
+- OpenAPI path and method coverage
 - required endpoint presence
 - high-value schema stability checks
+- response code expectations for public endpoints
+- shared error and pagination models such as `ProblemDetails` and paged responses
+
+Contract tests should normally:
+
+- treat the checked OpenAPI document as the single contract source for the covered APIs
+- parse and assert the document structurally instead of using broad string matching
+- fail when the document contains endpoints that no longer exist in the implementation
+- fail when required public endpoints are missing from the document
+- stay focused on stable public contracts, not internal implementation details
+
+In this repository, contract tests currently default to the backend service APIs documented in `docs/openapi-phase1.yaml`.
+
+Gateway and BFF endpoints should only be added to contract scope if they are intentionally being maintained as public or semi-public contracts. Otherwise, keep them protected by integration tests.
 
 ### 4. Smoke And End-to-End Tests
 
@@ -156,13 +181,18 @@ Examples:
 
 - Test one HTTP behavior or contract concern per test.
 - Assert status code first, then payload.
+- Treat the response contract as part of the behavior under test.
 - Prefer realistic request DTOs over direct state seeding when the API is the target.
 - Use seeded or generated unique data to avoid cross-test pollution.
+- Keep asynchronous polling helpers isolated in drivers so the test method stays focused on behavior.
 
 ### Contract-Test Rules
 
 - Keep them stable and low-noise.
 - Focus on public compatibility expectations rather than implementation details.
+- Prefer structural OpenAPI assertions over raw text contains checks.
+- Verify paths, methods, response codes, and critical schemas before adding low-value breadth.
+- Do not place unrelated unit tests in the contracts project.
 
 ## What To Mock And What Not To Mock
 
@@ -186,7 +216,7 @@ Examples:
 
 - the test is intentionally a component-style test, not a strict unit test
 - the fake itself is part of the thing being validated
-- the test is clearly named and documented as component/slice coverage
+- the test is clearly named and documented as component or slice coverage
 
 If an in-memory implementation is used, do not call the test a pure unit test.
 
@@ -211,9 +241,18 @@ Use a local `Support/` folder inside the relevant test project for:
 
 - domain object builders
 - reusable request factories
+- HTTP request drivers
 - stable fixture data
 
 Keep helper classes small and explicit. They should reduce duplication, not hide test intent.
+
+### Shared Integration Infrastructure
+
+When multiple service integration projects use the same test-host pattern:
+
+- extract the shared host setup into `tests/Shared`
+- link the shared source file into each integration test project
+- keep only service-specific overrides in the local factory
 
 ## Coverage Priorities
 
@@ -226,6 +265,17 @@ When adding tests for a service, prioritize these behaviors first:
 5. write-side side effects
 6. read-model mapping and pagination
 7. HTTP status codes and contract shape
+8. error payloads and `ProblemDetails`
+9. filtering, sorting, and out-of-range pagination behavior
+
+When adding contract tests, prioritize these checks first:
+
+1. contract source exists and is readable
+2. required public paths and methods exist
+3. removed or renamed endpoints are detected
+4. critical response codes exist on high-value endpoints
+5. shared schemas such as `ProblemDetails` and paged responses stay stable
+6. critical enums stay stable
 
 ## TDD Workflow
 
@@ -248,12 +298,15 @@ This keeps fast feedback first and slower environment-dependent checks later.
 
 ## Current Repository Standard
 
-As of April 2, 2026, the standard for new backend service unit tests in this repository is:
+As of April 2, 2026, the standard for new backend tests in this repository is:
 
 - `xUnit`
 - `FluentAssertions`
 - `Moq`
 - strict dependency isolation for service-level unit tests
 - `WebApplicationFactory` for API integration tests
+- shared SQLite-backed integration hosts for service APIs
+- one chosen OpenAPI contract source for covered service APIs
+- `Support/` helpers for reusable builders, drivers, and test data
 
 New tests should follow this standard unless there is a documented reason to deviate.
