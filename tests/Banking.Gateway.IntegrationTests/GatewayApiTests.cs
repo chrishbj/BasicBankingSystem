@@ -65,6 +65,37 @@ public sealed class GatewayApiTests : IClassFixture<GatewayWebApplicationFactory
     }
 
     [Fact]
+    public async Task ProxyCustomer_Should_ReturnUnauthorized_When_ApiKeyIsMissing()
+    {
+        var existingProxyCount = _factory.CustomerStub.Requests.Count(item => item.PathAndQuery.StartsWith("/api/v1/customers", StringComparison.Ordinal));
+
+        var response = await _client.GetAsync("/customer-api/api/v1/customers?pageNumber=1&pageSize=1");
+
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        var updatedProxyCount = _factory.CustomerStub.Requests.Count(item => item.PathAndQuery.StartsWith("/api/v1/customers", StringComparison.Ordinal));
+        updatedProxyCount.Should().Be(existingProxyCount);
+    }
+
+    [Fact]
+    public async Task ProxyCustomer_Should_PropagateDownstreamStatusCode()
+    {
+        _factory.CustomerStub.ForcedStatusCode = HttpStatusCode.BadGateway;
+        _factory.CustomerStub.ForcedContent = "downstream unavailable";
+
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/customer-api/api/v1/customers?pageNumber=1&pageSize=1");
+        request.Headers.Add("X-Api-Key", "local-dev-api-key");
+
+        var response = await _client.SendAsync(request);
+        var content = await response.Content.ReadAsStringAsync();
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadGateway);
+        content.Should().Contain("downstream unavailable");
+
+        _factory.CustomerStub.ForcedStatusCode = null;
+        _factory.CustomerStub.ForcedContent = null;
+    }
+
+    [Fact]
     public async Task SwaggerShortcut_Should_RedirectToIndexHtml()
     {
         var response = await _client.GetAsync("/customer-api/swagger");

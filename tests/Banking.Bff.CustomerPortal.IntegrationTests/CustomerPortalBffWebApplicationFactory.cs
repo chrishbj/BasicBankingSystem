@@ -18,6 +18,8 @@ public sealed class CustomerPortalBffWebApplicationFactory : WebApplicationFacto
     public const string CustomerNumber = "C2026033114163272720";
     public const string AccountId = "acc_portal_001";
     public const string AccountNumber = "62222026033114164845175";
+    public const string ForeignAccountId = "acc_foreign_001";
+    public const string ForeignAccountNumber = "62222026033114164849999";
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
@@ -155,6 +157,22 @@ internal sealed class AccountServiceStub
             path == $"/api/v1/accounts/by-number/{CustomerPortalBffWebApplicationFactory.AccountNumber}")
         {
             return Task.FromResult(Json(Account));
+        }
+
+        if (request.Method == HttpMethod.Get &&
+            path == $"/api/v1/accounts/by-number/{CustomerPortalBffWebApplicationFactory.ForeignAccountNumber}")
+        {
+            return Task.FromResult(Json(new AccountResponse(
+                CustomerPortalBffWebApplicationFactory.ForeignAccountId,
+                CustomerPortalBffWebApplicationFactory.ForeignAccountNumber,
+                "cus_other_001",
+                "Checking",
+                "USD",
+                1,
+                500m,
+                500m,
+                DateTimeOffset.Parse("2026-03-31T09:00:00-04:00"),
+                null)));
         }
 
         if (request.Method == HttpMethod.Get &&

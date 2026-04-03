@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using Banking.Bff.CustomerPortal.Contracts;
 using FluentAssertions;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace Banking.Bff.CustomerPortal.IntegrationTests;
@@ -49,6 +50,19 @@ public sealed class CustomerPortalBffApiTests : IClassFixture<CustomerPortalBffW
     }
 
     [Fact]
+    public async Task SignIn_Should_ReturnUnauthorizedProblemDetails_When_CredentialsAreInvalid()
+    {
+        var response = await _client.PostAsJsonAsync(
+            "/api/customer-portal/auth/sign-in",
+            new CustomerPortalSignInRequest(CustomerPortalBffWebApplicationFactory.CustomerNumber, "9999"));
+
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        var problem = await response.Content.ReadFromJsonAsync<ProblemDetails>();
+        problem.Should().NotBeNull();
+        problem!.Title.Should().Be("Invalid portal sign-in");
+    }
+
+    [Fact]
     public async Task Dashboard_Should_ReturnAggregatedCustomerScopedView()
     {
         await SignInAsync();
@@ -62,6 +76,18 @@ public sealed class CustomerPortalBffApiTests : IClassFixture<CustomerPortalBffW
         response.CurrentAccount!.AccountNumber.Should().Be(CustomerPortalBffWebApplicationFactory.AccountNumber);
         response.RecentActivities.Should().Contain(item => item.Type == "Withdrawal");
         response.RecentTransactions.Should().ContainSingle(item => item.TransactionNumber == "D202603311420531889");
+    }
+
+    [Fact]
+    public async Task SignOut_Should_ClearCustomerSession()
+    {
+        await SignInAsync();
+
+        var signOutResponse = await _client.PostAsync("/api/customer-portal/auth/sign-out", null);
+        signOutResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        var meResponse = await _client.GetAsync("/api/customer-portal/auth/me");
+        meResponse.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
 
     [Fact]
@@ -81,6 +107,16 @@ public sealed class CustomerPortalBffApiTests : IClassFixture<CustomerPortalBffW
         var payload = await response.Content.ReadFromJsonAsync<PagedResponse<TransactionStatusSummaryResponse>>();
         payload.Should().NotBeNull();
         payload!.Items.Should().OnlyContain(item => item.AccountNumber == CustomerPortalBffWebApplicationFactory.AccountNumber);
+    }
+
+    [Fact]
+    public async Task AccountLookup_Should_ReturnForbidden_When_AccountBelongsToAnotherCustomer()
+    {
+        await SignInAsync();
+
+        var response = await _client.GetAsync($"/api/customer-portal/accounts/{CustomerPortalBffWebApplicationFactory.ForeignAccountNumber}");
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
 
     private Task<HttpResponseMessage> SignInAsync() =>
