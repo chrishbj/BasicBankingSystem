@@ -348,6 +348,10 @@ function App() {
         setLatestDeposit(ordered[0])
       }
 
+      if (currentCustomer) {
+        await refreshDashboard()
+      }
+
       if (!silent) {
         setMessage(`Loaded ${ordered.length} deposit transaction${ordered.length === 1 ? '' : 's'}.`)
       }
