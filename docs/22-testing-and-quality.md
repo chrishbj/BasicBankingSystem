@@ -4,6 +4,10 @@
 
 This project uses layered testing so that domain logic, HTTP behavior, and contract expectations can all be verified independently.
 
+For the repository-wide test design rules used for new tests, see:
+
+- `docs/33-test-design-standards.md`
+
 ## Test Stack
 
 - `xUnit`
