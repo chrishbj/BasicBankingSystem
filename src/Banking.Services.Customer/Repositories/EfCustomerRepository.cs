@@ -39,9 +39,10 @@ public sealed class EfCustomerRepository(CustomerDbContext dbContext) : ICustome
 
     public async Task<IReadOnlyCollection<Domain.Customer>> GetAllAsync(CancellationToken cancellationToken)
     {
-        return await dbContext.Customers
+        var customers = await dbContext.Customers.ToListAsync(cancellationToken);
+        return customers
             .OrderByDescending(customer => customer.CreatedAt)
-            .ToArrayAsync(cancellationToken);
+            .ToArray();
     }
 
     public async Task UpdateAsync(Domain.Customer customer, CancellationToken cancellationToken)
