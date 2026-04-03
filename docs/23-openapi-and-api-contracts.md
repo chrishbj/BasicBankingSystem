@@ -22,6 +22,11 @@ Not currently in scope:
 - demo-only endpoints
 - internal-only service-to-service endpoints
 
+Related future design work:
+
+- `docs/36-platform-diagnostics-and-advanced-health-checks.md`
+- `docs/37-platform-diagnostics-api-draft.md`
+
 ## Runtime Swagger Support
 
 Each backend service exposes Swagger UI in local development and Docker mode.
@@ -43,6 +48,22 @@ This makes local testing clearer because required headers appear directly in Swa
 - `X-Correlation-Id`
 - `Idempotency-Key`
 - internal service identity headers where relevant
+
+## Future Runtime Contract Direction
+
+The current repository still checks a static OpenAPI contract document in contract tests.
+
+The recommended future direction is:
+
+- expose runtime OpenAPI in testing or contract-specific environments
+- treat runtime-generated OpenAPI as the primary contract source
+- use static documentation as a published or exported artifact rather than the main source of truth
+- make runtime contract availability part of the future platform diagnostics surface
+
+That future operator-facing direction is described in:
+
+- `docs/36-platform-diagnostics-and-advanced-health-checks.md`
+- `docs/37-platform-diagnostics-api-draft.md`
 
 ## How Contracts Help The Frontends
 

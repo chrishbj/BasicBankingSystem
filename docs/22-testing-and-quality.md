@@ -9,6 +9,8 @@ For the repository-wide design rules used for new tests, see:
 - `docs/33-test-design-standards.md`
 - `docs/34-testing-roadmap.md`
 - `docs/35-test-design-findings-and-remedies.md`
+- `docs/36-platform-diagnostics-and-advanced-health-checks.md`
+- `docs/37-platform-diagnostics-api-draft.md`
 
 ## Test Stack
 
@@ -88,6 +90,7 @@ Current contract-test boundary:
 - `docs/openapi-phase1.yaml` is the checked contract source for the documented backend service APIs
 - Gateway and Customer Portal BFF are currently protected by integration tests rather than this contract document
 - contract tests should use structural OpenAPI assertions, not broad string-matching checks
+- runtime OpenAPI is the recommended future source of truth for operator diagnostics and contract verification
 
 ## Why This Testing Structure Matters
 
