@@ -4,11 +4,12 @@
 
 Protect the highest-risk banking behaviors:
 
-- Core customer, account, and deposit rules
-- Idempotency
-- Concurrency-safe balance updates
-- Audit completeness
+- core customer, account, and deposit rules
+- idempotency
+- concurrency-safe balance updates
+- audit completeness
 - API contract stability
+- gateway and BFF boundary behavior
 
 ## Testing Pyramid
 
@@ -20,9 +21,16 @@ Protect the highest-risk banking behaviors:
 
 - `xUnit`
 - `FluentAssertions`
+- `Moq`
 - `WebApplicationFactory`
-- `Testcontainers`
-- `Playwright`
+- SQLite-backed test hosts for service API integration tests
+- one maintained OpenAPI document for documented public service APIs
+- Postman and Newman for regression execution
+
+Optional later-stage additions:
+
+- `Playwright` for browser-level end-to-end flows
+- containerized dependencies only when SQLite-backed hosts are no longer sufficient for the scenario
 
 ## TDD Workflow
 
@@ -30,48 +38,77 @@ Protect the highest-risk banking behaviors:
 
 ### Red
 
-- Start with a failing test for the smallest business rule
+- start with a failing test for the smallest business rule
 
 ### Green
 
-- Implement the minimum behavior needed to pass
+- implement the minimum behavior needed to pass
 
 ### Refactor
 
-- Remove duplication
-- Extract value objects and common abstractions
+- remove duplication
+- extract clear builders, drivers, and shared helpers
 
 ## First Test Wave
 
 ### Customer
 
-- Create customer succeeds for valid request
-- Duplicate identity fails
-- Duplicate mobile fails
-- Invalid status transition fails
+- create customer succeeds for valid request
+- duplicate identity fails
+- duplicate mobile fails
+- invalid status transition fails
+- pagination and error payloads stay stable
 
 ### Account
 
-- Open account succeeds for active customer
-- Open account fails for frozen customer
-- Close account fails when balance is non-zero
+- open account succeeds for active customer
+- open account fails for frozen customer
+- close account fails when balance is non-zero
+- insufficient funds returns the expected conflict contract
+- activities filtering and pagination stay stable
 
 ### Deposit
 
-- Deposit amount must be positive
-- Closed account rejects deposit
-- Repeated idempotency key does not double-post
-- Concurrent deposits preserve final balance
+- deposit amount must be positive
+- closed account rejects deposit
+- repeated idempotency key does not double-post
+- concurrent deposits preserve final balance
+- review and not-found API contracts stay stable
 
-### Audit and Platform
+### Audit And Platform
 
-- Audit event contains before/after snapshots and correlation id
-- Health returns `200`
-- Unauthorized requests return `401`
+- audit event contains before and after snapshots and correlation id
+- health returns `200`
+- unauthorized requests return `401`
+- paged audit queries return stable metadata
+
+### Gateway And BFF
+
+- missing API key returns `401`
+- downstream status codes are preserved by the gateway
+- invalid portal login returns `401 ProblemDetails`
+- cross-customer account access is rejected
+
+### Contract
+
+- required public service paths and methods stay present in `openapi-phase1.yaml`
+- stale endpoints are removed from the contract document
+- critical shared schemas such as `ProblemDetails` and paged responses stay stable
+- contract tests use structural parsing rather than raw text matching
 
 ## CI Recommendation
 
-1. Unit tests
-2. Contract tests
-3. Integration tests
-4. End-to-end tests
+1. unit tests
+2. contract tests
+3. integration tests
+4. end-to-end tests
+
+## Current Repository Direction
+
+The current repository baseline is:
+
+- service unit tests isolate dependencies with `Moq`
+- service integration tests use `WebApplicationFactory` plus a shared SQLite host base
+- integration tests assert both success contracts and failure contracts such as `ProblemDetails`, pagination, filtering, and sorting
+- contract tests treat `docs/openapi-phase1.yaml` as the current source for documented backend service APIs
+- request builders and async polling helpers live in local `Support/` folders instead of being duplicated across tests

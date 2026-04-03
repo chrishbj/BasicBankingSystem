@@ -1,9 +1,12 @@
+using System.Text.Json;
 using Banking.Services.Deposit.Messaging;
 using Banking.Services.Deposit.Repositories;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+using Moq;
+using Banking.Services.Deposit.UnitTests.Support;
 
 namespace Banking.Services.Deposit.UnitTests;
 
@@ -12,62 +15,90 @@ public sealed class DepositOutboxDispatcherTests
     [Fact]
     public async Task DispatchPendingMessagesAsync_Should_PublishAndMarkProcessed()
     {
-        var repository = new InMemoryDepositRepository();
+        var repository = new Mock<IDepositRepository>(MockBehavior.Strict);
+        var publisher = new Mock<IDepositEventPublisher>(MockBehavior.Strict);
         var message = new DepositRequestedMessage("dep_001", "cus_active_001", "acc_active_001", 100m, "USD", Domain.DepositChannel.Counter, "corr-001");
+        var outbox = new DepositOutboxMessage
+        {
+            MessageId = "out_001",
+            TransactionId = "dep_001",
+            MessageType = nameof(DepositRequestedMessage),
+            Payload = JsonSerializer.Serialize(message),
+            OccurredAt = DateTimeOffset.UtcNow
+        };
 
-        await repository.AddAsync(
-            new Domain.DepositTransaction
-            {
-                TransactionId = "dep_001",
-                TransactionNumber = "D001",
-                CustomerId = "cus_active_001",
-                AccountId = "acc_active_001",
-                Amount = 100m,
-                Currency = "USD",
-                Channel = Domain.DepositChannel.Counter,
-                Status = Domain.DepositStatus.Received,
-                IdempotencyKey = "idem-001",
-                CorrelationId = "corr-001",
-                RequestedAt = DateTimeOffset.UtcNow
-            },
-            DepositOutboxMessage.CreateRequestedMessage(message, DateTimeOffset.UtcNow),
-            CancellationToken.None);
+        repository
+            .Setup(item => item.GetPendingOutboxMessagesAsync(20, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new[] { outbox });
+        publisher
+            .Setup(item => item.PublishAsync(
+                It.Is<DepositRequestedMessage>(payload =>
+                    payload.TransactionId == "dep_001" &&
+                    payload.AccountId == "acc_active_001"),
+                It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+        repository
+            .Setup(item => item.MarkOutboxMessageProcessedAsync("out_001", It.IsAny<DateTimeOffset>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
 
-        var publisher = new TestDepositEventPublisher();
-        var services = new ServiceCollection();
-        services.AddSingleton<IDepositRepository>(repository);
-        using var provider = services.BuildServiceProvider();
+        using var provider = new ServiceCollection()
+            .AddSingleton(repository.Object)
+            .BuildServiceProvider();
 
         var dispatcher = new DepositOutboxDispatcher(
             new StaticServiceScopeFactory(provider),
-            publisher,
+            publisher.Object,
             Options.Create(new RabbitMqOptions { PollingIntervalMilliseconds = 50 }),
             NullLogger<DepositOutboxDispatcher>.Instance);
 
-        await dispatcher.DispatchPendingMessagesAsync(CancellationToken.None);
+        var count = await dispatcher.DispatchPendingMessagesAsync(CancellationToken.None);
 
-        publisher.Messages.Should().ContainSingle();
-        var pendingMessages = await repository.GetPendingOutboxMessagesAsync(10, CancellationToken.None);
-        pendingMessages.Should().BeEmpty();
+        count.Should().Be(1);
+        repository.VerifyAll();
+        publisher.VerifyAll();
     }
 
-    private sealed class TestDepositEventPublisher : IDepositEventPublisher
+    [Fact]
+    public async Task DispatchPendingMessagesAsync_Should_MarkNullPayloadAsProcessed_WithoutPublishing()
     {
-        public List<DepositRequestedMessage> Messages { get; } = new();
-
-        public Task PublishAsync(DepositRequestedMessage message, CancellationToken cancellationToken)
+        var repository = new Mock<IDepositRepository>(MockBehavior.Strict);
+        var publisher = new Mock<IDepositEventPublisher>(MockBehavior.Strict);
+        var outbox = new DepositOutboxMessage
         {
-            Messages.Add(message);
-            return Task.CompletedTask;
-        }
+            MessageId = "out_invalid",
+            TransactionId = "dep_invalid",
+            MessageType = nameof(DepositRequestedMessage),
+            Payload = "null",
+            OccurredAt = DateTimeOffset.UtcNow
+        };
+
+        repository
+            .Setup(item => item.GetPendingOutboxMessagesAsync(20, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new[] { outbox });
+        repository
+            .Setup(item => item.MarkOutboxMessageProcessedAsync("out_invalid", It.IsAny<DateTimeOffset>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        using var provider = new ServiceCollection()
+            .AddSingleton(repository.Object)
+            .BuildServiceProvider();
+
+        var dispatcher = new DepositOutboxDispatcher(
+            new StaticServiceScopeFactory(provider),
+            publisher.Object,
+            Options.Create(new RabbitMqOptions { PollingIntervalMilliseconds = 50 }),
+            NullLogger<DepositOutboxDispatcher>.Instance);
+
+        var count = await dispatcher.DispatchPendingMessagesAsync(CancellationToken.None);
+
+        count.Should().Be(1);
+        publisher.Verify(item => item.PublishAsync(It.IsAny<DepositRequestedMessage>(), It.IsAny<CancellationToken>()), Times.Never);
+        repository.VerifyAll();
     }
 
     private sealed class StaticServiceScopeFactory(IServiceProvider serviceProvider) : IServiceScopeFactory
     {
-        public IServiceScope CreateScope()
-        {
-            return new StaticServiceScope(serviceProvider);
-        }
+        public IServiceScope CreateScope() => new StaticServiceScope(serviceProvider);
     }
 
     private sealed class StaticServiceScope(IServiceProvider serviceProvider) : IServiceScope

@@ -1,11 +1,12 @@
 using Banking.Services.Deposit.Accounts;
 using Banking.Services.Deposit.Auditing;
 using Banking.Services.Deposit.Domain;
-using Banking.Services.Deposit.Messaging;
 using Banking.Services.Deposit.Repositories;
 using Banking.Services.Deposit.Services;
 using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
+using Moq;
+using Banking.Services.Deposit.UnitTests.Support;
 
 namespace Banking.Services.Deposit.UnitTests;
 
@@ -14,320 +15,248 @@ public sealed class DepositTransactionProcessorTests
     [Fact]
     public async Task ProcessAsync_Should_MarkDepositSucceeded_When_PostingSucceeds()
     {
-        // Happy-path saga test: posting succeeds, audit succeeds, and the workflow reaches Succeeded.
-        var repository = new InMemoryDepositRepository();
+        var repository = new Mock<IDepositRepository>(MockBehavior.Strict);
+        var accountDirectory = new Mock<IDepositAccountDirectory>(MockBehavior.Strict);
+        var auditLogWriter = new Mock<IAuditLogWriter>(MockBehavior.Strict);
         var transaction = BuildTransaction("dep-success-001");
-        await repository.AddAsync(
-            transaction,
-            DepositOutboxMessage.CreateRequestedMessage(BuildRequestedMessage(transaction), transaction.RequestedAt),
-            CancellationToken.None);
 
-        var auditLogWriter = new TestAuditLogWriter();
-        var processor = new DepositTransactionProcessor(
-            repository,
-            new InMemoryDepositAccountDirectory(),
-            auditLogWriter,
-            NullLogger<DepositTransactionProcessor>.Instance);
+        repository.Setup(item => item.GetByIdAsync(transaction.TransactionId, It.IsAny<CancellationToken>())).ReturnsAsync(transaction);
+        repository.Setup(item => item.UpdateAsync(transaction, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+        accountDirectory
+            .Setup(item => item.PostDepositAsync(transaction.AccountId, transaction.Amount, transaction.Currency, transaction.TransactionId, transaction.CorrelationId, It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+        auditLogWriter
+            .Setup(item => item.WriteAsync("DepositSucceeded", transaction, It.IsAny<Dictionary<string, object?>>(), It.IsAny<Dictionary<string, object?>>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        var processor = CreateProcessor(repository, accountDirectory, auditLogWriter);
 
         await processor.ProcessAsync(transaction.TransactionId, CancellationToken.None);
 
-        var stored = await repository.GetByIdAsync(transaction.TransactionId, CancellationToken.None);
-        stored.Should().NotBeNull();
-        stored!.Status.Should().Be(DepositStatus.Succeeded);
-        stored.PostedAt.Should().NotBeNull();
-        auditLogWriter.Actions.Should().ContainSingle().Which.Should().Be("DepositSucceeded");
+        transaction.Status.Should().Be(DepositStatus.Succeeded);
+        transaction.PostedAt.Should().NotBeNull();
+        transaction.AuditStatus.Should().Be(DepositSagaStepStatus.Succeeded);
+        repository.Verify(item => item.UpdateAsync(transaction, It.IsAny<CancellationToken>()), Times.Exactly(3));
+        repository.VerifyAll();
+        accountDirectory.VerifyAll();
+        auditLogWriter.VerifyAll();
     }
 
     [Fact]
     public async Task ProcessAsync_Should_MarkDepositFailed_When_PostingThrows()
     {
-        var repository = new InMemoryDepositRepository();
+        var repository = new Mock<IDepositRepository>(MockBehavior.Strict);
+        var accountDirectory = new Mock<IDepositAccountDirectory>(MockBehavior.Strict);
+        var auditLogWriter = new Mock<IAuditLogWriter>(MockBehavior.Strict);
         var transaction = BuildTransaction("dep-failed-001");
-        await repository.AddAsync(
-            transaction,
-            DepositOutboxMessage.CreateRequestedMessage(BuildRequestedMessage(transaction), transaction.RequestedAt),
-            CancellationToken.None);
 
-        var auditLogWriter = new TestAuditLogWriter();
-        var processor = new DepositTransactionProcessor(
-            repository,
-            new ThrowingDepositAccountDirectory(),
-            auditLogWriter,
-            NullLogger<DepositTransactionProcessor>.Instance);
+        repository.Setup(item => item.GetByIdAsync(transaction.TransactionId, It.IsAny<CancellationToken>())).ReturnsAsync(transaction);
+        repository.Setup(item => item.UpdateAsync(transaction, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+        accountDirectory
+            .Setup(item => item.PostDepositAsync(transaction.AccountId, transaction.Amount, transaction.Currency, transaction.TransactionId, transaction.CorrelationId, It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("Simulated posting failure."));
+        auditLogWriter
+            .Setup(item => item.WriteAsync("DepositFailed", transaction, It.IsAny<Dictionary<string, object?>>(), It.IsAny<Dictionary<string, object?>>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        var processor = CreateProcessor(repository, accountDirectory, auditLogWriter);
 
         await processor.ProcessAsync(transaction.TransactionId, CancellationToken.None);
 
-        var stored = await repository.GetByIdAsync(transaction.TransactionId, CancellationToken.None);
-        stored.Should().NotBeNull();
-        stored!.Status.Should().Be(DepositStatus.Failed);
-        stored.FailureCode.Should().Be("DEPOSIT_PROCESSING_FAILED");
-        stored.FailureReason.Should().NotBeNullOrWhiteSpace();
-        auditLogWriter.Actions.Should().ContainSingle().Which.Should().Be("DepositFailed");
+        transaction.Status.Should().Be(DepositStatus.Failed);
+        transaction.FailureCode.Should().Be("DEPOSIT_PROCESSING_FAILED");
+        transaction.AuditStatus.Should().Be(DepositSagaStepStatus.Succeeded);
+        repository.Verify(item => item.UpdateAsync(transaction, It.IsAny<CancellationToken>()), Times.Exactly(3));
+        repository.VerifyAll();
+        accountDirectory.VerifyAll();
+        auditLogWriter.VerifyAll();
     }
 
     [Fact]
     public async Task ProcessAsync_Should_NotRollbackTransaction_When_AuditRecordingFails()
     {
-        // Audit failure is intentionally non-transactional with respect to the balance workflow.
-        var repository = new InMemoryDepositRepository();
+        var repository = new Mock<IDepositRepository>(MockBehavior.Strict);
+        var accountDirectory = new Mock<IDepositAccountDirectory>(MockBehavior.Strict);
+        var auditLogWriter = new Mock<IAuditLogWriter>(MockBehavior.Strict);
         var transaction = BuildTransaction("dep-audit-failure-001");
-        await repository.AddAsync(
-            transaction,
-            DepositOutboxMessage.CreateRequestedMessage(BuildRequestedMessage(transaction), transaction.RequestedAt),
-            CancellationToken.None);
 
-        var processor = new DepositTransactionProcessor(
-            repository,
-            new InMemoryDepositAccountDirectory(),
-            new ThrowingAuditLogWriter(),
-            NullLogger<DepositTransactionProcessor>.Instance);
+        repository.Setup(item => item.GetByIdAsync(transaction.TransactionId, It.IsAny<CancellationToken>())).ReturnsAsync(transaction);
+        repository.Setup(item => item.UpdateAsync(transaction, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+        accountDirectory
+            .Setup(item => item.PostDepositAsync(transaction.AccountId, transaction.Amount, transaction.Currency, transaction.TransactionId, transaction.CorrelationId, It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+        auditLogWriter
+            .Setup(item => item.WriteAsync("DepositSucceeded", transaction, It.IsAny<Dictionary<string, object?>>(), It.IsAny<Dictionary<string, object?>>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("Simulated audit failure."));
+
+        var processor = CreateProcessor(repository, accountDirectory, auditLogWriter);
 
         await processor.ProcessAsync(transaction.TransactionId, CancellationToken.None);
 
-        var stored = await repository.GetByIdAsync(transaction.TransactionId, CancellationToken.None);
-        stored.Should().NotBeNull();
-        stored!.Status.Should().Be(DepositStatus.Succeeded);
+        transaction.Status.Should().Be(DepositStatus.Succeeded);
+        transaction.AuditStatus.Should().Be(DepositSagaStepStatus.Failed);
+        repository.Verify(item => item.UpdateAsync(transaction, It.IsAny<CancellationToken>()), Times.Exactly(3));
+        repository.VerifyAll();
+        accountDirectory.VerifyAll();
+        auditLogWriter.VerifyAll();
     }
 
     [Fact]
     public async Task ProcessAsync_Should_Compensate_When_LocalFinalizationFails_After_AccountPosting()
     {
-        // This simulates the most interesting distributed failure: the balance moved, but a later
-        // local step failed, so the saga must compensate instead of simply returning Failed.
-        var repository = new FailAfterPostingDepositRepository();
+        var repository = new Mock<IDepositRepository>(MockBehavior.Strict);
+        var accountDirectory = new Mock<IDepositAccountDirectory>(MockBehavior.Strict);
+        var auditLogWriter = new Mock<IAuditLogWriter>(MockBehavior.Strict);
         var transaction = BuildTransaction("dep-compensated-001");
-        await repository.AddAsync(
-            transaction,
-            DepositOutboxMessage.CreateRequestedMessage(BuildRequestedMessage(transaction), transaction.RequestedAt),
-            CancellationToken.None);
+        var shouldFailOnSucceededUpdate = true;
 
-        var accountDirectory = new TrackingDepositAccountDirectory();
-        var auditLogWriter = new TestAuditLogWriter();
-        var processor = new DepositTransactionProcessor(
-            repository,
-            accountDirectory,
-            auditLogWriter,
-            NullLogger<DepositTransactionProcessor>.Instance);
+        repository.Setup(item => item.GetByIdAsync(transaction.TransactionId, It.IsAny<CancellationToken>())).ReturnsAsync(transaction);
+        repository
+            .Setup(item => item.UpdateAsync(transaction, It.IsAny<CancellationToken>()))
+            .Returns<DepositTransaction, CancellationToken>((updated, _) =>
+            {
+                if (shouldFailOnSucceededUpdate && updated.Status == DepositStatus.Succeeded)
+                {
+                    shouldFailOnSucceededUpdate = false;
+                    throw new InvalidOperationException("Simulated local finalization failure after account posting.");
+                }
+
+                return Task.CompletedTask;
+            });
+        accountDirectory
+            .Setup(item => item.PostDepositAsync(transaction.AccountId, transaction.Amount, transaction.Currency, transaction.TransactionId, transaction.CorrelationId, It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+        accountDirectory
+            .Setup(item => item.ReverseDepositAsync(transaction.AccountId, transaction.Amount, transaction.Currency, transaction.TransactionId, $"rev_{transaction.TransactionId}", transaction.CorrelationId, "Compensating partially completed deposit saga.", It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+        auditLogWriter
+            .Setup(item => item.WriteAsync("DepositCompensated", transaction, It.IsAny<Dictionary<string, object?>>(), It.IsAny<Dictionary<string, object?>>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        var processor = CreateProcessor(repository, accountDirectory, auditLogWriter);
 
         await processor.ProcessAsync(transaction.TransactionId, CancellationToken.None);
 
-        var stored = await repository.GetByIdAsync(transaction.TransactionId, CancellationToken.None);
-        stored.Should().NotBeNull();
-        stored!.Status.Should().Be(DepositStatus.Reversed);
-        stored.CompensationStatus.Should().Be(DepositSagaStepStatus.Compensated);
-        accountDirectory.PostedReferences.Should().Contain(transaction.TransactionId);
-        accountDirectory.ReversedReferences.Should().Contain($"rev_{transaction.TransactionId}");
-        auditLogWriter.Actions.Should().Contain("DepositCompensated");
+        transaction.Status.Should().Be(DepositStatus.Reversed);
+        transaction.CompensationStatus.Should().Be(DepositSagaStepStatus.Compensated);
+        transaction.AuditStatus.Should().Be(DepositSagaStepStatus.Succeeded);
+        repository.VerifyAll();
+        accountDirectory.VerifyAll();
+        auditLogWriter.VerifyAll();
     }
 
     [Fact]
     public async Task RetryCompensationAsync_Should_ResolvePendingReview_When_ReversalLaterSucceeds()
     {
-        // Review retry proves the workflow can re-enter the compensation branch after an operator action.
-        var repository = new InMemoryDepositRepository();
+        var repository = new Mock<IDepositRepository>(MockBehavior.Strict);
+        var accountDirectory = new Mock<IDepositAccountDirectory>(MockBehavior.Strict);
+        var auditLogWriter = new Mock<IAuditLogWriter>(MockBehavior.Strict);
         var transaction = BuildTransaction("dep-review-retry-001");
         transaction.Status = DepositStatus.PendingReview;
         transaction.AccountPostingStatus = DepositSagaStepStatus.Succeeded;
         transaction.CompensationStatus = DepositSagaStepStatus.Failed;
         transaction.ReviewRequiredAt = DateTimeOffset.UtcNow.AddMinutes(-2);
-        await repository.AddAsync(
-            transaction,
-            DepositOutboxMessage.CreateRequestedMessage(BuildRequestedMessage(transaction), transaction.RequestedAt),
-            CancellationToken.None);
 
-        var accountDirectory = new RetryableCompensationDepositAccountDirectory();
-        var auditLogWriter = new TestAuditLogWriter();
-        var processor = new DepositTransactionProcessor(
-            repository,
-            accountDirectory,
-            auditLogWriter,
-            NullLogger<DepositTransactionProcessor>.Instance);
+        repository.Setup(item => item.GetByIdAsync(transaction.TransactionId, It.IsAny<CancellationToken>())).ReturnsAsync(transaction);
+        repository.Setup(item => item.UpdateAsync(transaction, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+        accountDirectory
+            .Setup(item => item.ReverseDepositAsync(transaction.AccountId, transaction.Amount, transaction.Currency, transaction.TransactionId, $"rev_{transaction.TransactionId}", transaction.CorrelationId, "Compensating partially completed deposit saga.", It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+        auditLogWriter
+            .Setup(item => item.WriteAsync("DepositCompensated", transaction, It.IsAny<Dictionary<string, object?>>(), It.IsAny<Dictionary<string, object?>>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        var processor = CreateProcessor(repository, accountDirectory, auditLogWriter);
 
         await processor.RetryCompensationAsync(transaction.TransactionId, "ops-user", "Retry after queue recovery.", CancellationToken.None);
 
-        var stored = await repository.GetByIdAsync(transaction.TransactionId, CancellationToken.None);
-        stored.Should().NotBeNull();
-        stored!.Status.Should().Be(DepositStatus.Reversed);
-        stored.CompensationStatus.Should().Be(DepositSagaStepStatus.Compensated);
-        stored.ReviewResolution.Should().Be(DepositReviewResolution.RetryRequested);
-        stored.ReviewLastActionBy.Should().Be("ops-user");
-        stored.CompensationRetryCount.Should().Be(1);
-        auditLogWriter.Actions.Should().Contain("DepositCompensated");
+        transaction.Status.Should().Be(DepositStatus.Reversed);
+        transaction.CompensationStatus.Should().Be(DepositSagaStepStatus.Compensated);
+        transaction.ReviewResolution.Should().Be(DepositReviewResolution.RetryRequested);
+        transaction.ReviewLastActionBy.Should().Be("ops-user");
+        transaction.CompensationRetryCount.Should().Be(1);
+        transaction.AuditStatus.Should().Be(DepositSagaStepStatus.Succeeded);
+        repository.VerifyAll();
+        accountDirectory.VerifyAll();
+        auditLogWriter.VerifyAll();
     }
+
+    [Fact]
+    public async Task ProcessAsync_Should_ReturnImmediately_When_TransactionAlreadySucceeded()
+    {
+        var repository = new Mock<IDepositRepository>(MockBehavior.Strict);
+        var transaction = DepositServiceTestData.CreateTransaction("dep-succeeded-001", DepositStatus.Succeeded);
+
+        repository.Setup(item => item.GetByIdAsync(transaction.TransactionId, It.IsAny<CancellationToken>())).ReturnsAsync(transaction);
+
+        var processor = CreateProcessor(repository, new Mock<IDepositAccountDirectory>(MockBehavior.Strict), new Mock<IAuditLogWriter>(MockBehavior.Strict));
+
+        await processor.ProcessAsync(transaction.TransactionId, CancellationToken.None);
+
+        repository.Verify(item => item.UpdateAsync(It.IsAny<DepositTransaction>(), It.IsAny<CancellationToken>()), Times.Never);
+        repository.VerifyAll();
+    }
+
+    [Fact]
+    public async Task RetryCompensationAsync_Should_MoveToPendingReview_When_ReversalFails()
+    {
+        var repository = new Mock<IDepositRepository>(MockBehavior.Strict);
+        var accountDirectory = new Mock<IDepositAccountDirectory>(MockBehavior.Strict);
+        var auditLogWriter = new Mock<IAuditLogWriter>(MockBehavior.Strict);
+        var transaction = DepositServiceTestData.CreateTransaction("dep-review-failed-001", DepositStatus.PendingReview);
+        transaction.AccountPostingStatus = DepositSagaStepStatus.Succeeded;
+        transaction.CompensationStatus = DepositSagaStepStatus.Failed;
+        transaction.FailureReason = "Initial failure";
+
+        repository.Setup(item => item.GetByIdAsync(transaction.TransactionId, It.IsAny<CancellationToken>())).ReturnsAsync(transaction);
+        repository.Setup(item => item.UpdateAsync(transaction, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+        accountDirectory
+            .Setup(item => item.ReverseDepositAsync(transaction.AccountId, transaction.Amount, transaction.Currency, transaction.TransactionId, $"rev_{transaction.TransactionId}", transaction.CorrelationId, "Compensating partially completed deposit saga.", It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("Reversal still failing."));
+        auditLogWriter
+            .Setup(item => item.WriteAsync("DepositCompensationPendingReview", transaction, It.IsAny<Dictionary<string, object?>>(), It.IsAny<Dictionary<string, object?>>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        var processor = CreateProcessor(repository, accountDirectory, auditLogWriter);
+
+        await processor.RetryCompensationAsync(transaction.TransactionId, "ops-user", "Retry note", CancellationToken.None);
+
+        transaction.Status.Should().Be(DepositStatus.PendingReview);
+        transaction.CompensationStatus.Should().Be(DepositSagaStepStatus.Failed);
+        transaction.ReviewResolution.Should().Be(DepositReviewResolution.RetryRequested);
+        transaction.FailureCode.Should().Be("DEPOSIT_COMPENSATION_REVIEW_REQUIRED");
+        transaction.AuditStatus.Should().Be(DepositSagaStepStatus.Succeeded);
+        repository.VerifyAll();
+        accountDirectory.VerifyAll();
+        auditLogWriter.VerifyAll();
+    }
+
+    [Fact]
+    public async Task RetryCompensationAsync_Should_Throw_When_TransactionDoesNotExist()
+    {
+        var repository = new Mock<IDepositRepository>(MockBehavior.Strict);
+        repository
+            .Setup(item => item.GetByIdAsync("dep-missing", It.IsAny<CancellationToken>()))
+            .ReturnsAsync((DepositTransaction?)null);
+
+        var processor = CreateProcessor(repository, new Mock<IDepositAccountDirectory>(MockBehavior.Strict), new Mock<IAuditLogWriter>(MockBehavior.Strict));
+
+        var act = () => processor.RetryCompensationAsync("dep-missing", "ops-user", "Retry note", CancellationToken.None);
+
+        await act.Should().ThrowAsync<Banking.Services.Deposit.Exceptions.DepositNotFoundException>();
+        repository.VerifyAll();
+    }
+
+    private static DepositTransactionProcessor CreateProcessor(
+        Mock<IDepositRepository> repository,
+        Mock<IDepositAccountDirectory> accountDirectory,
+        Mock<IAuditLogWriter> auditLogWriter)
+        => new(
+            repository.Object,
+            accountDirectory.Object,
+            auditLogWriter.Object,
+            NullLogger<DepositTransactionProcessor>.Instance);
 
     private static DepositTransaction BuildTransaction(string transactionId)
-    {
-        return new DepositTransaction
-        {
-            TransactionId = transactionId,
-            TransactionNumber = $"D{DateTimeOffset.UtcNow:yyyyMMddHHmmssfff}",
-            CustomerId = "cus_active_001",
-            AccountId = "acc_active_001",
-            Amount = 100m,
-            Currency = "USD",
-            Channel = DepositChannel.Counter,
-            Status = DepositStatus.Received,
-            IdempotencyKey = $"idem-{transactionId}",
-            CorrelationId = $"corr-{transactionId}",
-            RequestedAt = DateTimeOffset.UtcNow
-        };
-    }
-
-    private static DepositRequestedMessage BuildRequestedMessage(DepositTransaction transaction)
-    {
-        return new DepositRequestedMessage(
-            transaction.TransactionId,
-            transaction.CustomerId,
-            transaction.AccountId,
-            transaction.Amount,
-            transaction.Currency,
-            transaction.Channel,
-            transaction.CorrelationId);
-    }
-
-    private sealed class ThrowingDepositAccountDirectory : IDepositAccountDirectory
-    {
-        public Task<DepositAccountRecord?> GetByIdAsync(string accountId, CancellationToken cancellationToken)
-        {
-            return Task.FromResult<DepositAccountRecord?>(null);
-        }
-
-        public Task PostDepositAsync(
-            string accountId,
-            decimal amount,
-            string currency,
-            string postingReference,
-            string? correlationId,
-            CancellationToken cancellationToken)
-        {
-            throw new InvalidOperationException("Simulated posting failure.");
-        }
-
-        public Task ReverseDepositAsync(
-            string accountId,
-            decimal amount,
-            string currency,
-            string originalPostingReference,
-            string reversalReference,
-            string? correlationId,
-            string reason,
-            CancellationToken cancellationToken)
-        {
-            return Task.CompletedTask;
-        }
-    }
-
-    private sealed class TrackingDepositAccountDirectory : IDepositAccountDirectory
-    {
-        public List<string> PostedReferences { get; } = [];
-        public List<string> ReversedReferences { get; } = [];
-
-        public Task<DepositAccountRecord?> GetByIdAsync(string accountId, CancellationToken cancellationToken)
-        {
-            return Task.FromResult<DepositAccountRecord?>(null);
-        }
-
-        public Task PostDepositAsync(
-            string accountId,
-            decimal amount,
-            string currency,
-            string postingReference,
-            string? correlationId,
-            CancellationToken cancellationToken)
-        {
-            PostedReferences.Add(postingReference);
-            return Task.CompletedTask;
-        }
-
-        public Task ReverseDepositAsync(
-            string accountId,
-            decimal amount,
-            string currency,
-            string originalPostingReference,
-            string reversalReference,
-            string? correlationId,
-            string reason,
-            CancellationToken cancellationToken)
-        {
-            ReversedReferences.Add(reversalReference);
-            return Task.CompletedTask;
-        }
-    }
-
-    private sealed class RetryableCompensationDepositAccountDirectory : IDepositAccountDirectory
-    {
-        public Task<DepositAccountRecord?> GetByIdAsync(string accountId, CancellationToken cancellationToken)
-        {
-            return Task.FromResult<DepositAccountRecord?>(null);
-        }
-
-        public Task PostDepositAsync(
-            string accountId,
-            decimal amount,
-            string currency,
-            string postingReference,
-            string? correlationId,
-            CancellationToken cancellationToken)
-        {
-            return Task.CompletedTask;
-        }
-
-        public Task ReverseDepositAsync(
-            string accountId,
-            decimal amount,
-            string currency,
-            string originalPostingReference,
-            string reversalReference,
-            string? correlationId,
-            string reason,
-            CancellationToken cancellationToken)
-        {
-            return Task.CompletedTask;
-        }
-    }
-
-    private sealed class FailAfterPostingDepositRepository : InMemoryDepositRepository
-    {
-        private bool _shouldFailOnSucceededUpdate = true;
-
-        public override Task UpdateAsync(DepositTransaction transaction, CancellationToken cancellationToken)
-        {
-            if (_shouldFailOnSucceededUpdate && transaction.Status == DepositStatus.Succeeded)
-            {
-                _shouldFailOnSucceededUpdate = false;
-                throw new InvalidOperationException("Simulated local finalization failure after account posting.");
-            }
-
-            return base.UpdateAsync(transaction, cancellationToken);
-        }
-    }
-
-    private sealed class TestAuditLogWriter : IAuditLogWriter
-    {
-        public List<string> Actions { get; } = new();
-
-        public Task WriteAsync(
-            string action,
-            DepositTransaction transaction,
-            Dictionary<string, object?> beforeSnapshot,
-            Dictionary<string, object?> afterSnapshot,
-            CancellationToken cancellationToken)
-        {
-            Actions.Add(action);
-            return Task.CompletedTask;
-        }
-    }
-
-    private sealed class ThrowingAuditLogWriter : IAuditLogWriter
-    {
-        public Task WriteAsync(
-            string action,
-            DepositTransaction transaction,
-            Dictionary<string, object?> beforeSnapshot,
-            Dictionary<string, object?> afterSnapshot,
-            CancellationToken cancellationToken)
-        {
-            throw new InvalidOperationException("Simulated audit failure.");
-        }
-    }
+        => DepositServiceTestData.CreateTransaction(transactionId, DepositStatus.Received, correlationId: $"corr-{transactionId}");
 }

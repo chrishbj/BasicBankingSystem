@@ -64,6 +64,8 @@ public sealed class GatewayWebApplicationFactory : WebApplicationFactory<Program
 public sealed class RecordingDownstreamStub(string serviceName)
 {
     public ConcurrentQueue<RecordedDownstreamRequest> Requests { get; } = new();
+    public HttpStatusCode? ForcedStatusCode { get; set; }
+    public string? ForcedContent { get; set; }
 
     public Task<HttpResponseMessage> HandleAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
@@ -71,6 +73,14 @@ public sealed class RecordingDownstreamStub(string serviceName)
             request.Method.Method,
             request.RequestUri?.PathAndQuery ?? string.Empty,
             request.Headers.ToDictionary(header => header.Key, header => header.Value.ToArray(), StringComparer.OrdinalIgnoreCase)));
+
+        if (ForcedStatusCode is not null)
+        {
+            return Task.FromResult(new HttpResponseMessage(ForcedStatusCode.Value)
+            {
+                Content = new StringContent(ForcedContent ?? string.Empty)
+            });
+        }
 
         var path = request.RequestUri?.AbsolutePath ?? string.Empty;
 

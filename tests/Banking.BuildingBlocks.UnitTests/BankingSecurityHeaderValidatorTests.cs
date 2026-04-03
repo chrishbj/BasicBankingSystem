@@ -3,7 +3,7 @@ using FluentAssertions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Options;
 
-namespace Banking.Contracts.Tests;
+namespace Banking.BuildingBlocks.UnitTests;
 
 public sealed class BankingSecurityHeaderValidatorTests
 {
@@ -57,6 +57,20 @@ public sealed class BankingSecurityHeaderValidatorTests
     }
 
     [Fact]
+    public void Validate_Should_Fail_For_Invalid_External_Api_Key()
+    {
+        var headers = new HeaderDictionary
+        {
+            [BankingAuthenticationDefaults.ApiKeyHeaderName] = "wrong-key"
+        };
+
+        var result = _validator.Validate(headers);
+
+        result.Succeeded.Should().BeFalse();
+        result.FailureMessage.Should().Be("The API key is invalid.");
+    }
+
+    [Fact]
     public void Validate_Should_Succeed_For_Internal_Service_Headers()
     {
         var headers = new HeaderDictionary
@@ -85,6 +99,15 @@ public sealed class BankingSecurityHeaderValidatorTests
 
         result.Succeeded.Should().BeFalse();
         result.FailureMessage.Should().NotBeNullOrWhiteSpace();
+    }
+
+    [Fact]
+    public void Validate_Should_Return_NoCredentials_When_No_Headers_Are_Present()
+    {
+        var result = _validator.Validate(new HeaderDictionary());
+
+        result.Succeeded.Should().BeFalse();
+        result.FailureMessage.Should().BeNull();
     }
 
     private sealed class StaticOptionsMonitor<TOptions>(TOptions currentValue) : IOptionsMonitor<TOptions>

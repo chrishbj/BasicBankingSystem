@@ -3,10 +3,10 @@
 ## Common Conventions
 
 - Base path: `/api/v1`
-- Auth: `Authorization: Bearer <token>`
+- Auth: `X-Api-Key` for documented public service APIs
 - Tracing: `X-Correlation-Id`
 - Idempotency: `Idempotency-Key` on critical write APIs
-- Error model: ProblemDetails-style JSON
+- Error model: `ProblemDetails`-style JSON
 - Pagination:
   - `pageNumber`
   - `pageSize`
@@ -14,28 +14,44 @@
   - `totalCount`
   - `totalPages`
 
+## Contract Scope
+
+This phase 1 contract currently covers the documented public backend service APIs.
+
+It does not currently include:
+
+- Gateway routes
+- Customer Portal BFF routes
+- demo-only endpoints
+- internal-only service-to-service endpoints
+
+Those boundaries are currently protected by integration tests unless they are explicitly promoted into a contract document.
+
 ## Customer APIs
 
 - `POST /api/v1/customers`
-- `GET /api/v1/customers/{customerId}`
 - `GET /api/v1/customers`
-- `PUT /api/v1/customers/{customerId}/contact`
+- `GET /api/v1/customers/{customerId}`
+- `POST /api/v1/customers/portal-sign-in`
 - `POST /api/v1/customers/{customerId}/status`
 
 ## Account APIs
 
 - `POST /api/v1/accounts`
+- `GET /api/v1/accounts`
 - `GET /api/v1/accounts/{accountId}`
 - `GET /api/v1/accounts/by-number/{accountNumber}`
-- `GET /api/v1/accounts`
-- `POST /api/v1/accounts/{accountId}/close`
+- `POST /api/v1/accounts/{accountId}/withdrawals`
+- `GET /api/v1/accounts/{accountId}/activities`
 
 ## Deposit APIs
 
 - `POST /api/v1/deposits`
-- `GET /api/v1/deposits/{transactionId}`
 - `GET /api/v1/deposits`
-- `GET /api/v1/deposits/by-number/{transactionNumber}`
+- `GET /api/v1/deposits/{transactionId}`
+- `GET /api/v1/deposits/review/pending`
+- `POST /api/v1/deposits/{transactionId}/review/retry-compensation`
+- `POST /api/v1/deposits/{transactionId}/review/resolve`
 
 ## Audit APIs
 

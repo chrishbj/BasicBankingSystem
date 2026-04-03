@@ -26,4 +26,8 @@
     <ProjectReference Include="..\..\src\Banking.BuildingBlocks\Banking.BuildingBlocks.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Compile Include="..\Shared\SqliteWebApplicationFactory.cs" Link="Support\SqliteWebApplicationFactory.cs" />
+  </ItemGroup>
+
 </Project>

@@ -253,6 +253,11 @@ textarea {
   padding: 18px;
 }
 
+.summary-card h3 {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
 .mini-detail-list,
 .detail-list {
   display: grid;
