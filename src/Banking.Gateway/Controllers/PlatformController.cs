@@ -26,6 +26,24 @@ public sealed class PlatformController(
         return Ok(await platformMonitoringService.GetServicesAsync(cancellationToken));
     }
 
+    [HttpGet("compatibility")]
+    public async Task<IActionResult> GetCompatibility(CancellationToken cancellationToken)
+    {
+        return Ok(await platformMonitoringService.GetCompatibilityAsync(cancellationToken));
+    }
+
+    [HttpGet("rollouts")]
+    public async Task<IActionResult> GetRollouts(CancellationToken cancellationToken)
+    {
+        return Ok(await platformMonitoringService.GetRolloutsAsync(cancellationToken));
+    }
+
+    [HttpGet("environments")]
+    public async Task<IActionResult> GetEnvironments(CancellationToken cancellationToken)
+    {
+        return Ok(await platformMonitoringService.GetEnvironmentsAsync(cancellationToken));
+    }
+
     [HttpGet("workflows/deposits/summary")]
     public async Task<IActionResult> GetDepositWorkflowSummary(CancellationToken cancellationToken)
     {

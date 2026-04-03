@@ -7,7 +7,8 @@ namespace Banking.Gateway.Services;
 
 public sealed class PlatformMonitoringService(
     GatewayHealthService gatewayHealthService,
-    IHttpClientFactory httpClientFactory)
+    IHttpClientFactory httpClientFactory,
+    IHostEnvironment hostEnvironment)
 {
     public async Task<PlatformOverviewResponse> GetOverviewAsync(CancellationToken cancellationToken)
     {
@@ -53,6 +54,56 @@ public sealed class PlatformMonitoringService(
                 service.SwaggerUrl,
                 service.OpenApiUrl))
             .ToArray();
+    }
+
+    public async Task<IReadOnlyCollection<PlatformCompatibilityStatusResponse>> GetCompatibilityAsync(CancellationToken cancellationToken)
+    {
+        var services = await GetServicesAsync(cancellationToken);
+        var checks = await Task.WhenAll(services.Select(service => BuildCompatibilityStatusAsync(service, cancellationToken)));
+        return checks;
+    }
+
+    public async Task<IReadOnlyCollection<PlatformRolloutStatusResponse>> GetRolloutsAsync(CancellationToken cancellationToken)
+    {
+        var services = await GetServicesAsync(cancellationToken);
+        var checkedAt = DateTimeOffset.UtcNow;
+
+        return services
+            .Select(service =>
+            {
+                var healthy = string.Equals(service.Health, "Healthy", StringComparison.OrdinalIgnoreCase);
+                return new PlatformRolloutStatusResponse(
+                    service.Name,
+                    hostEnvironment.EnvironmentName,
+                    "v1",
+                    "v1",
+                    healthy ? "Stable" : "Investigate",
+                    healthy ? 100 : 0,
+                    service.Health,
+                    healthy ? "Compatible" : "Unknown",
+                    checkedAt);
+            })
+            .ToArray();
+    }
+
+    public async Task<IReadOnlyCollection<PlatformEnvironmentSummaryResponse>> GetEnvironmentsAsync(CancellationToken cancellationToken)
+    {
+        var services = await GetServicesAsync(cancellationToken);
+        var healthyCount = services.Count(service => string.Equals(service.Health, "Healthy", StringComparison.OrdinalIgnoreCase));
+
+        return
+        [
+            new PlatformEnvironmentSummaryResponse(
+                hostEnvironment.EnvironmentName,
+                "Banking.Gateway",
+                DateTimeOffset.UtcNow,
+                services.Count,
+                healthyCount,
+                "openapi-phase1",
+                "platform-surface-draft",
+                false,
+                "Single-environment local-first snapshot. Add more environments later for cross-environment comparison.")
+        ];
     }
 
     public async Task<DepositWorkflowSummaryResponse> GetDepositWorkflowSummaryAsync(CancellationToken cancellationToken)
@@ -344,6 +395,137 @@ public sealed class PlatformMonitoringService(
         {
             return new PagedResponse<DepositPendingReviewItemResponse>([], 1, 10, 0, 0);
         }
+    }
+
+    private async Task<PlatformCompatibilityStatusResponse> BuildCompatibilityStatusAsync(
+        PlatformServiceStatusResponse service,
+        CancellationToken cancellationToken)
+    {
+        var expectedPaths = GetExpectedCriticalPaths(service.Name);
+        var checkedAt = DateTimeOffset.UtcNow;
+        var httpClient = httpClientFactory.CreateClient($"{service.Name}-service");
+
+        try
+        {
+            using var response = await httpClient.GetAsync("openapi/v1.json", cancellationToken);
+            if (!response.IsSuccessStatusCode)
+            {
+                return new PlatformCompatibilityStatusResponse(
+                    service.Name,
+                    hostEnvironment.EnvironmentName,
+                    "PublicServiceContract",
+                    "openapi-phase1",
+                    service.OpenApiUrl,
+                    false,
+                    "Unavailable",
+                    $"Runtime OpenAPI returned {(int)response.StatusCode}.",
+                    null,
+                    null,
+                    0,
+                    expectedPaths.Count,
+                    expectedPaths.Count,
+                    expectedPaths,
+                    $"HTTP {(int)response.StatusCode}",
+                    checkedAt);
+            }
+
+            await using var contentStream = await response.Content.ReadAsStreamAsync(cancellationToken);
+            using var document = await JsonDocument.ParseAsync(contentStream, cancellationToken: cancellationToken);
+
+            var root = document.RootElement;
+            var info = root.TryGetProperty("info", out var infoElement) ? infoElement : default;
+            var runtimeTitle = info.ValueKind == JsonValueKind.Object && info.TryGetProperty("title", out var titleElement)
+                ? titleElement.GetString()
+                : null;
+            var runtimeVersion = info.ValueKind == JsonValueKind.Object && info.TryGetProperty("version", out var versionElement)
+                ? versionElement.GetString()
+                : null;
+
+            var runtimePaths = root.TryGetProperty("paths", out var pathsElement) && pathsElement.ValueKind == JsonValueKind.Object
+                ? pathsElement.EnumerateObject().Select(item => item.Name).ToHashSet(StringComparer.Ordinal)
+                : [];
+
+            var missingPaths = expectedPaths
+                .Where(path => !runtimePaths.Contains(path))
+                .ToArray();
+
+            var status = missingPaths.Length == 0 ? "Compatible" : "DriftDetected";
+            var driftSummary = missingPaths.Length == 0
+                ? $"Runtime OpenAPI includes all {expectedPaths.Count} critical baseline paths."
+                : $"Missing {missingPaths.Length} of {expectedPaths.Count} critical baseline paths.";
+
+            return new PlatformCompatibilityStatusResponse(
+                service.Name,
+                hostEnvironment.EnvironmentName,
+                "PublicServiceContract",
+                "openapi-phase1",
+                service.OpenApiUrl,
+                true,
+                status,
+                driftSummary,
+                runtimeTitle,
+                runtimeVersion,
+                runtimePaths.Count,
+                expectedPaths.Count,
+                missingPaths.Length,
+                missingPaths,
+                null,
+                checkedAt);
+        }
+        catch (Exception exception)
+        {
+            return new PlatformCompatibilityStatusResponse(
+                service.Name,
+                hostEnvironment.EnvironmentName,
+                "PublicServiceContract",
+                "openapi-phase1",
+                service.OpenApiUrl,
+                false,
+                "Unavailable",
+                "Runtime OpenAPI could not be fetched or parsed.",
+                null,
+                null,
+                0,
+                expectedPaths.Count,
+                expectedPaths.Count,
+                expectedPaths,
+                exception.Message,
+                checkedAt);
+        }
+    }
+
+    private static IReadOnlyCollection<string> GetExpectedCriticalPaths(string serviceName)
+    {
+        return serviceName switch
+        {
+            "customer" =>
+            [
+                "/api/v1/customers",
+                "/api/v1/customers/{customerId}",
+                "/api/v1/customers/{customerId}/status"
+            ],
+            "account" =>
+            [
+                "/api/v1/accounts",
+                "/api/v1/accounts/{accountId}",
+                "/api/v1/accounts/by-number/{accountNumber}",
+                "/api/v1/accounts/{accountId}/activities"
+            ],
+            "deposit" =>
+            [
+                "/api/v1/deposits",
+                "/api/v1/deposits/{transactionId}",
+                "/api/v1/deposits/review/pending",
+                "/api/v1/deposits/{transactionId}/review/retry-compensation",
+                "/api/v1/deposits/{transactionId}/review/resolve"
+            ],
+            "audit" =>
+            [
+                "/api/v1/audits",
+                "/api/v1/audits/{auditId}"
+            ],
+            _ => []
+        };
     }
 
     private static DepositWorkflowDetailResponse MapDepositWorkflowDetail(JsonElement element)

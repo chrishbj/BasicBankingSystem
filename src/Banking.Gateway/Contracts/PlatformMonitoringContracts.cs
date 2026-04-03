@@ -13,6 +13,46 @@ public sealed record PlatformDependencyStatusResponse(
     string Status,
     string CheckedBy);
 
+public sealed record PlatformCompatibilityStatusResponse(
+    string ServiceName,
+    string Environment,
+    string Surface,
+    string Baseline,
+    string RuntimeOpenApiUrl,
+    bool Parseable,
+    string Status,
+    string DriftSummary,
+    string? RuntimeTitle,
+    string? RuntimeVersion,
+    int RuntimePathCount,
+    int ExpectedCriticalPathCount,
+    int MissingCriticalPathCount,
+    IReadOnlyCollection<string> MissingCriticalPaths,
+    string? ParseError,
+    DateTimeOffset LastVerifiedAt);
+
+public sealed record PlatformRolloutStatusResponse(
+    string ServiceName,
+    string Environment,
+    string CurrentVersion,
+    string TargetVersion,
+    string Stage,
+    int CanaryPercent,
+    string HealthStatus,
+    string CompatibilityStatus,
+    DateTimeOffset LastUpdatedAt);
+
+public sealed record PlatformEnvironmentSummaryResponse(
+    string Environment,
+    string Gateway,
+    DateTimeOffset CheckedAt,
+    int ServiceCount,
+    int HealthyServiceCount,
+    string PublicContractBaseline,
+    string PlatformSurfaceBaseline,
+    bool ComparisonReady,
+    string Notes);
+
 public sealed record DepositPendingReviewItemResponse(
     string TransactionId,
     string TransactionNumber,

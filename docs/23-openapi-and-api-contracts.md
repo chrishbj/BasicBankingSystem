@@ -26,6 +26,8 @@ Related future design work:
 
 - `docs/36-platform-diagnostics-and-advanced-health-checks.md`
 - `docs/37-platform-diagnostics-api-draft.md`
+- `docs/38-platform-identity-and-operations-architecture.md`
+- `docs/39-platform-operations-console-detailed-design.md`
 
 ## Runtime Swagger Support
 
@@ -64,6 +66,8 @@ That future operator-facing direction is described in:
 
 - `docs/36-platform-diagnostics-and-advanced-health-checks.md`
 - `docs/37-platform-diagnostics-api-draft.md`
+- `docs/38-platform-identity-and-operations-architecture.md`
+- `docs/39-platform-operations-console-detailed-design.md`
 
 ## How Contracts Help The Frontends
 

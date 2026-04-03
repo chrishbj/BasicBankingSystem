@@ -11,6 +11,8 @@ For the repository-wide design rules used for new tests, see:
 - `docs/35-test-design-findings-and-remedies.md`
 - `docs/36-platform-diagnostics-and-advanced-health-checks.md`
 - `docs/37-platform-diagnostics-api-draft.md`
+- `docs/38-platform-identity-and-operations-architecture.md`
+- `docs/39-platform-operations-console-detailed-design.md`
 
 ## Test Stack
 

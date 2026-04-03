@@ -10,6 +10,9 @@ This guide starts the current local stack on Docker Desktop.
 - `account-service`
 - `deposit-service`
 - `audit-service`
+- `gateway-service`
+- `banking-customer-bff`
+- `banking-platform-ops`
 - `banking-web`
 - `banking-customer-portal`
 
@@ -38,10 +41,13 @@ docker compose --env-file infra/docker.env.local -f infra/docker-compose.docker-
 
 ## Exposed Endpoints
 
+- `Gateway`: `http://localhost:18080`
 - `Customer`: `http://localhost:18081`
 - `Account`: `http://localhost:18082`
 - `Deposit`: `http://localhost:18083`
 - `Audit`: `http://localhost:18084`
+- `Customer Portal BFF`: `http://localhost:18085`
+- `Platform Operations Console`: `http://localhost:18089`
 - `Operations Console`: `http://localhost:18090`
 - `Customer Portal`: `http://localhost:18091`
 - `RabbitMQ Management`: `http://localhost:15672`
@@ -55,6 +61,7 @@ docker compose --env-file infra/docker.env.local -f infra/docker-compose.docker-
 
 ## Frontend
 
+- `Platform Operations Console`: `http://localhost:18089`
 - `Operations Console`: `http://localhost:18090`
 - `Customer Portal`: `http://localhost:18091`
 

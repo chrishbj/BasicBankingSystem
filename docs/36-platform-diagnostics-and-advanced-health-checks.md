@@ -262,3 +262,5 @@ For the next stage, the most practical starting point is:
 Related API draft:
 
 - `docs/37-platform-diagnostics-api-draft.md`
+- `docs/38-platform-identity-and-operations-architecture.md`
+- `docs/39-platform-operations-console-detailed-design.md`

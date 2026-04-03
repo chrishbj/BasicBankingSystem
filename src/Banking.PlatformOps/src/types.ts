@@ -13,6 +13,49 @@ export type PlatformDependencyStatus = {
   checkedBy: string
 }
 
+export type PlatformCompatibilityStatus = {
+  serviceName: string
+  environment: string
+  surface: string
+  baseline: string
+  runtimeOpenApiUrl: string
+  parseable: boolean
+  status: string
+  driftSummary: string
+  runtimeTitle?: string | null
+  runtimeVersion?: string | null
+  runtimePathCount: number
+  expectedCriticalPathCount: number
+  missingCriticalPathCount: number
+  missingCriticalPaths: string[]
+  parseError?: string | null
+  lastVerifiedAt: string
+}
+
+export type PlatformRolloutStatus = {
+  serviceName: string
+  environment: string
+  currentVersion: string
+  targetVersion: string
+  stage: string
+  canaryPercent: number
+  healthStatus: string
+  compatibilityStatus: string
+  lastUpdatedAt: string
+}
+
+export type PlatformEnvironmentSummary = {
+  environment: string
+  gateway: string
+  checkedAt: string
+  serviceCount: number
+  healthyServiceCount: number
+  publicContractBaseline: string
+  platformSurfaceBaseline: string
+  comparisonReady: boolean
+  notes: string
+}
+
 export type DepositPendingReviewItem = {
   transactionId: string
   transactionNumber: string

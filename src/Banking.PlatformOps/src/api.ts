@@ -6,8 +6,11 @@ import type {
   DepositPendingReviewItem,
   DepositWorkflowDetail,
   DepositWorkflowSummary,
+  PlatformCompatibilityStatus,
+  PlatformEnvironmentSummary,
   PlatformMaintenanceAction,
   PlatformOverview,
+  PlatformRolloutStatus,
   PlatformServiceStatus,
   AuditTraceItem,
 } from './types'
@@ -36,6 +39,18 @@ export function getPlatformOverview() {
 
 export function getPlatformServices() {
   return request<PlatformServiceStatus[]>('/gateway-api/api/platform/services')
+}
+
+export function getPlatformCompatibility() {
+  return request<PlatformCompatibilityStatus[]>('/gateway-api/api/platform/compatibility')
+}
+
+export function getPlatformRollouts() {
+  return request<PlatformRolloutStatus[]>('/gateway-api/api/platform/rollouts')
+}
+
+export function getPlatformEnvironments() {
+  return request<PlatformEnvironmentSummary[]>('/gateway-api/api/platform/environments')
 }
 
 export function getDepositWorkflowSummary() {

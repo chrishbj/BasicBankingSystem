@@ -69,6 +69,58 @@ public sealed class GatewayApiTests : IClassFixture<GatewayWebApplicationFactory
     }
 
     [Fact]
+    public async Task GetCompatibility_Should_ReturnDocumentedServiceSurfaceStatuses()
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/platform/compatibility");
+        request.Headers.Add("X-Api-Key", "local-dev-api-key");
+
+        var response = await _client.SendAsync(request);
+        var items = await response.Content.ReadFromJsonAsync<List<PlatformCompatibilityStatusResponse>>();
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        items.Should().NotBeNull();
+        items!.Should().HaveCount(4);
+        items.Should().OnlyContain(item => item.Surface == "PublicServiceContract");
+        items.Should().Contain(item => item.ServiceName == "deposit" && item.Status == "Compatible");
+        items.Should().OnlyContain(item => item.Parseable);
+        items.Should().OnlyContain(item => item.MissingCriticalPathCount == 0);
+        items.Should().Contain(item => item.ServiceName == "customer" && item.RuntimeTitle == "Customer Service");
+    }
+
+    [Fact]
+    public async Task GetRollouts_Should_ReturnCurrentEnvironmentRolloutView()
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/platform/rollouts");
+        request.Headers.Add("X-Api-Key", "local-dev-api-key");
+
+        var response = await _client.SendAsync(request);
+        var items = await response.Content.ReadFromJsonAsync<List<PlatformRolloutStatusResponse>>();
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        items.Should().NotBeNull();
+        items!.Should().HaveCount(4);
+        items.Should().OnlyContain(item => item.Stage == "Stable");
+        items.Should().OnlyContain(item => item.CanaryPercent == 100);
+    }
+
+    [Fact]
+    public async Task GetEnvironments_Should_ReturnCurrentEnvironmentSnapshot()
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/platform/environments");
+        request.Headers.Add("X-Api-Key", "local-dev-api-key");
+
+        var response = await _client.SendAsync(request);
+        var items = await response.Content.ReadFromJsonAsync<List<PlatformEnvironmentSummaryResponse>>();
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        items.Should().NotBeNull();
+        items!.Should().ContainSingle();
+        items[0].Gateway.Should().Be("Banking.Gateway");
+        items[0].ServiceCount.Should().Be(4);
+        items[0].HealthyServiceCount.Should().Be(4);
+    }
+
+    [Fact]
     public async Task GetCorrelationDiagnostics_Should_ReturnMatchingDepositsAndAuditEvents()
     {
         using var request = new HttpRequestMessage(HttpMethod.Get, "/api/platform/diagnostics/correlation/corr-platform-001");

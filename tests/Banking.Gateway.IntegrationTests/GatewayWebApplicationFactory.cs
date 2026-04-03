@@ -92,6 +92,70 @@ public sealed class RecordingDownstreamStub(string serviceName)
             });
         }
 
+        if (path == "/openapi/v1.json")
+        {
+            var payload = serviceName switch
+            {
+                "customer" => new
+                {
+                    openapi = "3.1.0",
+                    info = new { title = "Customer Service", version = "v1" },
+                    paths = new Dictionary<string, object?>
+                    {
+                        ["/api/v1/customers"] = new { get = new { }, post = new { } },
+                        ["/api/v1/customers/{customerId}"] = new { get = new { } },
+                        ["/api/v1/customers/{customerId}/status"] = new { post = new { } }
+                    }
+                },
+                "account" => new
+                {
+                    openapi = "3.1.0",
+                    info = new { title = "Account Service", version = "v1" },
+                    paths = new Dictionary<string, object?>
+                    {
+                        ["/api/v1/accounts"] = new { get = new { }, post = new { } },
+                        ["/api/v1/accounts/{accountId}"] = new { get = new { } },
+                        ["/api/v1/accounts/by-number/{accountNumber}"] = new { get = new { } },
+                        ["/api/v1/accounts/{accountId}/activities"] = new { get = new { } }
+                    }
+                },
+                "deposit" => new
+                {
+                    openapi = "3.1.0",
+                    info = new { title = "Deposit Service", version = "v1" },
+                    paths = new Dictionary<string, object?>
+                    {
+                        ["/api/v1/deposits"] = new { get = new { }, post = new { } },
+                        ["/api/v1/deposits/{transactionId}"] = new { get = new { } },
+                        ["/api/v1/deposits/review/pending"] = new { get = new { } },
+                        ["/api/v1/deposits/{transactionId}/review/retry-compensation"] = new { post = new { } },
+                        ["/api/v1/deposits/{transactionId}/review/resolve"] = new { post = new { } }
+                    }
+                },
+                "audit" => new
+                {
+                    openapi = "3.1.0",
+                    info = new { title = "Audit Service", version = "v1" },
+                    paths = new Dictionary<string, object?>
+                    {
+                        ["/api/v1/audits"] = new { get = new { } },
+                        ["/api/v1/audits/{auditId}"] = new { get = new { } }
+                    }
+                },
+                _ => new
+                {
+                    openapi = "3.1.0",
+                    info = new { title = "Unknown Service", version = "v1" },
+                    paths = new Dictionary<string, object?>()
+                }
+            };
+
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = JsonContent.Create(payload)
+            });
+        }
+
         if (serviceName == "customer" && path == "/api/v1/customers")
         {
             return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)

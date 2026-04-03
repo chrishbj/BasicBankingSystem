@@ -19,6 +19,7 @@ It demonstrates:
 
 When the Docker Desktop stack is running, the main entry points are:
 
+- `Platform Operations Console`: `http://localhost:18089`
 - `Operations Console`: `http://localhost:18090`
 - `Customer Portal`: `http://localhost:18091`
 - `Customer Swagger`: `http://localhost:18081/swagger`
@@ -125,7 +126,26 @@ Relevant source:
 
 ### Platform Control Plane
 
-The gateway now exposes a platform-oriented read API for service monitoring, workflow summary, correlation diagnostics, and deposit runtime worker status. The repository also includes a dedicated `Banking.PlatformOps` frontend shell to consume that control-plane surface.
+The gateway now exposes a platform-oriented API for service monitoring, workflow summary, correlation diagnostics, deposit runtime worker status, compatibility checks, rollout summaries, and environment snapshots. The repository also includes a dedicated `Banking.PlatformOps` frontend to consume that control-plane surface.
+
+Current implemented modules:
+
+- `Overview`
+- `Services`
+- `Compatibility`
+- `Rollouts`
+- `Environments`
+- `Workflows`
+- `Diagnostics`
+- `Maintenance`
+- `Audit`
+
+Current design direction:
+
+- keep `Banking Operations Console` and `Platform Operations Console` as separate control planes
+- reuse testing, diagnostics, and contract assets as governed platform capabilities
+- keep the platform console as `summary + drill-through`, not a replacement observability stack
+- add richer baseline history, multi-environment comparison, and support access governance next
 
 Relevant source:
 
@@ -199,15 +219,16 @@ docker compose --env-file infra/docker.env.local -f infra/docker-compose.docker-
 - [Saga, Outbox, And Idempotency](docs/21-saga-outbox-idempotency.md)
 - [Database Schema And Relationships](docs/29-database-schema-and-relationships.md)
 - [Gateway And Customer BFF Design](docs/32-gateway-and-customer-bff-design.md)
-- [Platform Identity and Operations Architecture](docs/34-platform-identity-and-operations-architecture.md)
-- [Platform Operations Console Detailed Design](docs/35-platform-operations-console-detailed-design.md)
+- [Platform Identity and Operations Architecture](docs/38-platform-identity-and-operations-architecture.md)
+- [Platform Operations Console Detailed Design](docs/39-platform-operations-console-detailed-design.md)
+- [Platform Operations Console Implementation Status](docs/41-platform-operations-console-implementation-status.md)
 - [Source Code Reading Guide](docs/30-source-code-reading-guide.md)
 
 ### Testing And Contracts
 
 - [Testing And Quality](docs/22-testing-and-quality.md)
 - [OpenAPI And API Contracts](docs/23-openapi-and-api-contracts.md)
-- [Request Protection and Idempotency Strategy](docs/33-request-protection-and-idempotency-strategy.md)
+- [Request Protection and Idempotency Strategy](docs/40-request-protection-and-idempotency-strategy.md)
 - [End-to-End Manual Test Guide](docs/13-end-to-end-manual-test.md)
 - [Postman Testing Guide](docs/14-postman-testing.md)
 - [Postman Runner and Newman Guide](docs/15-postman-runner-and-newman.md)

@@ -7,8 +7,11 @@ import {
   getDepositWorkflowDetail,
   getDepositWorkflowSummary,
   getPendingReviewItems,
+  getPlatformCompatibility,
+  getPlatformEnvironments,
   getPlatformOperationsAudit,
   getPlatformOverview,
+  getPlatformRollouts,
   getPlatformServices,
   requeueOutboxMessage,
   resolveDepositReview,
@@ -23,12 +26,24 @@ import type {
   DepositPendingReviewItem,
   DepositWorkflowDetail,
   DepositWorkflowSummary,
+  PlatformCompatibilityStatus,
+  PlatformEnvironmentSummary,
   PlatformMaintenanceAction,
   PlatformOverview,
+  PlatformRolloutStatus,
   PlatformServiceStatus,
 } from './types'
 
-type PlatformTab = 'overview' | 'services' | 'workflows' | 'diagnostics' | 'maintenance' | 'audit'
+type PlatformTab =
+  | 'overview'
+  | 'services'
+  | 'compatibility'
+  | 'rollouts'
+  | 'environments'
+  | 'workflows'
+  | 'diagnostics'
+  | 'maintenance'
+  | 'audit'
 
 function formatTimestamp(value: string | null) {
   if (!value) {
@@ -39,19 +54,21 @@ function formatTimestamp(value: string | null) {
 }
 
 function buildStatusTone(value: string) {
-  return /healthy|succeeded|active/i.test(value) ? 'pill pill-healthy' : 'pill pill-warning'
+  return /healthy|succeeded|active|compatible|stable|ready/i.test(value) ? 'pill pill-healthy' : 'pill pill-warning'
 }
 
 function App() {
   const [activeTab, setActiveTab] = useState<PlatformTab>('overview')
   const [overview, setOverview] = useState<PlatformOverview | null>(null)
   const [services, setServices] = useState<PlatformServiceStatus[]>([])
+  const [compatibility, setCompatibility] = useState<PlatformCompatibilityStatus[]>([])
+  const [rollouts, setRollouts] = useState<PlatformRolloutStatus[]>([])
+  const [environments, setEnvironments] = useState<PlatformEnvironmentSummary[]>([])
   const [workflowSummary, setWorkflowSummary] = useState<DepositWorkflowSummary | null>(null)
   const [pendingReviewItems, setPendingReviewItems] = useState<DepositPendingReviewItem[]>([])
   const [outboxItems, setOutboxItems] = useState<DepositOutboxMessageItem[]>([])
   const [runtimeStatus, setRuntimeStatus] = useState<DepositRuntimeStatus | null>(null)
   const [selectedWorkflow, setSelectedWorkflow] = useState<DepositWorkflowDetail | null>(null)
-  const [selectedTransactionId, setSelectedTransactionId] = useState('dep-platform-001')
   const [correlationQuery, setCorrelationQuery] = useState('corr-platform-001')
   const [diagnostics, setDiagnostics] = useState<CorrelationDiagnostics | null>(null)
   const [platformAudit, setPlatformAudit] = useState<AuditTraceItem[]>([])
@@ -61,9 +78,22 @@ function App() {
   const [busy, setBusy] = useState(false)
 
   async function loadOverview() {
-    const [overviewResponse, servicesResponse, workflowResponse, pendingReviewResponse, outboxResponse, runtimeResponse] = await Promise.all([
+    const [
+      overviewResponse,
+      servicesResponse,
+      compatibilityResponse,
+      rolloutsResponse,
+      environmentResponse,
+      workflowResponse,
+      pendingReviewResponse,
+      outboxResponse,
+      runtimeResponse,
+    ] = await Promise.all([
       getPlatformOverview(),
       getPlatformServices(),
+      getPlatformCompatibility(),
+      getPlatformRollouts(),
+      getPlatformEnvironments(),
       getDepositWorkflowSummary(),
       getPendingReviewItems(),
       getDepositOutboxMessages(),
@@ -73,6 +103,9 @@ function App() {
     startTransition(() => {
       setOverview(overviewResponse)
       setServices(servicesResponse)
+      setCompatibility(compatibilityResponse)
+      setRollouts(rolloutsResponse)
+      setEnvironments(environmentResponse)
       setWorkflowSummary(workflowResponse)
       setPendingReviewItems(pendingReviewResponse)
       setOutboxItems(outboxResponse)
@@ -108,7 +141,6 @@ function App() {
       const detail = await getDepositWorkflowDetail(transactionId)
       startTransition(() => {
         setSelectedWorkflow(detail)
-        setSelectedTransactionId(transactionId)
         setActiveTab('workflows')
       })
       setStatusText(`Loaded workflow detail for ${transactionId}.`)
@@ -204,12 +236,14 @@ function App() {
           <p className="eyebrow">Basic Banking System</p>
           <h1>Platform Operations Console</h1>
           <p className="hero-copy">
-            A control-plane shell for service health, workflow monitoring, and correlation-driven
-            diagnostics. This surface is intentionally separate from the business operations workspace.
+            A control-plane shell for service health, compatibility visibility, rollout awareness,
+            environment baselines, and correlation-driven diagnostics. This surface stays separate
+            from the business operations workspace on purpose.
           </p>
           <div className="hero-meta">
             <span className="meta-pill">Platform Read Scope</span>
             <span className="meta-pill">Gateway Aggregation</span>
+            <span className="meta-pill">Compatibility View</span>
             <span className="meta-pill">Workflow Diagnostics</span>
           </div>
         </div>
@@ -227,20 +261,24 @@ function App() {
               <span>services observed</span>
             </div>
             <div className="metric-tile">
-              <strong>{workflowSummary?.pendingReviewCount ?? 0}</strong>
-              <span>pending review items</span>
+              <strong>{compatibility.filter((item) => item.status === 'Compatible').length}</strong>
+              <span>compatible surfaces</span>
             </div>
             <div className="metric-tile">
-              <strong>{workflowSummary?.failedCount ?? 0}</strong>
-              <span>failed deposits</span>
+              <strong>{rollouts.filter((item) => item.stage === 'Stable').length}</strong>
+              <span>stable rollouts</span>
+            </div>
+            <div className="metric-tile">
+              <strong>{workflowSummary?.pendingReviewCount ?? 0}</strong>
+              <span>pending review items</span>
             </div>
             <div className="metric-tile">
               <strong>{runtimeStatus?.pendingOutboxCount ?? 0}</strong>
               <span>pending outbox messages</span>
             </div>
             <div className="metric-tile">
-              <strong>{diagnostics?.auditEvents.length ?? 0}</strong>
-              <span>diagnostic audit hits</span>
+              <strong>{environments.length}</strong>
+              <span>environment snapshots</span>
             </div>
           </div>
           <p className="status-line">{statusText}</p>
@@ -251,6 +289,9 @@ function App() {
         {[
           ['overview', 'Overview'],
           ['services', 'Services'],
+          ['compatibility', 'Compatibility'],
+          ['rollouts', 'Rollouts'],
+          ['environments', 'Environments'],
           ['workflows', 'Workflows'],
           ['diagnostics', 'Diagnostics'],
           ['maintenance', 'Maintenance'],
@@ -258,8 +299,8 @@ function App() {
         ].map(([id, label]) => (
           <button
             key={id}
-            type="button"
             className={activeTab === id ? 'tab-button tab-button-active' : 'tab-button'}
+            type="button"
             onClick={() => setActiveTab(id as PlatformTab)}
           >
             {label}
@@ -281,11 +322,11 @@ function App() {
                   <span>platform identifier</span>
                 </div>
                 <div className="summary-item">
-                  <strong>{workflowSummary?.receivedCount ?? 0}</strong>
-                  <span>received deposits</span>
+                  <strong>{overview?.services.length ?? 0}</strong>
+                  <span>tracked services</span>
                 </div>
                 <div className="summary-item">
-                  <strong>{workflowSummary?.succeededCount ?? 0}</strong>
+                  <strong>{overview?.deposits.succeededCount ?? 0}</strong>
                   <span>succeeded deposits</span>
                 </div>
                 <div className="summary-item">
@@ -296,16 +337,17 @@ function App() {
             </article>
 
             <article className="surface-card">
-              <h2>Dependencies</h2>
+              <h2>Compatibility Snapshot</h2>
               <div className="mini-table">
-                {(overview?.dependencies ?? []).map((dependency) => (
-                  <div key={dependency.name} className="row-card">
+                {compatibility.map((item) => (
+                  <div key={item.serviceName} className="row-card">
                     <div className="row-main">
-                      <strong>{dependency.name}</strong>
-                      <small>checked by {dependency.checkedBy}</small>
+                      <strong>{item.serviceName}</strong>
+                      <small>{item.baseline}</small>
                     </div>
                     <div className="row-side">
-                      <span className={buildStatusTone(dependency.status)}>{dependency.status}</span>
+                      <span className={buildStatusTone(item.status)}>{item.status}</span>
+                      <small>{formatTimestamp(item.lastVerifiedAt)}</small>
                     </div>
                   </div>
                 ))}
@@ -313,52 +355,20 @@ function App() {
             </article>
 
             <article className="surface-card">
-              <h2>Runtime Workers</h2>
+              <h2>Rollout Snapshot</h2>
               <div className="mini-table">
-                {(runtimeStatus?.workers ?? []).map((worker) => (
-                  <div key={worker.workerName} className="row-card">
+                {rollouts.map((item) => (
+                  <div key={item.serviceName} className="row-card">
                     <div className="row-main">
-                      <strong>{worker.workerName}</strong>
-                      <small>{worker.mode}</small>
+                      <strong>{item.serviceName}</strong>
+                      <small>{item.currentVersion} to {item.targetVersion}</small>
                     </div>
                     <div className="row-side">
-                      <span className={buildStatusTone(worker.enabled ? 'Enabled' : 'Disabled')}>
-                        {worker.enabled ? 'Enabled' : 'Disabled'}
-                      </span>
-                      <small>{worker.backlogCount} backlog / {worker.pollingIntervalMilliseconds}ms</small>
+                      <span className={buildStatusTone(item.stage)}>{item.stage}</span>
+                      <small>{item.canaryPercent}% canary</small>
                     </div>
                   </div>
                 ))}
-                {!runtimeStatus?.workers.length && (
-                  <p className="empty-state">No runtime worker signal is currently available.</p>
-                )}
-              </div>
-            </article>
-
-            <article className="surface-card">
-              <h2>Review Queue</h2>
-              <div className="mini-table">
-                {pendingReviewItems.length === 0 ? (
-                  <p className="empty-state">No pending review items are currently visible.</p>
-                ) : (
-                  pendingReviewItems.map((item) => (
-                    <button
-                      key={item.transactionId}
-                      type="button"
-                      className="row-card"
-                      onClick={() => void handleLoadWorkflowDetail(item.transactionId)}
-                    >
-                      <div className="row-main">
-                        <strong>{item.transactionNumber}</strong>
-                        <small>{item.failureCode ?? 'No failure code'}</small>
-                      </div>
-                      <div className="row-side">
-                        <span className={buildStatusTone(item.compensationStatus)}>{item.compensationStatus}</span>
-                        <small>{item.accountNumber}</small>
-                      </div>
-                    </button>
-                  ))
-                )}
               </div>
             </article>
           </>
@@ -366,10 +376,9 @@ function App() {
 
         {activeTab === 'services' && (
           <article className="surface-card surface-card-wide">
-            <h2>Services</h2>
+            <h2>Service Estate</h2>
             <p className="section-copy">
-              Service reachability is shown alongside deposit runtime worker state so the control plane can separate
-              endpoint availability from background backlog pressure.
+              Gateway-aggregated service status across the current environment.
             </p>
             <div className="mini-table">
               {services.map((service) => (
@@ -377,33 +386,102 @@ function App() {
                   <div className="row-main">
                     <strong>{service.name}</strong>
                     <small>{service.basePath}</small>
+                    <small>{service.swaggerUrl}</small>
                   </div>
                   <div className="row-side">
                     <span className={buildStatusTone(service.health)}>{service.health}</span>
-                    <small>
-                      <a href={service.swaggerUrl}>Swagger</a> | <a href={service.openApiUrl}>OpenAPI</a>
-                    </small>
+                    <small>status code {service.statusCode ?? 'n/a'}</small>
+                    <small>{service.openApiUrl}</small>
                   </div>
                 </div>
               ))}
             </div>
-            <div className="summary-grid" style={{ marginTop: 20 }}>
-              <div className="summary-item">
-                <strong>{runtimeStatus?.messageTransport ?? 'n/a'}</strong>
-                <span>deposit message transport</span>
-              </div>
-              <div className="summary-item">
-                <strong>{runtimeStatus?.pendingReviewCount ?? 0}</strong>
-                <span>runtime pending review</span>
-              </div>
-              <div className="summary-item">
-                <strong>{runtimeStatus?.pendingOutboxCount ?? 0}</strong>
-                <span>runtime pending outbox</span>
-              </div>
-              <div className="summary-item">
-                <strong>{formatTimestamp(runtimeStatus?.checkedAt ?? null)}</strong>
-                <span>runtime snapshot</span>
-              </div>
+          </article>
+        )}
+
+        {activeTab === 'compatibility' && (
+          <article className="surface-card surface-card-wide">
+            <h2>Compatibility</h2>
+            <p className="section-copy">
+              This read-only surface fetches each service runtime OpenAPI document and compares it to
+              a critical-path baseline for the public service contract.
+            </p>
+            <div className="mini-table">
+              {compatibility.map((item) => (
+                <div key={`${item.serviceName}-${item.surface}`} className="row-card">
+                  <div className="row-main">
+                    <strong>{item.serviceName}</strong>
+                    <small>{item.surface}</small>
+                    <small>{item.runtimeTitle ?? 'Unknown runtime title'} / {item.runtimeVersion ?? 'n/a'}</small>
+                    <small>{item.runtimeOpenApiUrl}</small>
+                  </div>
+                  <div className="row-side">
+                    <span className={buildStatusTone(item.status)}>{item.status}</span>
+                    <small>{item.baseline}</small>
+                    <small>{item.runtimePathCount} runtime paths / {item.expectedCriticalPathCount} critical paths</small>
+                    <small>{item.missingCriticalPathCount} missing critical paths</small>
+                    <small>{item.driftSummary}</small>
+                    {!!item.parseError && <small>{item.parseError}</small>}
+                    {item.missingCriticalPaths.length > 0 && (
+                      <small>Missing: {item.missingCriticalPaths.join(', ')}</small>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </article>
+        )}
+
+        {activeTab === 'rollouts' && (
+          <article className="surface-card surface-card-wide">
+            <h2>Rollouts</h2>
+            <p className="section-copy">
+              A first rollout view for the current environment. In the local-first setup this is a
+              simplified release picture, but the model is ready for multi-environment expansion.
+            </p>
+            <div className="mini-table">
+              {rollouts.map((item) => (
+                <div key={`${item.serviceName}-${item.environment}`} className="row-card">
+                  <div className="row-main">
+                    <strong>{item.serviceName}</strong>
+                    <small>{item.environment}</small>
+                    <small>{item.currentVersion} to {item.targetVersion}</small>
+                  </div>
+                  <div className="row-side">
+                    <span className={buildStatusTone(item.stage)}>{item.stage}</span>
+                    <small>{item.canaryPercent}% canary</small>
+                    <small>{item.healthStatus} / {item.compatibilityStatus}</small>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </article>
+        )}
+
+        {activeTab === 'environments' && (
+          <article className="surface-card surface-card-wide">
+            <h2>Environments</h2>
+            <p className="section-copy">
+              This module starts as a single-environment baseline so later config and environment
+              comparison can reuse the same shape.
+            </p>
+            <div className="mini-table">
+              {environments.map((item) => (
+                <div key={item.environment} className="row-card">
+                  <div className="row-main">
+                    <strong>{item.environment}</strong>
+                    <small>{item.gateway}</small>
+                    <small>{item.publicContractBaseline} / {item.platformSurfaceBaseline}</small>
+                  </div>
+                  <div className="row-side">
+                    <span className={buildStatusTone(item.comparisonReady ? 'Ready' : 'Planned')}>
+                      {item.comparisonReady ? 'Ready' : 'Planned'}
+                    </span>
+                    <small>{item.healthyServiceCount} of {item.serviceCount} healthy</small>
+                    <small>{item.notes}</small>
+                  </div>
+                </div>
+              ))}
             </div>
           </article>
         )}
@@ -430,21 +508,33 @@ function App() {
                   <span>pending review</span>
                 </div>
               </div>
-              <div className="control-row" style={{ marginTop: 16 }}>
-                <input
-                  className="search-input"
-                  value={selectedTransactionId}
-                  onChange={(event) => setSelectedTransactionId(event.target.value)}
-                  placeholder="Enter a transaction id"
-                />
-                <button className="primary-button" type="button" onClick={() => void handleLoadWorkflowDetail(selectedTransactionId)}>
-                  Load Workflow
-                </button>
+              <div className="mini-table">
+                {pendingReviewItems.length ? (
+                  pendingReviewItems.map((item) => (
+                    <button
+                      key={item.transactionId}
+                      type="button"
+                      className="row-card"
+                      onClick={() => void handleLoadWorkflowDetail(item.transactionId)}
+                    >
+                      <div className="row-main">
+                        <strong>{item.transactionNumber}</strong>
+                        <small>{item.accountNumber}</small>
+                      </div>
+                      <div className="row-side">
+                        <span className={buildStatusTone(item.compensationStatus)}>{item.compensationStatus}</span>
+                        <small>{item.failureCode ?? 'No failure code'}</small>
+                      </div>
+                    </button>
+                  ))
+                ) : (
+                  <p className="empty-state">No pending-review items are currently visible.</p>
+                )}
               </div>
             </article>
 
             <article className="surface-card">
-              <h2>Selected Workflow</h2>
+              <h2>Workflow Detail</h2>
               {selectedWorkflow ? (
                 <div className="stack-row">
                   <div className="detail-grid">
@@ -477,16 +567,77 @@ function App() {
                       Resolve As Failed
                     </button>
                   </div>
-                  {lastMaintenanceAction && (
-                    <p className="section-copy">
-                      Last maintenance action: {lastMaintenanceAction.actionType} by {lastMaintenanceAction.actorId} at{' '}
-                      {formatTimestamp(lastMaintenanceAction.occurredAt)}.
-                    </p>
-                  )}
                 </div>
               ) : (
-                <p className="empty-state">Select a pending-review item or load a transaction id.</p>
+                <p className="empty-state">Select a pending-review item to inspect workflow detail.</p>
               )}
+            </article>
+          </>
+        )}
+
+        {activeTab === 'diagnostics' && (
+          <>
+            <article className="surface-card surface-card-wide">
+              <h2>Correlation Diagnostics</h2>
+              <div className="control-row">
+                <input
+                  className="search-input"
+                  value={correlationQuery}
+                  onChange={(event) => setCorrelationQuery(event.target.value)}
+                  placeholder="Enter a correlation id"
+                />
+                <button className="primary-button" type="button" onClick={() => void handleRunDiagnostics()}>
+                  Trace Correlation
+                </button>
+              </div>
+              <p className="section-copy">
+                This read-only view stitches together deposit workflow state and audit events for a
+                shared correlation id.
+              </p>
+            </article>
+
+            <article className="surface-card">
+              <h2>Correlated Deposits</h2>
+              <div className="mini-table">
+                {diagnostics?.deposits.length ? (
+                  diagnostics.deposits.map((deposit) => (
+                    <div key={deposit.transactionId} className="row-card">
+                      <div className="row-main">
+                        <strong>{deposit.transactionNumber}</strong>
+                        <small>{deposit.transactionId}</small>
+                      </div>
+                      <div className="row-side">
+                        <span className={buildStatusTone(deposit.status)}>{deposit.status}</span>
+                        <small>{deposit.failureCode ?? 'No failure code'}</small>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <p className="empty-state">No deposits matched the current correlation id.</p>
+                )}
+              </div>
+            </article>
+
+            <article className="surface-card">
+              <h2>Audit Events</h2>
+              <div className="event-list">
+                {diagnostics?.auditEvents.length ? (
+                  diagnostics.auditEvents.map((event) => (
+                    <div key={event.auditId} className="row-card">
+                      <div className="row-main">
+                        <strong>{event.action}</strong>
+                        <small>{event.aggregateType} / {event.aggregateId}</small>
+                      </div>
+                      <div className="row-side">
+                        <span className="pill pill-healthy">{event.actorId}</span>
+                        <small>{formatTimestamp(event.occurredAt)}</small>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <p className="empty-state">No audit events matched the current correlation id.</p>
+                )}
+              </div>
             </article>
           </>
         )}
@@ -496,7 +647,8 @@ function App() {
             <article className="surface-card">
               <h2>Maintenance Queue</h2>
               <p className="section-copy">
-                Select a pending review item, then use the workflow page to retry compensation or resolve it with an explicit reason.
+                Select a pending review item, then use the workflow page to retry compensation or
+                resolve it with an explicit reason.
               </p>
               <div className="mini-table">
                 {pendingReviewItems.length ? (
@@ -565,72 +717,6 @@ function App() {
                   ))
                 ) : (
                   <p className="empty-state">No deposit outbox messages are currently visible.</p>
-                )}
-              </div>
-            </article>
-          </>
-        )}
-
-        {activeTab === 'diagnostics' && (
-          <>
-            <article className="surface-card surface-card-wide">
-              <h2>Correlation Diagnostics</h2>
-              <div className="control-row">
-                <input
-                  className="search-input"
-                  value={correlationQuery}
-                  onChange={(event) => setCorrelationQuery(event.target.value)}
-                  placeholder="Enter a correlation id"
-                />
-                <button className="primary-button" type="button" onClick={() => void handleRunDiagnostics()}>
-                  Trace Correlation
-                </button>
-              </div>
-              <p className="section-copy">
-                This read-only view stitches together deposit workflow state and audit events for a shared correlation id.
-              </p>
-            </article>
-
-            <article className="surface-card">
-              <h2>Correlated Deposits</h2>
-              <div className="mini-table">
-                {diagnostics?.deposits.length ? (
-                  diagnostics.deposits.map((deposit) => (
-                    <div key={deposit.transactionId} className="row-card">
-                      <div className="row-main">
-                        <strong>{deposit.transactionNumber}</strong>
-                        <small>{deposit.transactionId}</small>
-                      </div>
-                      <div className="row-side">
-                        <span className={buildStatusTone(deposit.status)}>{deposit.status}</span>
-                        <small>{deposit.failureCode ?? 'No failure code'}</small>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <p className="empty-state">No deposits matched the current correlation id.</p>
-                )}
-              </div>
-            </article>
-
-            <article className="surface-card">
-              <h2>Audit Events</h2>
-              <div className="event-list">
-                {diagnostics?.auditEvents.length ? (
-                  diagnostics.auditEvents.map((event) => (
-                    <div key={event.auditId} className="row-card">
-                      <div className="row-main">
-                        <strong>{event.action}</strong>
-                        <small>{event.aggregateType} / {event.aggregateId}</small>
-                      </div>
-                      <div className="row-side">
-                        <span className="pill pill-healthy">{event.actorId}</span>
-                        <small>{formatTimestamp(event.occurredAt)}</small>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <p className="empty-state">No audit events matched the current correlation id.</p>
                 )}
               </div>
             </article>
