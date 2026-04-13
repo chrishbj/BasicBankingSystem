@@ -2,147 +2,201 @@
 
 ## Purpose
 
-This document explains how the frontend is built, which technologies it uses, which patterns matter most, and the main design tradeoffs behind the current implementation.
+This document explains the frontend surfaces in the current repository, how they connect to the backend, and which frontend design decisions matter most.
 
-## Scope
+## Current Frontend Surfaces
 
-The current frontend is an operator-facing React application for:
+The repository now contains three frontend applications:
+
+1. `Banking.Web`
+   - operator-facing operations console
+2. `Banking.CustomerPortal`
+   - customer-facing self-service portal
+3. `Banking.PlatformOps`
+   - platform operations console for monitoring, diagnostics, and maintenance
+
+## 1. Banking.Web
+
+### Purpose
+
+This frontend supports internal operator workflows such as:
 
 - customer browsing and selection
-- account opening and account lookup by account number
-- deposit and withdrawal submission
-- account activity history
-- pending-review queue operations
+- customer activation
+- account opening and account lookup
+- deposit submission
+- withdrawal submission
+- account activity review
+- pending-review handling
 
-## Technology Stack
+### Key Structure
 
-- `React 19`
-- `TypeScript`
-- `Vite`
-- `Fetch API`
-- `Nginx` for Docker hosting and reverse proxying
-- plain CSS with component-oriented structure
+- `src/Banking.Web/src/App.tsx`
+- `src/Banking.Web/src/hooks/useOperationsConsole.ts`
+- `src/Banking.Web/src/components/*`
+- `src/Banking.Web/src/api.ts`
 
-## Project Structure
+### Important Patterns
 
-- `src/App.tsx`: top-level workspace composition
-- `src/components/*`: UI panels and reusable UI elements
-- `src/hooks/useOperationsConsole.ts`: central screen orchestration and action state
-- `src/api.ts`: HTTP client layer
-- `src/types.ts`: frontend API contracts
-- `src/utils/*`: formatting helpers
+#### Container + Presentational Split
 
-## Important Design Patterns
+`App.tsx` and `useOperationsConsole.ts` coordinate screen-level state and actions, while components stay focused on rendering and event wiring.
 
-### Container-Presentational Split
+#### Hook-Based Screen Orchestration
 
-`App.tsx` and `useOperationsConsole.ts` coordinate state and actions, while panel components stay focused on rendering and input wiring.
+`useOperationsConsole.ts` acts like a lightweight frontend application service. It owns:
 
-Why it matters:
-
-- keeps UI components easier to evolve
-- avoids duplicating API orchestration logic
-- makes future frontend testing simpler
-
-### Hook-Based Screen Orchestration
-
-`useOperationsConsole.ts` acts as a small application service for the operations workspace.
-
-It owns:
-
-- selected customer/account context
-- loading and mutation actions
+- selected customer and account context
 - form state
-- polling state
-- operator messages and toast notifications
+- loading and mutation actions
+- status text and toast messages
+- polling for in-flight deposit status
 
-### API Gateway Pattern at the Browser Edge
+#### Browser-to-Gateway Proxy Path
 
-The frontend talks to service-specific proxy paths such as:
+The browser talks to:
 
 - `/customer-api`
 - `/account-api`
 - `/deposit-api`
 - `/audit-api`
 
-This keeps browser configuration simple and avoids direct cross-origin complexity during local Docker runs.
+This keeps the frontend simple while still exposing service boundaries clearly.
 
-### Context-Driven Navigation
+### Current Tradeoffs
 
-The UI is organized around a selected customer and selected account rather than isolated CRUD pages.
+- business rules still live mainly in backend services
+- frontend validation is intentionally lightweight
+- customer/account context drives the workflow more than page-style CRUD does
 
-Why this was chosen:
+## 2. Banking.CustomerPortal
 
-- better fits operator workflows
-- reduces repeated data entry
-- makes it easier to move between account, transaction, and review tasks
+### Purpose
 
-## Key Design Decisions
+This frontend supports customer self-service workflows:
 
-### Use Account Number for Human Lookup
+- sign in
+- view dashboard summary
+- browse accounts
+- review account activity
+- submit deposits
+- submit withdrawals
+- track transaction status
 
-The UI avoids operator-facing lookup by internal `accountId`.
+### Key Structure
 
-Tradeoff:
+- `src/Banking.CustomerPortal/src/App.tsx`
+- `src/Banking.CustomerPortal/src/api.ts`
 
-- we still keep internal ids in the model for service calls
-- but user lookup and visible workflows prefer `accountNumber`
+### Important Patterns
 
-This is more realistic for banking operations and reduces confusion.
+#### BFF-Oriented Frontend
 
-### Keep the Frontend Thin
+The customer portal does not call all backend services directly. It talks only to the customer portal BFF through:
 
-Business rules still live primarily in backend services.
+- `/customer-portal-api/...`
 
-The frontend performs lightweight validation only for:
+That keeps browser concerns separate from backend aggregation concerns.
 
-- required fields
-- amount shape
-- obvious form errors
+#### Session-Aware Browser Client
 
-Tradeoff:
+The API layer uses:
 
-- backend remains the source of truth
-- frontend stays easier to maintain
-- some validation is intentionally duplicated for usability
+- `credentials: 'include'`
 
-### Separate Deposit and Withdrawal Tabs
+This allows the browser to send the BFF session cookie automatically.
 
-Even though both use a similar form shape, they are split into separate workspaces.
+#### Customer-Safe Data Shape
 
-Why:
+The portal works with customer-facing identifiers such as:
 
-- operators treat them as distinct actions
-- language and expectations differ
-- it reduces accidental misuse
+- `customerNumber`
+- `accountNumber`
+- `transactionNumber`
 
-### Progressive Discoverability
+instead of exposing internal service ids as the primary user-facing handles.
 
-The interface emphasizes:
+## 3. Banking.PlatformOps
 
-- customer list first
-- account list second
-- activity and review operations after context is selected
+### Purpose
 
-This is intentionally more guided than a generic admin screen.
+This frontend is a separate platform-oriented control plane for:
 
-## Operational UX Considerations
+- service overview
+- dependency and compatibility signals
+- rollout and environment views
+- deposit workflow monitoring
+- correlation diagnostics
+- platform maintenance actions
+- platform audit visibility
 
-- health indicators stay compact
-- long references wrap safely
-- major flows surface customer name, customer number, and account number
-- review operations keep the currently selected account visible
+### Key Structure
+
+- `src/Banking.PlatformOps/src/App.tsx`
+- `src/Banking.PlatformOps/src/api.ts`
+
+### Important Patterns
+
+#### Gateway-Control-Plane Frontend
+
+This app does not talk to all services separately. It talks to platform endpoints exposed by `Banking.Gateway`, for example:
+
+- `/gateway-api/api/platform/overview`
+- `/gateway-api/api/platform/services`
+- `/gateway-api/api/platform/workflows/deposits/runtime`
+
+#### Summary + Drill-Through UX
+
+The platform UI is designed to show high-level health and workflow summaries first, and then allow the operator to drill into:
+
+- specific workflow detail
+- correlation traces
+- maintenance actions
+
+This keeps the console useful without turning it into a generic observability product.
+
+## Shared Frontend Design Decisions
+
+### Separate Frontends By Trust Boundary
+
+The repository keeps:
+
+- operator console
+- customer portal
+- platform operations console
+
+as separate apps because they serve different users, capabilities, and security expectations.
+
+### Keep Frontends Thin
+
+Core business rules remain in backend services. Frontends focus on:
+
+- workflow guidance
+- human-friendly identifiers
+- error presentation
+- light client-side validation
+
+### Prefer Human-Oriented Workflow Context
+
+Across the frontends, the UX emphasizes:
+
+- customer number
+- account number
+- transaction number
+- review state
+
+instead of exposing internal ids as the main user navigation model.
 
 ## Current Limitations
 
 - no dedicated frontend test suite yet
-- no client-side caching layer such as React Query
-- no role-based UI trimming yet
-- no advanced data grid features such as export, sticky filters, or saved views
+- no shared design system across all three frontends
+- no advanced client-side caching layer such as React Query
+- role-aware UI trimming is still limited
 
 ## Recommended Next Steps
 
-- add a frontend test layer for critical operator flows
-- introduce account-number-first search in more places
-- add richer review-to-account and deposit-to-account drill-through
-- add role-aware UI behavior once authorization requirements are finalized
+- add frontend tests for key operator, portal, and platform workflows
+- unify more shared UI conventions across the three apps
+- introduce richer drill-through links between business and platform consoles
+- add stronger role-aware UI behavior once the authorization model evolves

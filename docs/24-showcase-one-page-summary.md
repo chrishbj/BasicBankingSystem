@@ -2,48 +2,43 @@
 
 ## Project
 
-`BasicBankingSystem` is a local-first banking platform prototype built to showcase distributed backend design, transaction safety patterns, and full-stack engineering discipline.
+`BasicBankingSystem` is a banking platform prototype built to showcase distributed backend design, transaction safety patterns, gateway/BFF entry architecture, and full-stack engineering discipline.
 
 ## What It Demonstrates
 
-- domain-oriented microservices
-- SAGA-style transaction coordination
-- Outbox-based event publishing
+- domain-oriented backend services
+- `Gateway + BFF` entry patterns
 - idempotent financial write APIs
-- operator-facing and customer-facing React applications
-- layered automated testing
-- OpenAPI and Swagger-driven integration
+- outbox-based async workflow startup
+- saga-style compensation and pending-review recovery
+- separate operator, customer, and platform frontend experiences
+- layered automated testing and OpenAPI documentation
 
-## Core Business Flows
+## Core Product Surfaces
 
-### Operator Flow
+### Operations Console
 
-- browse customers
+- browse and activate customers
 - open accounts
 - submit deposits and withdrawals
 - inspect account activity
-- resolve pending-review items
+- handle pending-review items
 
-Relevant source:
-
-- `src/Banking.Web/src/App.tsx`
-- `src/Banking.Web/src/hooks/useOperationsConsole.ts`
-
-### Customer Flow
+### Customer Portal
 
 - sign in with customer-facing credentials
-- review balances and activity
+- review balances and account activity
 - submit deposits and withdrawals
 - track transaction status
 
-Relevant source:
+### Platform Operations Console
 
-- `src/Banking.CustomerPortal/src/App.tsx`
-- `src/Banking.CustomerPortal/src/api.ts`
+- monitor service and workflow status
+- inspect outbox and pending-review backlog
+- run platform maintenance actions
+- trace correlations and review platform audit output
 
-## Core Technical Highlights
-
-### Microservices
+## Core Backend Shape
 
 The backend is split into:
 
@@ -51,23 +46,35 @@ The backend is split into:
 - `Account Service`
 - `Deposit Service`
 - `Audit Service`
+- `Banking.Gateway`
+- `Banking.Bff.CustomerPortal`
 
-This keeps ownership clear and makes cross-service workflow design visible.
+## Core Technical Highlights
+
+### Clear Ownership Boundaries
+
+- `Account Service` owns balances
+- `Deposit Service` owns deposit workflow state
+- `Audit Service` owns audit persistence
+- `Gateway` and `BFF` own different entry-layer concerns
 
 ### Transaction Safety
 
 The deposit flow demonstrates:
 
-- `Idempotency-Key` protection
+- `Idempotency-Key`
 - persisted outbox messages
-- asynchronous RabbitMQ processing
-- compensation and `PendingReview` handling
+- asynchronous message processing
+- saga-style compensation
+- `PendingReview` fallback and retry
 
-Relevant source:
+### Multi-Surface Full-Stack Design
 
-- `src/Banking.Services.Deposit/Services/DepositService.cs`
-- `src/Banking.Services.Deposit/Services/DepositTransactionProcessor.cs`
-- `src/Banking.Services.Deposit/Messaging/DepositOutboxDispatcher.cs`
+The repository includes:
+
+- an operations console for business workflows
+- a customer portal for self-service flows
+- a platform console for diagnostics and maintenance
 
 ### Testing Discipline
 
@@ -76,14 +83,7 @@ The project includes:
 - unit tests
 - integration tests with `WebApplicationFactory`
 - OpenAPI contract tests
-- manual smoke-test scripts
-- Newman regression assets
-
-Relevant source:
-
-- `tests/Banking.Services.Deposit.UnitTests/`
-- `tests/Banking.Services.Deposit.IntegrationTests/`
-- `tests/Banking.Contracts.Tests/OpenApiContractTests.cs`
+- Newman and smoke-regression assets
 
 ## Tech Stack
 
@@ -101,19 +101,18 @@ Relevant source:
 
 ## Why This Project Is Portfolio-Worthy
 
-This repository shows more than feature implementation. It shows:
+This repository shows:
 
 - system decomposition
-- distributed workflow thinking
-- resilience patterns
-- operational UX design
-- customer UX design
+- distributed workflow reliability
+- frontend/backend boundary design
+- operational and customer UX thinking
 - testing and documentation maturity
 
 ## Recommended Talking Points
 
 1. Why balances belong to `Account Service`
-2. Why deposits use `Idempotency + Outbox + SAGA`
-3. Why audit is isolated from transaction execution
-4. Why the operator console and customer portal are separate frontends
-5. How testing supports safe iteration across multiple services
+2. Why deposits use `Idempotency + Outbox + Saga-style recovery`
+3. Why `Gateway` and `BFF` are separate
+4. Why the project has three frontend surfaces instead of one
+5. How testing and documentation support safe iteration across multiple services

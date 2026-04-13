@@ -1,94 +1,168 @@
-# Phase 1 Architecture Review
+# Current Architecture Review
 
 ## Review Objective
 
-Confirm that Phase 1 is narrow enough to deliver, but strong enough to become the foundation for later banking capabilities.
+Confirm that the current implementation has clear service boundaries, a credible reliability model for deposit processing, and a practical split between operator-facing and customer-facing entry points.
 
-Phase 1 focuses on:
+## What Is Implemented Today
 
-- Customer management
-- Account opening
-- Deposit processing
-- Audit trail
+The current repository implements:
 
-## Why Not Keep a Single API
+- `Banking.Gateway` for the operations console and platform operations
+- `Banking.Bff.CustomerPortal` for customer-facing session-based flows
+- `Customer Service`
+- `Account Service`
+- `Deposit Service`
+- `Audit Service`
 
-The original demo pattern works well for generic CRUD, but banking requires:
+This is no longer a proposal that includes a `Query Service`. The implemented read experience is currently handled by:
 
-- Balance correctness
-- Transaction traceability
-- Idempotency
-- Auditability
-- Scalability under concurrency
+- direct service queries through `Gateway`
+- BFF-side aggregation for the customer portal
+- platform monitoring aggregation inside `Gateway`
 
-That is why the backend is split by domain from the beginning.
+## Why The Backend Is Split By Domain
 
-## Proposed Service Boundaries
+The codebase separates business ownership by domain:
 
-- `Customer Service`: customer master data and status
-- `Account Service`: account lifecycle and balance ownership
-- `Deposit Service`: deposit intake, idempotency, transaction state
-- `Audit Service`: audit persistence and compensation
-- `Query Service`: read models and aggregated views
+- `Customer Service` owns customer master data and lifecycle state
+- `Account Service` owns account lifecycle and balance state
+- `Deposit Service` owns deposit intake, idempotency, workflow state, outbox, retry, and review logic
+- `Audit Service` owns audit persistence
 
-## Why This Split
+This split is useful because it keeps:
 
-- Balance ownership stays in one place
-- Deposit orchestration stays separate from ledger ownership
-- Audit remains independent and does not block core ledger success
-- Later transfer workflows can reuse the same orchestration pattern
+- balance ownership in one place
+- transaction orchestration in one place
+- audit storage independent from core account posting
+
+## Entry Layer Design
+
+### Operations Console Path
+
+The operations frontend, `Banking.Web`, does not call each backend service directly. It calls path prefixes such as `/customer-api`, `/account-api`, `/deposit-api`, and `/audit-api`, and `Banking.Gateway` proxies those requests to the correct downstream service.
+
+That gives the system:
+
+- a single backend entry point for operators
+- centralized auth, routing, and monitoring endpoints
+- a place to expose platform diagnostics and maintenance APIs
+
+Relevant source:
+
+- `src/Banking.Gateway/Program.cs`
+- `src/Banking.Gateway/Controllers/ProxyController.cs`
+- `src/Banking.Gateway/Services/GatewayProxyService.cs`
+
+### Customer Portal Path
+
+The customer portal uses a separate entry pattern. `Banking.CustomerPortal` talks only to `Banking.Bff.CustomerPortal`, and the BFF then calls customer, account, and deposit services.
+
+That gives the system:
+
+- browser-friendly session authentication
+- customer-scoped resource checks
+- frontend-oriented aggregation instead of raw microservice payloads
+
+Relevant source:
+
+- `src/Banking.Bff.CustomerPortal/Program.cs`
+- `src/Banking.Bff.CustomerPortal/Controllers/`
+
+## Security Model
+
+There are two security models in the codebase.
+
+### Shared Backend Security
+
+Backend services use a shared header-based authentication model:
+
+- external callers use `X-Api-Key`
+- internal service-to-service traffic uses `X-Service-Name` and `X-Service-Key`
+
+Authorization is policy-based and centralized in the shared building blocks layer.
+
+Relevant source:
+
+- `src/Banking.BuildingBlocks/Extensions/BankingServiceCollectionExtensions.cs`
+- `src/Banking.BuildingBlocks/Security/BankingHeaderAuthenticationHandler.cs`
+- `src/Banking.BuildingBlocks/Security/BankingSecurityHeaderValidator.cs`
+
+### Customer Portal Security
+
+The BFF uses session-based authentication and then performs customer ownership checks before returning accounts, activities, or deposit data.
+
+Relevant source:
+
+- `src/Banking.Bff.CustomerPortal/Auth/`
+- `src/Banking.Bff.CustomerPortal/Controllers/AccountsController.cs`
 
 ## Consistency Strategy
 
-- Local transactions within each service
-- Event-driven communication across services
-- SAGA for long-running cross-service flows
-- Outbox pattern for reliable event publication
+The system does not use distributed transactions across services.
+
+Instead, the design is:
+
+- local database consistency inside each service
+- asynchronous workflow progression for deposit processing
+- outbox for reliable message publication
+- saga-style compensation for partial failure
+- pending review plus retry for operational recovery
+
+This is the strongest architectural part of the codebase today.
 
 ## Deposit Workflow Summary
 
-1. Deposit Service accepts the request
-2. Idempotency is validated
-3. A transaction is created with `Received`
-4. `DepositRequested` is published
-5. Account Service validates and posts balance
-6. `DepositPosted` or `DepositRejected` is published
-7. Deposit Service updates final status
-8. Audit and Query services consume downstream events
+The deposit path works like this:
 
-## Audit and Compensation
+1. `Deposit Service` validates the request
+2. it checks `Idempotency-Key`
+3. it stores `DepositTransaction` and `DepositOutboxMessage` together
+4. it returns `202 Accepted`
+5. a hosted outbox dispatcher publishes the message
+6. a consumer triggers `DepositTransactionProcessor`
+7. the processor calls `Account Service` to post the balance
+8. the processor writes audit via `Audit Service`
+9. if post-processing fails after account posting, compensation is attempted
+10. if compensation fails, the transaction moves to `PendingReview`
+11. an automatic retry worker or a manual platform action can continue recovery
 
-- Audit is separated from business logs
-- Audit failure does not roll back a successful posted deposit
-- Audit failure must trigger retry, alerting, and compensation
+Relevant source:
 
-## Main Risks and Mitigations
+- `src/Banking.Services.Deposit/Program.cs`
+- `src/Banking.Services.Deposit/Services/DepositService.cs`
+- `src/Banking.Services.Deposit/Messaging/DepositOutboxDispatcher.cs`
+- `src/Banking.Services.Deposit/Services/DepositTransactionProcessor.cs`
+- `src/Banking.Services.Deposit/Services/DepositPendingReviewRetryWorker.cs`
 
-### Duplicate Deposit
+## Why This Architecture Is Credible
 
-- `Idempotency-Key`
-- uniqueness rules
-- dedicated tests
+The current implementation demonstrates more than CRUD because it includes:
 
-### Incorrect Balance Under Concurrency
+- a dedicated gateway and a dedicated BFF
+- explicit service boundaries
+- policy-based security
+- asynchronous orchestration
+- idempotency
+- reliable outbox dispatch
+- compensation and pending review
+- platform monitoring and maintenance APIs
 
-- Account Service owns balance
-- transactional updates
-- concurrency tests
+## Current Risks And Improvement Areas
 
-### Audit Gaps
+The codebase is strong as a demo and architecture portfolio, but there are still clear next-step improvements:
 
-- independent audit service
-- retry queue
-- dead-letter and alerting
+- some deposit maintenance endpoints are still broader than ideal in authorization scope
+- customer portal sign-in is intentionally simple and should evolve toward stronger IAM
+- platform-level observability is useful, but production-grade metrics and alerting could be richer
+- schema evolution currently relies on startup compatibility work rather than a more formal migration discipline
 
-## Delivery Recommendation
+## Review Recommendation
 
-If approved, implementation should proceed in this order:
+For the current implementation, the architecture review should emphasize:
 
-1. Freeze API contracts
-2. Create solution and test skeleton
-3. Start TDD with `Create Customer`
-4. Add `Open Account`
-5. Add `Create Deposit`
-6. Finish audit, monitoring, and end-to-end coverage
+1. why the gateway and BFF are separate
+2. why balance ownership stays in `Account Service`
+3. why deposit orchestration stays in `Deposit Service`
+4. how outbox, retry, and pending review provide reliability
+5. how platform operations are exposed through `Gateway`

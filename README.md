@@ -45,6 +45,34 @@ Some seeded demo identities still normalize values such as `WITHDRAW-DEMO-001 ->
 
 ## Core System Shape
 
+## Architecture Overview
+
+```mermaid
+flowchart LR
+    Ops[Operations Console]
+    Portal[Customer Portal]
+    PlatOps[Platform Operations Console]
+
+    Ops --> Gateway[Banking.Gateway]
+    PlatOps --> Gateway
+    Portal --> BFF[Banking.Bff.CustomerPortal]
+
+    Gateway --> CustomerSvc[Customer Service]
+    Gateway --> AccountSvc[Account Service]
+    Gateway --> DepositSvc[Deposit Service]
+    Gateway --> AuditSvc[Audit Service]
+
+    BFF --> CustomerSvc
+    BFF --> AccountSvc
+    BFF --> DepositSvc
+
+    DepositSvc --> RabbitMQ[(RabbitMQ)]
+    CustomerSvc --> Postgres[(PostgreSQL)]
+    AccountSvc --> Postgres
+    DepositSvc --> Postgres
+    AuditSvc --> Postgres
+```
+
 ### Backend Services
 
 - `Customer Service`: customer master data and portal sign-in validation

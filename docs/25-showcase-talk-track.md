@@ -6,18 +6,13 @@ This is a short presentation script for introducing the project in an interview,
 
 ## 30-Second Version
 
-`BasicBankingSystem` is a banking platform prototype I built to demonstrate microservice boundaries, asynchronous transaction handling, SAGA-style compensation, idempotent APIs, and full-stack delivery with React frontends, automated tests, and OpenAPI documentation.
+`BasicBankingSystem` is a banking platform prototype I built to demonstrate domain-oriented microservices, gateway and BFF entry architecture, idempotent financial APIs, outbox- and saga-style deposit handling, and three separate frontend experiences for operators, customers, and platform operations.
 
 ## 2-3 Minute Version
 
 ### 1. Problem Framing
 
-I wanted a project that was more realistic than CRUD, but still small enough to understand end-to-end. Banking transactions are a good fit because they require:
-
-- clear domain ownership
-- transaction safety
-- recovery behavior
-- strong API discipline
+I wanted a project that was more realistic than CRUD, but still small enough to understand end to end. Banking is a good fit because even a basic deposit workflow forces you to deal with ownership, transaction safety, retries, compensation, and operational visibility.
 
 ### 2. Architecture
 
@@ -28,12 +23,12 @@ I split the backend into:
 - `Deposit Service`
 - `Audit Service`
 
-The most important design choice is that balances are owned by `Account Service`, while `Deposit Service` coordinates the workflow.
+On top of that, I added:
 
-Relevant source:
+- `Banking.Gateway` for operator-facing entry and platform control
+- `Banking.Bff.CustomerPortal` for customer-facing session-based flows
 
-- `src/Banking.Services.Account/Services/AccountService.cs`
-- `src/Banking.Services.Deposit/Services/DepositTransactionProcessor.cs`
+The most important design choice is that balances stay in `Account Service`, while `Deposit Service` coordinates the cross-service workflow.
 
 ### 3. Transaction Handling
 
@@ -41,62 +36,48 @@ The deposit flow is intentionally not a simple synchronous write. It demonstrate
 
 - `Idempotency-Key` handling
 - persisted outbox records
-- RabbitMQ-based async processing
-- SAGA-style compensation
-- `PendingReview` fallback when automation cannot finish safely
-
-Relevant source:
-
-- `src/Banking.Services.Deposit/Services/DepositService.cs`
-- `src/Banking.Services.Deposit/Messaging/DepositOutboxDispatcher.cs`
-- `src/Banking.Services.Deposit/Services/DepositPendingReviewRetryWorker.cs`
+- asynchronous dispatch and consumption
+- saga-style compensation
+- `PendingReview` and retry when automation cannot finish safely
 
 ### 4. Frontend Surfaces
 
-I built two different React frontends:
+I built three different frontend surfaces:
 
-- an operator console for staff workflows
-- a customer portal for customer-safe flows
+- an operations console for business workflows
+- a customer portal for self-service flows
+- a platform operations console for monitoring, diagnostics, and maintenance
 
-That separation demonstrates role-appropriate UX and clearer future security boundaries.
-
-Relevant source:
-
-- `src/Banking.Web/`
-- `src/Banking.CustomerPortal/`
+That separation makes the trust boundaries and user responsibilities much clearer.
 
 ### 5. Quality And Documentation
 
-I also treated testing and documentation as part of the engineering work:
+I also treated testing and documentation as first-class engineering work:
 
 - unit tests
 - integration tests
 - OpenAPI contract checks
 - Swagger support
-- Postman and Newman regression assets
-
-Relevant source:
-
-- `tests/`
-- `docs/openapi-phase1.yaml`
+- Newman regression assets
+- architecture and implementation writeups
 
 ## Likely Interview Questions
 
 ### Why use microservices here?
 
-To demonstrate clear domain ownership and cross-service workflow design. It also makes tradeoffs like eventual consistency and compensation explicit.
+To make ownership boundaries, eventual consistency, and workflow orchestration explicit.
 
 ### Why not use distributed transactions?
 
-They would increase coupling across services. I wanted local consistency inside each service and explicit orchestration across services.
+Because I wanted local consistency inside each service and explicit recovery across services.
 
-### Why split operator and customer UIs?
+### Why split operator, customer, and platform experiences?
 
-Because they serve different users, expose different capabilities, and will eventually need different security boundaries.
+Because they have different users, responsibilities, and security expectations.
 
 ### What would you improve next?
 
-- production-grade IAM
-- richer read models
-- stronger observability
-- more formal migration/versioning strategy
+- stronger IAM for the customer portal
+- tighter authorization on some maintenance endpoints
+- richer observability and alerting
+- more formal schema migration/versioning discipline
