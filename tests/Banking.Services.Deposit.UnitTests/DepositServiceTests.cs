@@ -8,6 +8,7 @@ using Banking.Services.Deposit.Repositories;
 using Banking.Services.Deposit.Services;
 using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using Moq;
 using Banking.Services.Deposit.UnitTests.Support;
 
@@ -456,6 +457,8 @@ public sealed class DepositServiceTests
             accountDirectory.Object,
             processor.Object,
             auditLogWriter.Object,
+            Options.Create(new PendingReviewRetryOptions()),
+            Options.Create(new RabbitMqOptions()),
             NullLogger<DepositService>.Instance);
 
     private static DepositAccountRecord CreateAccountRecord(string accountId = "acc_active_001")
