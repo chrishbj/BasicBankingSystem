@@ -30,6 +30,8 @@ builder.Services.AddHttpClient("audit-service", (serviceProvider, client) =>
 }).AddHttpMessageHandler<Banking.BuildingBlocks.Security.InternalServiceAuthenticationDelegatingHandler>();
 builder.Services.AddSingleton<GatewayProxyService>();
 builder.Services.AddSingleton<GatewayHealthService>();
+builder.Services.AddSingleton<PlatformMonitoringService>();
+builder.Services.AddSingleton<PlatformMaintenanceService>();
 
 var app = builder.Build();
 

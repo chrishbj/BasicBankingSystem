@@ -193,6 +193,18 @@ services:
     ports:
       - "${BANKING_WEB_PORT:-5300}:80"
 
+  banking-platform-ops:
+    build:
+      context: ..
+      dockerfile: src/Banking.PlatformOps/Dockerfile
+    container_name: basicbanking-platform-ops
+    restart: unless-stopped
+    depends_on:
+      gateway-service:
+        condition: service_started
+    ports:
+      - "${BANKING_PLATFORM_OPS_PORT:-5303}:80"
+
   banking-customer-portal:
     build:
       context: ..

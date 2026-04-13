@@ -11,7 +11,7 @@ It demonstrates:
 - domain-oriented microservice boundaries
 - resilient deposit processing with `Idempotency-Key`, `Outbox`, and `SAGA`
 - explicit compensation and `PendingReview` recovery
-- separate React applications for bank staff and customers
+- separate React applications for bank staff, customers, and platform operators
 - layered testing with unit, integration, and contract coverage
 - OpenAPI and Swagger as first-class integration surfaces
 
@@ -19,6 +19,7 @@ It demonstrates:
 
 When the Docker Desktop stack is running, the main entry points are:
 
+- `Platform Operations Console`: `http://localhost:18089`
 - `Operations Console`: `http://localhost:18090`
 - `Customer Portal`: `http://localhost:18091`
 - `Customer Swagger`: `http://localhost:18081/swagger`
@@ -44,6 +45,34 @@ Some seeded demo identities still normalize values such as `WITHDRAW-DEMO-001 ->
 
 ## Core System Shape
 
+## Architecture Overview
+
+```mermaid
+flowchart LR
+    Ops[Operations Console]
+    Portal[Customer Portal]
+    PlatOps[Platform Operations Console]
+
+    Ops --> Gateway[Banking.Gateway]
+    PlatOps --> Gateway
+    Portal --> BFF[Banking.Bff.CustomerPortal]
+
+    Gateway --> CustomerSvc[Customer Service]
+    Gateway --> AccountSvc[Account Service]
+    Gateway --> DepositSvc[Deposit Service]
+    Gateway --> AuditSvc[Audit Service]
+
+    BFF --> CustomerSvc
+    BFF --> AccountSvc
+    BFF --> DepositSvc
+
+    DepositSvc --> RabbitMQ[(RabbitMQ)]
+    CustomerSvc --> Postgres[(PostgreSQL)]
+    AccountSvc --> Postgres
+    DepositSvc --> Postgres
+    AuditSvc --> Postgres
+```
+
 ### Backend Services
 
 - `Customer Service`: customer master data and portal sign-in validation
@@ -55,6 +84,7 @@ Some seeded demo identities still normalize values such as `WITHDRAW-DEMO-001 ->
 
 - `Banking.Web`: operator-facing operations console
 - `Banking.CustomerPortal`: customer-facing self-service portal
+- `Banking.PlatformOps`: platform operations console shell for runtime monitoring and diagnostics
 
 ### Shared Infrastructure
 
@@ -80,11 +110,26 @@ Relevant source:
 
 Deposits require `Idempotency-Key`, and downstream posting references are also treated as idempotent.
 
+The platform now separates request protection into two layers:
+
+- all HTTP endpoints receive shared request-rate protection
+- idempotent write endpoints receive replay-aware protection
+
+For idempotent writes such as `POST /api/v1/deposits`:
+
+- the first retry with the same `Idempotency-Key` replays the original logical result quickly
+- repeated short-window replays of the same write are progressively slowed down
+- replay responses may include `X-Idempotent-Replay`, `X-Idempotency-Replay-Attempt`, and `Retry-After`
+
+This means safe client retries stay safe, while duplicate request storms are softened without changing the business result.
+
 Relevant source:
 
 - `src/Banking.Services.Deposit/Controllers/DepositsController.cs`
 - `src/Banking.Services.Deposit/Services/DepositService.cs`
 - `src/Banking.Services.Account/Services/AccountService.cs`
+- `src/Banking.BuildingBlocks/Extensions/RequestProtectionExtensions.cs`
+- `src/Banking.BuildingBlocks/Resilience/IdempotencyReplayProtectionMiddleware.cs`
 
 ### Outbox And SAGA
 
@@ -105,6 +150,37 @@ Relevant source:
 - `src/Banking.Web/src/App.tsx`
 - `src/Banking.Web/src/hooks/useOperationsConsole.ts`
 - `src/Banking.CustomerPortal/src/App.tsx`
+- `src/Banking.PlatformOps/src/App.tsx`
+
+### Platform Control Plane
+
+The gateway now exposes a platform-oriented API for service monitoring, workflow summary, correlation diagnostics, deposit runtime worker status, compatibility checks, rollout summaries, and environment snapshots. The repository also includes a dedicated `Banking.PlatformOps` frontend to consume that control-plane surface.
+
+Current implemented modules:
+
+- `Overview`
+- `Services`
+- `Compatibility`
+- `Rollouts`
+- `Environments`
+- `Workflows`
+- `Diagnostics`
+- `Maintenance`
+- `Audit`
+
+Current design direction:
+
+- keep `Banking Operations Console` and `Platform Operations Console` as separate control planes
+- reuse testing, diagnostics, and contract assets as governed platform capabilities
+- keep the platform console as `summary + drill-through`, not a replacement observability stack
+- add richer baseline history, multi-environment comparison, and support access governance next
+
+Relevant source:
+
+- `src/Banking.Gateway/Controllers/PlatformController.cs`
+- `src/Banking.Gateway/Services/PlatformMonitoringService.cs`
+- `src/Banking.PlatformOps/src/App.tsx`
+- `src/Banking.PlatformOps/src/api.ts`
 
 ## Tech Stack
 
@@ -150,6 +226,12 @@ npm install
 npm run dev
 ```
 
+```powershell
+cd src/Banking.PlatformOps
+npm install
+npm run dev
+```
+
 ### Run Docker Desktop Stack
 
 ```powershell
@@ -165,12 +247,16 @@ docker compose --env-file infra/docker.env.local -f infra/docker-compose.docker-
 - [Saga, Outbox, And Idempotency](docs/21-saga-outbox-idempotency.md)
 - [Database Schema And Relationships](docs/29-database-schema-and-relationships.md)
 - [Gateway And Customer BFF Design](docs/32-gateway-and-customer-bff-design.md)
+- [Platform Identity and Operations Architecture](docs/38-platform-identity-and-operations-architecture.md)
+- [Platform Operations Console Detailed Design](docs/39-platform-operations-console-detailed-design.md)
+- [Platform Operations Console Implementation Status](docs/41-platform-operations-console-implementation-status.md)
 - [Source Code Reading Guide](docs/30-source-code-reading-guide.md)
 
 ### Testing And Contracts
 
 - [Testing And Quality](docs/22-testing-and-quality.md)
 - [OpenAPI And API Contracts](docs/23-openapi-and-api-contracts.md)
+- [Request Protection and Idempotency Strategy](docs/40-request-protection-and-idempotency-strategy.md)
 - [End-to-End Manual Test Guide](docs/13-end-to-end-manual-test.md)
 - [Postman Testing Guide](docs/14-postman-testing.md)
 - [Postman Runner and Newman Guide](docs/15-postman-runner-and-newman.md)

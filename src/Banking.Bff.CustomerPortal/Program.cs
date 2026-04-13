@@ -1,6 +1,7 @@
 using Banking.Bff.CustomerPortal.Auth;
 using Banking.Bff.CustomerPortal.Clients;
 using Banking.Bff.CustomerPortal.Options;
+using Banking.BuildingBlocks.Extensions;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Options;
@@ -10,6 +11,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddProblemDetails();
 builder.Services.AddHealthChecks();
+builder.Services.AddBankingRequestProtection(builder.Configuration, builder.Environment);
 builder.Services.AddOpenApi();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -75,6 +77,7 @@ if (app.Environment.IsDevelopment() || app.Environment.IsEnvironment("Docker"))
 }
 
 app.UseExceptionHandler();
+app.UseBankingRequestProtection();
 app.UseHttpsRedirection();
 app.UseSession();
 app.UseAuthentication();

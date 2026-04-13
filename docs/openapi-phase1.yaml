@@ -7,6 +7,9 @@ info:
     This document intentionally covers the documented service endpoints only.
     Gateway routes, Customer Portal BFF routes, demo endpoints, and internal-only service
     operations are protected by integration tests unless they are explicitly added here.
+    The platform applies shared request-rate protection to all endpoints and
+    replay-aware protection to idempotent write operations that use
+    `Idempotency-Key`.
 servers:
   - url: http://localhost:8080
     description: Local gateway
@@ -57,6 +60,19 @@ components:
   headers:
     CorrelationIdResponse:
       description: Correlation identifier for the request.
+      schema:
+        type: string
+    RetryAfter:
+      description: Number of seconds the caller should wait before retrying.
+      schema:
+        type: string
+    IdempotentReplay:
+      description: Indicates the response is a replay of an earlier idempotent write.
+      schema:
+        type: string
+        enum: ['true']
+    IdempotencyReplayAttempt:
+      description: Indicates which replay attempt was observed for the same idempotent write.
       schema:
         type: string
   schemas:
@@ -662,6 +678,315 @@ components:
           type: object
           additionalProperties:
             type: string
+    PlatformServiceStatus:
+      type: object
+      required: [name, basePath, health, swaggerUrl, openApiUrl]
+      properties:
+        name:
+          type: string
+        basePath:
+          type: string
+        health:
+          type: string
+        statusCode:
+          type: [integer, "null"]
+        swaggerUrl:
+          type: string
+        openApiUrl:
+          type: string
+    PlatformDependencyStatus:
+      type: object
+      required: [name, status, checkedBy]
+      properties:
+        name:
+          type: string
+        status:
+          type: string
+        checkedBy:
+          type: string
+    DepositPendingReviewItem:
+      type: object
+      required: [transactionId, transactionNumber, customerId, accountId, accountNumber, amount, currency, compensationStatus, reviewResolution, compensationRetryCount, requestedAt]
+      properties:
+        transactionId:
+          type: string
+        transactionNumber:
+          type: string
+        customerId:
+          type: string
+        accountId:
+          type: string
+        accountNumber:
+          type: string
+        amount:
+          type: number
+        currency:
+          type: string
+        compensationStatus:
+          type: string
+        reviewResolution:
+          type: string
+        failureCode:
+          type: [string, "null"]
+        failureReason:
+          type: [string, "null"]
+        compensationRetryCount:
+          type: integer
+        reviewLastActionBy:
+          type: [string, "null"]
+        reviewNote:
+          type: [string, "null"]
+        requestedAt:
+          type: string
+          format: date-time
+        reviewRequiredAt:
+          type: [string, "null"]
+          format: date-time
+        lastCompensationAttemptAt:
+          type: [string, "null"]
+          format: date-time
+        lastProcessedAt:
+          type: [string, "null"]
+          format: date-time
+    DepositWorkflowSummary:
+      type: object
+      required: [checkedAt, receivedCount, succeededCount, failedCount, pendingReviewCount, pendingReviewItems]
+      properties:
+        checkedAt:
+          type: string
+          format: date-time
+        receivedCount:
+          type: integer
+        succeededCount:
+          type: integer
+        failedCount:
+          type: integer
+        pendingReviewCount:
+          type: integer
+        pendingReviewItems:
+          type: array
+          items:
+            $ref: '#/components/schemas/DepositPendingReviewItem'
+    DepositOutboxMessageItem:
+      type: object
+      required: [messageId, transactionId, messageType, occurredAt]
+      properties:
+        messageId:
+          type: string
+        transactionId:
+          type: string
+        messageType:
+          type: string
+        occurredAt:
+          type: string
+          format: date-time
+        processedAt:
+          type: [string, "null"]
+          format: date-time
+        lastError:
+          type: [string, "null"]
+    DepositWorkerRuntimeStatus:
+      type: object
+      required: [workerName, mode, enabled, pollingIntervalMilliseconds, backlogCount, notes]
+      properties:
+        workerName:
+          type: string
+        mode:
+          type: string
+        enabled:
+          type: boolean
+        pollingIntervalMilliseconds:
+          type: integer
+        backlogCount:
+          type: integer
+        notes:
+          type: string
+    DepositRuntimeStatus:
+      type: object
+      required: [checkedAt, messageTransport, pendingReviewCount, pendingOutboxCount, workers]
+      properties:
+        checkedAt:
+          type: string
+          format: date-time
+        messageTransport:
+          type: string
+        pendingReviewCount:
+          type: integer
+        pendingOutboxCount:
+          type: integer
+        workers:
+          type: array
+          items:
+            $ref: '#/components/schemas/DepositWorkerRuntimeStatus'
+    DepositWorkflowDetail:
+      type: object
+      required: [transactionId, transactionNumber, customerId, accountId, amount, currency, channel, status, accountPostingStatus, auditStatus, compensationStatus, reviewResolution, correlationId, compensationRetryCount, requestedAt]
+      properties:
+        transactionId:
+          type: string
+        transactionNumber:
+          type: string
+        customerId:
+          type: string
+        accountId:
+          type: string
+        amount:
+          type: number
+        currency:
+          type: string
+        referenceNumber:
+          type: [string, "null"]
+        channel:
+          type: string
+        status:
+          type: string
+        accountPostingStatus:
+          type: string
+        auditStatus:
+          type: string
+        compensationStatus:
+          type: string
+        reviewResolution:
+          type: string
+        correlationId:
+          type: string
+        failureCode:
+          type: [string, "null"]
+        failureReason:
+          type: [string, "null"]
+        compensationRetryCount:
+          type: integer
+        reviewLastActionBy:
+          type: [string, "null"]
+        reviewNote:
+          type: [string, "null"]
+        requestedAt:
+          type: string
+          format: date-time
+        postedAt:
+          type: [string, "null"]
+          format: date-time
+        reversedAt:
+          type: [string, "null"]
+          format: date-time
+        reviewRequiredAt:
+          type: [string, "null"]
+          format: date-time
+        reviewResolvedAt:
+          type: [string, "null"]
+          format: date-time
+        lastCompensationAttemptAt:
+          type: [string, "null"]
+          format: date-time
+        lastProcessedAt:
+          type: [string, "null"]
+          format: date-time
+    AuditTraceItem:
+      type: object
+      required: [auditId, actorType, actorId, action, aggregateType, aggregateId, correlationId, occurredAt]
+      properties:
+        auditId:
+          type: string
+        actorType:
+          type: string
+        actorId:
+          type: string
+        action:
+          type: string
+        aggregateType:
+          type: string
+        aggregateId:
+          type: string
+        correlationId:
+          type: string
+        occurredAt:
+          type: string
+          format: date-time
+    CorrelationDiagnostics:
+      type: object
+      required: [correlationId, checkedAt, deposits, auditEvents]
+      properties:
+        correlationId:
+          type: string
+        checkedAt:
+          type: string
+          format: date-time
+        deposits:
+          type: array
+          items:
+            $ref: '#/components/schemas/DepositWorkflowDetail'
+        auditEvents:
+          type: array
+          items:
+            $ref: '#/components/schemas/AuditTraceItem'
+    RetryDepositCompensationRequest:
+      type: object
+      required: [reason]
+      properties:
+        reason:
+          type: string
+          maxLength: 500
+    PlatformResolveDepositReviewRequest:
+      type: object
+      required: [resolution, reason]
+      properties:
+        resolution:
+          type: string
+          enum: [ReversedExternally, FailedExternally]
+        reason:
+          type: string
+          maxLength: 500
+    RequeueOutboxMessageRequest:
+      type: object
+      required: [reason]
+      properties:
+        reason:
+          type: string
+          maxLength: 500
+    PlatformMaintenanceAction:
+      type: object
+      required: [operationId, actionType, targetType, targetId, actorId, resultStatus, downstreamStatusCode, reason, occurredAt]
+      properties:
+        operationId:
+          type: string
+        actionType:
+          type: string
+        targetType:
+          type: string
+        targetId:
+          type: string
+        actorId:
+          type: string
+        resultStatus:
+          type: string
+        downstreamStatusCode:
+          type: integer
+        reason:
+          type: string
+        occurredAt:
+          type: string
+          format: date-time
+    PlatformOverview:
+      type: object
+      required: [platform, checkedAt, services, dependencies, deposits, depositRuntime]
+      properties:
+        platform:
+          type: string
+        checkedAt:
+          type: string
+          format: date-time
+        services:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlatformServiceStatus'
+        dependencies:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlatformDependencyStatus'
+        deposits:
+          $ref: '#/components/schemas/DepositWorkflowSummary'
+        depositRuntime:
+          $ref: '#/components/schemas/DepositRuntimeStatus'
 paths:
   /api/v1/customers:
     post:
@@ -1000,6 +1325,13 @@ paths:
     post:
       tags: [Deposits]
       summary: Create deposit request
+      description: |
+        Creates an idempotent deposit request.
+
+        Repeating the same request with the same `Idempotency-Key` replays the
+        original logical deposit result instead of creating a new financial effect.
+        Repeated short-window replays may be progressively delayed and can return
+        replay metadata headers.
       security:
         - externalApiKey: []
       parameters:
@@ -1014,6 +1346,13 @@ paths:
       responses:
         '202':
           description: Deposit accepted
+          headers:
+            X-Idempotent-Replay:
+              $ref: '#/components/headers/IdempotentReplay'
+            X-Idempotency-Replay-Attempt:
+              $ref: '#/components/headers/IdempotencyReplayAttempt'
+            Retry-After:
+              $ref: '#/components/headers/RetryAfter'
           content:
             application/json:
               schema:
@@ -1032,6 +1371,15 @@ paths:
                 $ref: '#/components/schemas/ProblemDetails'
         '409':
           description: Deposit conflict
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '429':
+          description: Request rate exceeded
+          headers:
+            Retry-After:
+              $ref: '#/components/headers/RetryAfter'
           content:
             application/problem+json:
               schema:
@@ -1089,6 +1437,15 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/DepositPagedResponse'
+        '429':
+          description: Request rate exceeded
+          headers:
+            Retry-After:
+              $ref: '#/components/headers/RetryAfter'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
   /api/v1/deposits/{transactionId}:
     get:
       tags: [Deposits]
@@ -1111,6 +1468,15 @@ paths:
                 $ref: '#/components/schemas/Deposit'
         '404':
           description: Deposit not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '429':
+          description: Request rate exceeded
+          headers:
+            Retry-After:
+              $ref: '#/components/headers/RetryAfter'
           content:
             application/problem+json:
               schema:
@@ -1198,8 +1564,8 @@ paths:
         required: true
         content:
           application/json:
-            schema:
-              $ref: '#/components/schemas/ResolveDepositReviewRequest'
+              schema:
+                $ref: '#/components/schemas/PlatformResolveDepositReviewRequest'
       responses:
         '200':
           description: Deposit after manual resolution
@@ -1284,3 +1650,235 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ReadyResponse'
+  /api/platform/overview:
+    get:
+      tags: [Platform]
+      summary: Get platform monitoring overview
+      responses:
+        '200':
+          description: Platform overview
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlatformOverview'
+        '401':
+          description: Authentication required
+  /api/platform/services:
+    get:
+      tags: [Platform]
+      summary: Get aggregated platform service status
+      responses:
+        '200':
+          description: Platform services
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PlatformServiceStatus'
+        '401':
+          description: Authentication required
+  /api/platform/workflows/deposits/summary:
+    get:
+      tags: [Platform]
+      summary: Get deposit workflow summary
+      responses:
+        '200':
+          description: Deposit workflow summary
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DepositWorkflowSummary'
+        '401':
+          description: Authentication required
+  /api/platform/workflows/deposits/pending-review:
+    get:
+      tags: [Platform]
+      summary: Get deposit pending review items
+      responses:
+        '200':
+          description: Pending review items
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DepositPendingReviewItem'
+        '401':
+          description: Authentication required
+  /api/platform/workflows/deposits/outbox:
+    get:
+      tags: [Platform]
+      summary: Get deposit outbox messages
+      parameters:
+        - name: pendingOnly
+          in: query
+          required: false
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: Deposit outbox items
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DepositOutboxMessageItem'
+        '401':
+          description: Authentication required
+  /api/platform/workflows/deposits/runtime:
+    get:
+      tags: [Platform]
+      summary: Get deposit runtime worker and backlog status
+      responses:
+        '200':
+          description: Deposit runtime status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DepositRuntimeStatus'
+        '401':
+          description: Authentication required
+  /api/platform/workflows/deposits/{transactionId}:
+    get:
+      tags: [Platform]
+      summary: Get deposit workflow detail
+      parameters:
+        - name: transactionId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Deposit workflow detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DepositWorkflowDetail'
+        '401':
+          description: Authentication required
+        '404':
+          description: Workflow not found
+  /api/platform/diagnostics/correlation/{correlationId}:
+    get:
+      tags: [Platform]
+      summary: Get diagnostics for a correlation id
+      parameters:
+        - name: correlationId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Correlation diagnostics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CorrelationDiagnostics'
+        '401':
+          description: Authentication required
+  /api/platform/audit/operations:
+    get:
+      tags: [Platform]
+      summary: Get platform maintenance and operations audit events
+      responses:
+        '200':
+          description: Platform operations audit events
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AuditTraceItem'
+        '401':
+          description: Authentication required
+  /api/platform/maintenance/deposits/{transactionId}/retry-compensation:
+    post:
+      tags: [Platform]
+      summary: Retry deposit compensation from platform operations
+      parameters:
+        - name: transactionId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RetryDepositCompensationRequest'
+      responses:
+        '200':
+          description: Maintenance action completed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlatformMaintenanceAction'
+        '401':
+          description: Authentication required
+        '403':
+          description: Caller lacks platform maintenance permission
+        '409':
+          description: Downstream workflow rejected the retry request
+  /api/platform/maintenance/deposits/{transactionId}/resolve-review:
+    post:
+      tags: [Platform]
+      summary: Resolve deposit pending review from platform operations
+      parameters:
+        - name: transactionId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResolveDepositReviewRequest'
+      responses:
+        '200':
+          description: Maintenance action completed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlatformMaintenanceAction'
+        '401':
+          description: Authentication required
+        '403':
+          description: Caller lacks platform maintenance permission
+        '409':
+          description: Downstream workflow rejected the resolve request
+  /api/platform/maintenance/deposits/outbox/{messageId}/requeue:
+    post:
+      tags: [Platform]
+      summary: Requeue deposit outbox message from platform operations
+      parameters:
+        - name: messageId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RequeueOutboxMessageRequest'
+      responses:
+        '200':
+          description: Maintenance action completed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlatformMaintenanceAction'
+        '401':
+          description: Authentication required
+        '403':
+          description: Caller lacks platform maintenance permission
+        '409':
+          description: Downstream outbox requeue request was rejected

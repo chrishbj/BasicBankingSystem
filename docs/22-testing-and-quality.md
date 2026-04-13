@@ -4,6 +4,10 @@
 
 This project uses layered testing so that domain logic, HTTP behavior, and contract expectations can all be verified independently.
 
+This document is the high-level testing overview for the repository.
+
+For the detailed design rules, conventions, and default choices for new tests, use `docs/33-test-design-standards.md` as the primary standard.
+
 For the repository-wide design rules used for new tests, see:
 
 - `docs/33-test-design-standards.md`
@@ -11,8 +15,12 @@ For the repository-wide design rules used for new tests, see:
 - `docs/35-test-design-findings-and-remedies.md`
 - `docs/36-platform-diagnostics-and-advanced-health-checks.md`
 - `docs/37-platform-diagnostics-api-draft.md`
+- `docs/38-platform-identity-and-operations-architecture.md`
+- `docs/39-platform-operations-console-detailed-design.md`
 
 ## Test Stack
+
+Current repository stack:
 
 - `xUnit`
 - `FluentAssertions`
@@ -44,6 +52,8 @@ Examples:
 
 Unit tests in the current repository standard use `Moq` to isolate repositories, publishers, directories, and other service dependencies. Reusable builders and fixture data live in per-project `Support/` folders.
 
+Detailed unit-test design rules such as mock boundaries, naming, and side-effect verification live in `docs/33-test-design-standards.md`.
+
 ### Integration Tests
 
 Used for:
@@ -65,12 +75,11 @@ Examples:
 
 The service integration test setup uses a shared SQLite `WebApplicationFactory` base in `tests/Shared/SqliteWebApplicationFactory.cs`, with service-specific factories inheriting from it. Local `Support/` helpers are used for request builders, unique data generation, and async drivers where needed.
 
-Current integration tests focus on:
+Current integration tests mainly protect API-visible behavior such as:
 
 - status codes and payload contracts
 - `ProblemDetails` error responses
-- pagination metadata and out-of-range pages
-- filtering and sorting behavior
+- pagination, filtering, and sorting
 - cross-boundary authorization and session behavior
 
 ### Contract Tests
@@ -91,6 +100,8 @@ Current contract-test boundary:
 - Gateway and Customer Portal BFF are currently protected by integration tests rather than this contract document
 - contract tests should use structural OpenAPI assertions, not broad string-matching checks
 - runtime OpenAPI is the recommended future source of truth for operator diagnostics and contract verification
+
+Detailed contract-test rules and scope decisions are defined in `docs/33-test-design-standards.md`.
 
 ## Why This Testing Structure Matters
 

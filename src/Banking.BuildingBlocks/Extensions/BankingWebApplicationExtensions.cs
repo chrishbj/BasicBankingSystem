@@ -10,6 +10,7 @@ public static class BankingWebApplicationExtensions
     {
         app.UseExceptionHandler();
         app.UseMiddleware<CorrelationIdMiddleware>();
+        app.UseBankingRequestProtection();
 
         app.UseHttpsRedirection();
         app.UseAuthentication();

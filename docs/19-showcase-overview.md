@@ -2,21 +2,20 @@
 
 ## Purpose
 
-This document presents the project as a personal technical showcase. It explains what the system does, why it is technically interesting, and where the most important implementation points live in the source tree.
+This document presents the current repository as a technical showcase and explains what makes it worth discussing in an interview, portfolio review, or architecture conversation.
 
 ## What This Project Demonstrates
 
-`BasicBankingSystem` is a local-first banking platform prototype with:
+`BasicBankingSystem` is a banking platform prototype that combines:
 
-- a microservice-oriented backend
-- asynchronous transaction processing
-- SAGA-style compensation and review handling
-- idempotent write APIs for financial safety
-- operator and customer-facing frontends
-- layered automated testing
-- OpenAPI-driven documentation and local Swagger environments
+- domain-oriented backend services
+- gateway and BFF entry patterns
+- asynchronous deposit workflow handling
+- outbox, idempotency, and saga-style recovery
+- separate operator, customer, and platform-facing frontend experiences
+- layered testing and OpenAPI-based documentation
 
-The project is intentionally small enough to understand end-to-end, while still showing the patterns used in more serious distributed systems.
+The project is intentionally small enough to understand end to end, but deep enough to show realistic distributed-system tradeoffs.
 
 ## Main User-Facing Surfaces
 
@@ -24,33 +23,48 @@ The project is intentionally small enough to understand end-to-end, while still 
 
 Purpose:
 
-- browse and select customers
+- browse customers
+- activate customers
 - open accounts
 - submit deposits and withdrawals
 - inspect account activity
-- handle pending-review items
+- work with pending-review items
 
 Relevant source:
 
 - `src/Banking.Web/src/App.tsx`
 - `src/Banking.Web/src/hooks/useOperationsConsole.ts`
-- `src/Banking.Web/src/components/CustomerPanel.tsx`
-- `src/Banking.Web/src/components/AccountPanel.tsx`
-- `src/Banking.Web/src/components/PendingReviewPanel.tsx`
 
 ### Customer Portal
 
 Purpose:
 
 - sign in with customer-facing credentials
-- review balances and activity
+- review balances and recent activity
 - submit deposits and withdrawals
-- track deposit processing state
+- track transaction status
 
 Relevant source:
 
 - `src/Banking.CustomerPortal/src/App.tsx`
 - `src/Banking.CustomerPortal/src/api.ts`
+- `src/Banking.Bff.CustomerPortal/`
+
+### Platform Operations Console
+
+Purpose:
+
+- monitor service health and compatibility
+- inspect workflow backlog and worker status
+- trace correlation ids
+- run controlled maintenance actions
+- review platform operations audit events
+
+Relevant source:
+
+- `src/Banking.PlatformOps/src/App.tsx`
+- `src/Banking.PlatformOps/src/api.ts`
+- `src/Banking.Gateway/Controllers/PlatformController.cs`
 
 ## Main Backend Services
 
@@ -59,30 +73,17 @@ Relevant source:
 Responsibilities:
 
 - customer master data
-- status lifecycle
-- demo portal sign-in validation
-
-Relevant source:
-
-- `src/Banking.Services.Customer/Program.cs`
-- `src/Banking.Services.Customer/Controllers/CustomersController.cs`
-- `src/Banking.Services.Customer/Services/CustomerService.cs`
+- customer status lifecycle
+- portal sign-in validation
 
 ### Account Service
 
 Responsibilities:
 
 - account creation
-- account-number lookup
 - balance ownership
-- account activity history
-- withdrawal processing
-
-Relevant source:
-
-- `src/Banking.Services.Account/Program.cs`
-- `src/Banking.Services.Account/Controllers/AccountsController.cs`
-- `src/Banking.Services.Account/Services/AccountService.cs`
+- account lookup and activity history
+- withdrawals
 
 ### Deposit Service
 
@@ -90,56 +91,43 @@ Responsibilities:
 
 - deposit intake
 - idempotency enforcement
-- outbox persistence
-- RabbitMQ publishing and consumption
-- SAGA step tracking
-- pending-review recovery
-
-Relevant source:
-
-- `src/Banking.Services.Deposit/Program.cs`
-- `src/Banking.Services.Deposit/Services/DepositService.cs`
-- `src/Banking.Services.Deposit/Services/DepositTransactionProcessor.cs`
-- `src/Banking.Services.Deposit/Messaging/DepositOutboxDispatcher.cs`
-- `src/Banking.Services.Deposit/Services/DepositPendingReviewRetryWorker.cs`
+- workflow state persistence
+- outbox dispatch
+- asynchronous processing
+- compensation, retry, and pending review
 
 ### Audit Service
 
 Responsibilities:
 
-- immutable-style audit persistence
-- audit retrieval for troubleshooting and compliance
+- audit persistence
+- audit retrieval
 
-Relevant source:
+### Gateway And BFF Layer
 
-- `src/Banking.Services.Audit/Program.cs`
-- `src/Banking.Services.Audit/Controllers/AuditsController.cs`
+Important runtime roles:
+
+- `Banking.Gateway` acts as the operator-facing entry point and platform control plane
+- `Banking.Bff.CustomerPortal` acts as the customer-facing aggregation and session-auth backend
 
 ## Core Technical Themes
 
 - `Microservices and bounded contexts`
-- `SAGA and compensation`
-- `Idempotency and Outbox`
-- `Automated testing`
+- `Gateway + BFF entry architecture`
+- `Outbox, idempotency, and saga-style recovery`
+- `Operator UX, customer UX, and platform UX separation`
+- `Layered automated testing`
 - `OpenAPI and Swagger`
-- `Human-friendly identifiers for operational UX`
-
-Related deep-dive documents:
-
-- [Microservices And Boundaries](20-microservices-and-boundaries.md)
-- [Saga, Outbox, And Idempotency](21-saga-outbox-idempotency.md)
-- [Testing And Quality](22-testing-and-quality.md)
-- [OpenAPI And API Contracts](23-openapi-and-api-contracts.md)
 
 ## Why This Is A Good Portfolio Project
 
-This repository shows more than CRUD:
+This repository shows more than feature delivery. It shows:
 
-- asynchronous messaging
-- resilient transaction handling
-- compensating actions
-- internal and external authentication boundaries
-- customer-facing and operator-facing UI separation
-- documentation and testing discipline
+- system decomposition
+- workflow reliability design
+- frontend/backend boundary design
+- security boundary decisions
+- operational recovery thinking
+- testing and documentation discipline
 
-It is a useful demonstration of system design, backend architecture, frontend integration, and engineering communication in one codebase.
+That combination makes it a strong full-stack architecture showcase rather than a simple demo app.

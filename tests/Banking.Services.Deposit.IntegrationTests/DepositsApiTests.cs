@@ -78,6 +78,45 @@ public sealed class DepositsApiTests : IClassFixture<DepositServiceWebApplicatio
     }
 
     [Fact]
+    public async Task PostDeposits_Should_ReplayExistingTransaction_And_ApplyReplayHeaders_When_IdempotencyKeyIsRepeated()
+    {
+        var request = new CreateDepositRequest("cus_active_001", "acc_active_001", 150m, "USD", DepositChannel.Counter, null, null);
+
+        using var firstMessage = BuildCreateDepositMessage(request, "dep-integration-replay-001");
+        using var secondMessage = BuildCreateDepositMessage(request, "dep-integration-replay-001");
+        using var thirdMessage = BuildCreateDepositMessage(request, "dep-integration-replay-001");
+
+        var firstResponse = await _client.SendAsync(firstMessage);
+        var secondResponse = await _client.SendAsync(secondMessage);
+        var thirdResponse = await _client.SendAsync(thirdMessage);
+
+        firstResponse.StatusCode.Should().Be(HttpStatusCode.Accepted);
+        secondResponse.StatusCode.Should().Be(HttpStatusCode.Accepted);
+        thirdResponse.StatusCode.Should().Be(HttpStatusCode.Accepted);
+
+        var firstDeposit = await firstResponse.Content.ReadFromJsonAsync<DepositResponse>();
+        var secondDeposit = await secondResponse.Content.ReadFromJsonAsync<DepositResponse>();
+        var thirdDeposit = await thirdResponse.Content.ReadFromJsonAsync<DepositResponse>();
+
+        firstDeposit.Should().NotBeNull();
+        secondDeposit.Should().NotBeNull();
+        thirdDeposit.Should().NotBeNull();
+        secondDeposit!.TransactionId.Should().Be(firstDeposit!.TransactionId);
+        thirdDeposit!.TransactionId.Should().Be(firstDeposit.TransactionId);
+
+        secondResponse.Headers.TryGetValues("X-Idempotent-Replay", out var secondReplayHeader).Should().BeTrue();
+        secondReplayHeader.Should().ContainSingle("true");
+        secondResponse.Headers.TryGetValues("X-Idempotency-Replay-Attempt", out var secondReplayAttemptHeader).Should().BeTrue();
+        secondReplayAttemptHeader.Should().ContainSingle("1");
+
+        thirdResponse.Headers.TryGetValues("X-Idempotent-Replay", out var thirdReplayHeader).Should().BeTrue();
+        thirdReplayHeader.Should().ContainSingle("true");
+        thirdResponse.Headers.TryGetValues("X-Idempotency-Replay-Attempt", out var thirdReplayAttemptHeader).Should().BeTrue();
+        thirdReplayAttemptHeader.Should().ContainSingle("2");
+        thirdResponse.Headers.TryGetValues("Retry-After", out var retryAfterHeader).Should().BeTrue();
+    }
+
+    [Fact]
     public async Task ResolvePendingReview_Should_ReturnOk_When_DepositIsManuallyResolved()
     {
         var transactionId = "dep-review-api-001";
@@ -209,6 +248,16 @@ public sealed class DepositsApiTests : IClassFixture<DepositServiceWebApplicatio
         problem.Should().NotBeNull();
         problem!.Title.Should().Be("Deposit review action is invalid");
         problem.Detail.Should().Contain("Only pending review deposits can be resolved");
+    }
+
+    private static HttpRequestMessage BuildCreateDepositMessage(CreateDepositRequest request, string idempotencyKey)
+    {
+        var message = new HttpRequestMessage(HttpMethod.Post, "/api/v1/deposits")
+        {
+            Content = JsonContent.Create(request)
+        };
+        message.Headers.Add("Idempotency-Key", idempotencyKey);
+        return message;
     }
 
     [Fact]

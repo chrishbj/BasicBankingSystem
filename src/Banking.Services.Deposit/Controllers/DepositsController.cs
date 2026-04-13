@@ -103,6 +103,38 @@ public sealed class DepositsController(IDepositService depositService, IHostEnvi
         return Ok(await depositService.GetPendingReviewAsync(sortBy, descending, pageNumber, pageSize, cancellationToken));
     }
 
+    [HttpGet("runtime/status")]
+    public async Task<IActionResult> GetRuntimeStatus(CancellationToken cancellationToken)
+    {
+        return Ok(await depositService.GetRuntimeStatusAsync(cancellationToken));
+    }
+
+    [HttpGet("outbox")]
+    public async Task<IActionResult> GetOutboxMessages(
+        [FromQuery] int maxCount = 50,
+        [FromQuery] bool pendingOnly = false,
+        CancellationToken cancellationToken = default)
+    {
+        return Ok(await depositService.GetOutboxMessagesAsync(maxCount, pendingOnly, cancellationToken));
+    }
+
+    [HttpGet("outbox/{messageId}")]
+    public async Task<IActionResult> GetOutboxMessageById(string messageId, CancellationToken cancellationToken)
+    {
+        var message = await depositService.GetOutboxMessageByIdAsync(messageId, cancellationToken);
+        return message is null ? NotFound() : Ok(message);
+    }
+
+    [HttpPost("outbox/{messageId}/requeue")]
+    public async Task<IActionResult> RequeueOutboxMessage(
+        string messageId,
+        [FromBody] RequeueDepositOutboxMessageRequest request,
+        CancellationToken cancellationToken)
+    {
+        var message = await depositService.RequeueOutboxMessageAsync(messageId, request, cancellationToken);
+        return message is null ? NotFound() : Ok(message);
+    }
+
     [HttpPost("review/demo")]
     public async Task<IActionResult> CreatePendingReviewDemo(
         [FromBody] CreatePendingReviewDemoRequest request,

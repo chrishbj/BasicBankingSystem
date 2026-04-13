@@ -43,6 +43,30 @@ public sealed class EfDepositRepository(DepositDbContext dbContext) : IDepositRe
             .ToArray();
     }
 
+    public Task<DepositOutboxMessage?> GetOutboxMessageByIdAsync(string messageId, CancellationToken cancellationToken)
+    {
+        return dbContext.OutboxMessages.FirstOrDefaultAsync(x => x.MessageId == messageId, cancellationToken);
+    }
+
+    public async Task<IReadOnlyCollection<DepositOutboxMessage>> GetOutboxMessagesAsync(
+        int maxCount,
+        bool pendingOnly,
+        CancellationToken cancellationToken)
+    {
+        var query = dbContext.OutboxMessages.AsQueryable();
+        if (pendingOnly)
+        {
+            query = query.Where(x => x.ProcessedAt == null);
+        }
+
+        var items = await query.ToListAsync(cancellationToken);
+        return items
+            .OrderBy(x => x.ProcessedAt is null ? 0 : 1)
+            .ThenBy(x => x.OccurredAt)
+            .Take(maxCount)
+            .ToArray();
+    }
+
     public async Task<IReadOnlyCollection<DepositOutboxMessage>> GetPendingOutboxMessagesAsync(int maxCount, CancellationToken cancellationToken)
     {
         var items = await dbContext.OutboxMessages
@@ -64,6 +88,19 @@ public sealed class EfDepositRepository(DepositDbContext dbContext) : IDepositRe
         }
 
         message.ProcessedAt = processedAt;
+        message.LastError = null;
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task RequeueOutboxMessageAsync(string messageId, CancellationToken cancellationToken)
+    {
+        var message = await dbContext.OutboxMessages.FirstOrDefaultAsync(x => x.MessageId == messageId, cancellationToken);
+        if (message is null)
+        {
+            return;
+        }
+
+        message.ProcessedAt = null;
         message.LastError = null;
         await dbContext.SaveChangesAsync(cancellationToken);
     }
